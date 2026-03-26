@@ -1,0 +1,127 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 220 60% 97%;
+    --foreground: 235 57% 39%;
+    
+    --card: 0 0% 100%;
+    --card-foreground: 235 57% 25%;
+    
+    --popover: 0 0% 100%;
+    --popover-foreground: 235 57% 25%;
+    
+    --primary: 280 90% 54%;
+    --primary-foreground: 0 0% 100%;
+    
+    /* Primary gradient colors - matching Figma design */
+    --gradient-start: 280 90% 54%;
+    --gradient-end: 217 100% 40%;
+    
+    /* Primary color stops - gradient blend matching Figma */
+    --primary-50: 280 100% 97%;
+    --primary-100: 280 89% 94%;
+    --primary-200: 280 82% 88%;
+    --primary-300: 280 80% 78%;
+    --primary-400: 280 80% 65%;
+    --primary-500: 280 90% 54%;  /* #942BF4 */
+    --primary-600: 270 85% 48%;
+    --primary-700: 250 80% 40%;
+    --primary-800: 217 100% 40%;  /* #1E2F96 */
+    --primary-900: 217 100% 32%;
+    
+    --secondary: 214 100% 95%;
+    --secondary-foreground: 280 90% 54%;
+    
+    --muted: 214 100% 95%;
+    --muted-foreground: 220 10% 50%;
+    
+    --accent: 214 100% 95%;
+    --accent-foreground: 280 90% 54%;
+    
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    
+    --success: 142 72% 40%;
+    --success-foreground: 0 0% 100%;
+    
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+    
+    --border: 214 40% 90%;
+    --input: 214 40% 90%;
+    --ring: 280 90% 54%;
+    
+    --radius: 0.75rem;
+    
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 220 10% 50%;
+    --sidebar-primary: 280 90% 54%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 214 100% 95%;
+    --sidebar-accent-foreground: 280 90% 54%;
+    --sidebar-border: 214 40% 92%;
+    --sidebar-ring: 280 90% 54%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground font-sans;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+  }
+}
+
+@layer utilities {
+  .card-shadow {
+    box-shadow: 0 1px 3px 0 hsla(262, 83%, 58%, 0.04), 0 1px 2px -1px hsla(262, 83%, 58%, 0.04);
+  }
+  .card-shadow-hover {
+    box-shadow: 0 4px 12px 0 hsla(262, 83%, 58%, 0.08), 0 2px 4px -1px hsla(262, 83%, 58%, 0.04);
+  }
+  
+  /* Primary gradient utilities - matching Figma design */
+  .bg-primary-gradient {
+    background: linear-gradient(168.34deg, #942BF4 42.526%, #1E2F96 94.588%);
+    box-shadow: 0px 5px 12px 0px rgba(39, 47, 158, 0.2);
+  }
+  
+  .bg-primary-gradient-to-br {
+    background: linear-gradient(168.34deg, #942BF4 42.526%, #1E2F96 94.588%);
+    box-shadow: 0px 5px 12px 0px rgba(39, 47, 158, 0.2);
+  }
+  
+  .bg-primary-gradient-to-r {
+    background: linear-gradient(90deg, #942BF4 0%, #1E2F96 100%);
+    box-shadow: 0px 5px 12px 0px rgba(39, 47, 158, 0.2);
+  }
+  
+  .bg-primary-gradient-to-b {
+    background: linear-gradient(180deg, #942BF4 0%, #1E2F96 100%);
+    box-shadow: 0px 5px 12px 0px rgba(39, 47, 158, 0.2);
+  }
+  
+  .text-gradient-primary {
+    background: linear-gradient(135deg, #7C3AED 0%, #4F46E5 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  
+  /* Override bg-primary to use Figma gradient */
+  .bg-primary {
+    background: linear-gradient(168.34deg, #942BF4 42.526%, #1E2F96 94.588%) !important;
+    box-shadow: 0px 5px 12px 0px rgba(39, 47, 158, 0.2);
+  }
+}
+/* Primary gradient with exact CSS values */
+.bg-primary-gradient {
+  background: linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%);
+}

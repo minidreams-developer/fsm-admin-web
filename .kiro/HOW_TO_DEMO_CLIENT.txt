@@ -1,0 +1,209 @@
+================================================================================
+                    HOW TO DEMO TO YOUR CLIENT
+================================================================================
+
+WHAT TO SHOW: 5-Minute Prototype Demo
+
+================================================================================
+                            THE 6 SCREENS
+================================================================================
+
+SCREEN 1: Leads Page
+├─ Lead: Arun Sharma
+├─ Status: Quote Sent
+├─ Quote Status: ✓ Viewed
+└─ Action: "Convert to Project"
+
+Say: "This is a lead with a viewed quote. 
+      Click 'Convert to Project' to create a work order."
+
+SCREEN 2: Pre-filled Form
+├─ Customer Name: Arun Sharma ✓
+├─ Phone: 9876543210 ✓
+├─ Address: 12 MG Road, Kochi ✓
+├─ Service: Termite Treatment ✓
+├─ Contract: 3 Months ✓
+└─ Amount: ₹5,000 ✓
+
+Say: "The form is already filled with all the lead data.
+      No need to re-enter anything!"
+
+SCREEN 3: Work Order Created
+├─ Success Message: ✓ "Lead converted to Work Order"
+└─ Work Order: WO-1028 | Arun Sharma | Open
+
+Say: "The work order is created instantly."
+
+SCREEN 4: Work Order Details
+├─ WO-1028 - Arun Sharma
+├─ Lead Information
+├─ Services
+├─ Quote Details
+└─ [Assign Service] Button
+
+Say: "Here's the complete work order detail."
+
+SCREEN 5: Service Pre-filled Form
+├─ Work Order: WO-1028 ✓
+├─ Customer: Arun Sharma ✓
+├─ Address: 12 MG Road, Kochi ✓
+├─ Service: Termite Treatment ✓
+├─ Date: [Select]
+├─ Time: [Select]
+└─ Technician: [Select]
+
+Say: "The service form is also pre-filled.
+      Just select the date, time, and technician."
+
+SCREEN 6: Service Created
+├─ Success Message: ✓ "Service assigned to Safeeq"
+└─ Service Appointment: SA-1 | WO-1028 | Scheduled
+
+Say: "The service is assigned. The workflow is complete!"
+
+================================================================================
+                            DEMO FLOW
+================================================================================
+
+LEADS PAGE
+    ↓ Click "Convert to Project"
+PROJECTS PAGE (Form Pre-filled)
+    ↓ Click "Create Work Order"
+WORK ORDER CREATED
+    ↓ Click "Edit" → "Assign Service"
+SERVICES PAGE (Form Pre-filled)
+    ↓ Click "Assign Service"
+SERVICE APPOINTMENT CREATED ✓
+
+================================================================================
+                        WHAT TO SAY (Script)
+================================================================================
+
+OPENING (30 seconds):
+"Let me show you how the system works. 
+We have a lead with a viewed quote. 
+Now we'll convert it to a work order and assign it to a technician."
+
+AT SCREEN 1 (30 seconds):
+"This is a lead with a viewed quote. 
+The action button is 'Convert to Project'."
+
+AT SCREEN 2 (1 minute):
+"When we click 'Convert to Project', the form is already filled 
+with all the lead data. This saves time and reduces errors."
+
+AT SCREEN 3 (30 seconds):
+"The work order is created instantly."
+
+AT SCREEN 4 (30 seconds):
+"Here's the complete work order detail."
+
+AT SCREEN 5 (1 minute):
+"The service form is also pre-filled. 
+We just select the date, time, and technician."
+
+AT SCREEN 6 (30 seconds):
+"The service is assigned. The workflow is complete!"
+
+CLOSING (30 seconds):
+"Key benefits:
+- Forms pre-fill automatically
+- No need to re-enter information
+- Everything saves automatically
+- Clean and easy to use"
+
+TOTAL TIME: 5 minutes
+
+================================================================================
+                        HOW TO GIVE THE DEMO
+================================================================================
+
+BEFORE DEMO:
+1. Open the app
+2. Go to Leads page
+3. Have the lead "Arun Sharma" visible with "Quote Sent" status
+4. Make sure you're ready to click through the screens
+
+DURING DEMO:
+1. Point and click - Use your mouse to show what you're clicking
+2. Pause between steps - Let client see each screen
+3. Explain each step - Tell them what's happening
+4. Highlight pre-filled data - Show how data flows between pages
+5. Show success messages - Confirm actions worked
+
+AFTER DEMO:
+1. Ask if they have questions
+2. Explain the benefits
+3. Show how it saves time
+4. Discuss next steps
+
+================================================================================
+                        KEY POINTS
+================================================================================
+
+POINT 1: Status-Based Actions
+"The action button changes based on the quote status."
+
+POINT 2: Form Pre-filling
+"All the data is automatically pre-filled."
+
+POINT 3: Data Flow
+"Data flows smoothly from Lead → Project → Service."
+
+POINT 4: Time Saving
+"This workflow saves time and reduces errors."
+
+POINT 5: User Friendly
+"The interface is clean and easy to use."
+
+================================================================================
+                        CLIENT QUESTIONS
+================================================================================
+
+Q: Why is the form pre-filled?
+A: "The system automatically retrieves the previous data and fills the form. 
+   This saves time and reduces errors."
+
+Q: What if I need to change the data?
+A: "You can edit any field before submitting."
+
+Q: Does the data save automatically?
+A: "Yes, all data saves automatically."
+
+Q: Can I go back?
+A: "Yes, you can navigate back and the data will still be there."
+
+================================================================================
+                        DEMO CHECKLIST
+================================================================================
+
+- [ ] Show Leads page with viewed quote
+- [ ] Click "Convert to Project"
+- [ ] Show pre-filled form on Projects page
+- [ ] Click "Create Work Order"
+- [ ] Show success message
+- [ ] Show work order in table
+- [ ] Click "Edit" on work order
+- [ ] Show work order details
+- [ ] Click "Assign Service"
+- [ ] Show pre-filled form on Services page
+- [ ] Click "Assign Service"
+- [ ] Show success message
+- [ ] Show service appointment in table
+
+================================================================================
+                        THAT'S IT!
+================================================================================
+
+6 screens, 5 minutes, complete demo!
+
+Your client will see:
+✓ Lead with viewed quote
+✓ Pre-filled forms
+✓ Work order creation
+✓ Service assignment
+✓ Complete workflow
+
+READY TO DEMO! 🚀
+
+================================================================================
