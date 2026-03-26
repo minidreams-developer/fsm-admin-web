@@ -11,6 +11,7 @@ const menuItems = [
   { label: "Dashboard", icon: LayoutDashboard, path: "/" },
   { label: "Leads", icon: Users, path: "/leads" },
   { label: "Work Orders", icon: FolderKanban, path: "/projects" },
+  { label: "Service Management", icon: Wrench, path: "/service-management" },
   { label: "Service Appointments", icon: Wrench, path: "/services" },
   { label: "Payments", icon: CreditCard, path: "/payments" },
   { label: "Reports", icon: FileText, path: "/reports" },

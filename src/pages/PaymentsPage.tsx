@@ -1,133 +1,264 @@
-import { StatusBadge } from "@/components/StatusBadge";
-import { Search, CheckCircle } from "lucide-react";
 import { useState } from "react";
+import { Search, Filter } from "lucide-react";
+import { useProjectsStore, type WorkOrder } from "@/store/projectsStore";
+import { StatusBadge } from "@/components/StatusBadge";
+import { WorkOrderDetailsModal } from "@/components/WorkOrderDetailsModal";
+import { PaymentUpdateModal } from "@/components/PaymentUpdateModal";
 
-const digitalPayments = [
-  { id: "TXN-90812", service: "#SV-1042", customer: "Praveen Kumar", tech: "Safeeq", amount: "₹ 850", upiRef: "GPay-408291038", status: "Pending" },
-  { id: "TXN-90810", service: "#SV-1038", customer: "Suresh Nair", tech: "Rajesh", amount: "₹ 1,200", upiRef: "PhonePe-50192831", status: "Pending" },
-  { id: "TXN-90808", service: "#SV-1035", customer: "Meena Devi", tech: "Arun", amount: "₹ 650", upiRef: "GPay-301928371", status: "Verified" },
-];
-
-const cashBalances = [
-  { employee: "Safeeq", balance: "₹ 5,800", services: 8, lastSettlement: "Mar 3" },
-  { employee: "Rajesh", balance: "₹ 2,100", services: 4, lastSettlement: "Mar 5" },
-  { employee: "Arun", balance: "₹ 950", services: 2, lastSettlement: "Mar 6" },
-];
-
-const partialPayments = [
-  { customer: "Ramesh Singh", service: "#SV-1043", total: "₹ 850", paid: "₹ 700", balance: "₹ 150", mode: "Cash" },
-  { customer: "Fatima Begum", service: "#SV-1036", total: "₹ 1,200", paid: "₹ 800", balance: "₹ 400", mode: "UPI + Cash" },
-];
+const statusMap = { "Open": "warning", "Scheduled": "info", "Completed": "success" } as const;
 
 const PaymentsPage = () => {
-  const [tab, setTab] = useState<"digital" | "cash" | "partial">("digital");
+  const { workOrders } = useProjectsStore();
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"All" | "Open" | "Scheduled" | "Completed">("All");
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [selectedWorkOrder, setSelectedWorkOrder] = useState<WorkOrder | undefined>(
+    workOrders.length > 0 ? workOrders[0] : undefined
+  );
+
+  const filtered = workOrders.filter((wo) => {
+    const matchStatus = statusFilter === "All" || wo.status === statusFilter;
+    const matchSearch = 
+      wo.subject?.toLowerCase().includes(search.toLowerCase()) ||
+      wo.customer?.toLowerCase().includes(search.toLowerCase()) ||
+      wo.id.toLowerCase().includes(search.toLowerCase());
+    return matchStatus && matchSearch;
+  });
+
+  const stats = {
+    totalRevenue: workOrders.reduce((sum, w) => sum + (parseFloat(w.totalValue?.replace(/[₹,]/g, '') || '0')), 0),
+    pendingPayment: workOrders.filter(w => w.status !== "Completed").length,
+    toCollect: workOrders.filter(w => w.status === "Open").length,
+  };
+
+  const getBalancePayment = (workOrder: WorkOrder) => {
+    const total = parseFloat(workOrder.totalValue?.replace(/[₹,]/g, '') || '0');
+    const paid = parseFloat(workOrder.paidAmount?.replace(/[₹,]/g, '') || '0');
+    return Math.max(0, total - paid);
+  };
+
+  const handleViewDetails = (workOrder: WorkOrder) => {
+    setSelectedWorkOrder(workOrder);
+  };
+
+  const getPaymentHistory = (workOrder: WorkOrder) => {
+    const paidAmount = parseFloat(workOrder.paidAmount?.replace(/[₹,]/g, '') || '0');
+    if (paidAmount === 0) return [];
+    
+    // Generate sample payment history based on paid amount
+    const payments = [];
+    const halfAmount = Math.round(paidAmount / 2);
+    
+    if (halfAmount > 0) {
+      payments.push({
+        method: "Cash",
+        paymentId: `manual_${workOrder.id}_001`,
+        amount: halfAmount,
+        date: "10-02-2026",
+        paidBy: "Arun-Itboomi"
+      });
+    }
+    
+    if (paidAmount - halfAmount > 0) {
+      payments.push({
+        method: "UPI",
+        paymentId: `payment_${workOrder.id}_002`,
+        amount: paidAmount - halfAmount,
+        date: "10-02-2026",
+        paidBy: "-/-"
+      });
+    }
+    
+    return payments;
+  };
 
   return (
     <div className="space-y-6 animate-fade-in">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 className="text-lg sm:text-xl font-bold text-card-foreground">Payments</h2>
+          <p className="text-sm text-muted-foreground">Manage payment details and work orders</p>
+        </div>
+      </div>
+
+      {/* Overview Section */}
       <div>
-        <h2 className="text-lg sm:text-xl font-bold text-card-foreground">Payment Reconciliation</h2>
-        <p className="text-sm text-muted-foreground">Verify digital payments and settle cash balances</p>
-      </div>
-
-      <div className="flex flex-wrap gap-2">
-        {(["digital", "cash", "partial"] as const).map((t) => (
-          <button key={t} onClick={() => setTab(t)} className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${tab === t ? "text-white shadow-[0px_5px_12px_rgba(39,47,158,0.2)]" : "bg-card text-muted-foreground border border-border hover:bg-secondary"}`} style={tab === t ? { background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" } : {}}>
-            {t === "digital" ? "Verify Digital Payments" : t === "cash" ? "Cash Balance Settlement" : "Partial Payments"}
-          </button>
-        ))}
-      </div>
-
-      <div className="relative w-full sm:max-w-xs">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by Ref ID or name..." className="w-full pl-9 pr-4 py-2 rounded-lg bg-card text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20" />
-      </div>
-
-      {tab === "digital" && (
-        <div className="bg-card rounded-xl card-shadow overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[1000px] text-sm">
-              <thead><tr className="border-b border-border">
-                {["Txn ID", "Service", "Customer", "Technician", "Amount", "UPI Ref ID", "Status", "Action"].map((h) => (
-                  <th key={h} className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">{h}</th>
-                ))}
-              </tr></thead>
-              <tbody>
-                {digitalPayments.map((p) => (
-                  <tr key={p.id} className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors">
-                    <td className="px-5 py-3.5 font-semibold text-primary">{p.id}</td>
-                    <td className="px-5 py-3.5 text-muted-foreground">{p.service}</td>
-                    <td className="px-5 py-3.5 text-card-foreground">{p.customer}</td>
-                    <td className="px-5 py-3.5 text-muted-foreground">{p.tech}</td>
-                    <td className="px-5 py-3.5 font-semibold text-card-foreground">{p.amount}</td>
-                    <td className="px-5 py-3.5 font-mono text-xs text-muted-foreground">{p.upiRef}</td>
-                    <td className="px-5 py-3.5"><StatusBadge label={p.status} variant={p.status === "Verified" ? "success" : "warning"} /></td>
-                    <td className="px-5 py-3.5">
-                      {p.status === "Pending" && (
-                        <button className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline">
-                          <CheckCircle className="w-3.5 h-3.5" /> Mark Verified
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        <h3 className="text-sm font-semibold text-card-foreground mb-3">Overview</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="bg-blue-50 rounded-xl p-4 border border-blue-200">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-5 h-5 rounded bg-blue-500 flex items-center justify-center">
+                <span className="text-white text-xs">₹</span>
+              </div>
+              <p className="text-xs font-medium text-blue-700">Total Revenue</p>
+            </div>
+            <p className="text-2xl font-bold text-blue-900">₹{stats.totalRevenue.toLocaleString()}.00</p>
+          </div>
+          <div className="bg-blue-50 rounded-xl p-4 border border-blue-200">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-5 h-5 rounded bg-blue-500 flex items-center justify-center">
+                <span className="text-white text-xs">⏳</span>
+              </div>
+              <p className="text-xs font-medium text-blue-700">Total Pending Payment</p>
+            </div>
+            <p className="text-2xl font-bold text-blue-900">₹{(stats.pendingPayment * 50000).toLocaleString()}.00</p>
+          </div>
+          <div className="bg-blue-50 rounded-xl p-4 border border-blue-200">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-5 h-5 rounded bg-blue-500 flex items-center justify-center">
+                <span className="text-white text-xs">📊</span>
+              </div>
+              <p className="text-xs font-medium text-blue-700">To Be Collect From</p>
+            </div>
+            <p className="text-2xl font-bold text-blue-900">{stats.toCollect}</p>
           </div>
         </div>
-      )}
+      </div>
 
-      {tab === "cash" && (
-        <div className="space-y-4">
-          {cashBalances.map((c) => (
-            <div key={c.employee} className="bg-card rounded-xl p-5 card-shadow flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center">
-                  <span className="text-sm font-bold text-primary">{c.employee[0]}</span>
-                </div>
-                <div>
-                  <p className="font-semibold text-card-foreground">{c.employee}</p>
-                  <p className="text-xs text-muted-foreground">{c.services} services · Last settled: {c.lastSettlement}</p>
-                </div>
+      {/* Main Content - Two Column Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left Sidebar - Work Orders List */}
+        <div className="lg:col-span-1">
+          <div className="bg-card rounded-xl card-shadow overflow-hidden border border-border">
+            <div className="p-4 border-b border-border">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold text-card-foreground">Projects</h3>
+                <button className="p-1 hover:bg-secondary rounded transition-colors">
+                  <Filter className="w-4 h-4 text-muted-foreground" />
+                </button>
               </div>
-              <div className="flex items-center justify-between sm:justify-end gap-4 w-full sm:w-auto">
-                <div className="text-left sm:text-right">
-                  <p className="text-lg font-bold text-card-foreground">{c.balance}</p>
-                  <p className="text-xs text-muted-foreground">Cash liability</p>
-                </div>
-                <button className="px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 text-white shadow-[0px_5px_12px_rgba(39,47,158,0.2)]" style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}>Settle Cash</button>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <input 
+                  value={search} 
+                  onChange={(e) => setSearch(e.target.value)} 
+                  placeholder="Search Projects" 
+                  className="w-full pl-9 pr-4 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20" 
+                />
               </div>
             </div>
-          ))}
-        </div>
-      )}
-
-      {tab === "partial" && (
-        <div className="bg-card rounded-xl card-shadow overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[900px] text-sm">
-              <thead><tr className="border-b border-border">
-                {["Customer", "Service", "Total", "Paid", "Balance", "Mode", "Action"].map((h) => (
-                  <th key={h} className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">{h}</th>
-                ))}
-              </tr></thead>
-              <tbody>
-                {partialPayments.map((p, i) => (
-                  <tr key={i} className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors">
-                    <td className="px-5 py-3.5 font-medium text-card-foreground">{p.customer}</td>
-                    <td className="px-5 py-3.5 text-primary font-semibold">{p.service}</td>
-                    <td className="px-5 py-3.5 text-muted-foreground">{p.total}</td>
-                    <td className="px-5 py-3.5 text-success font-semibold">{p.paid}</td>
-                    <td className="px-5 py-3.5 text-destructive font-semibold">{p.balance}</td>
-                    <td className="px-5 py-3.5 text-muted-foreground">{p.mode}</td>
-                    <td className="px-5 py-3.5"><button className="text-xs font-semibold text-primary hover:underline">Record Payment</button></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <div className="space-y-2 p-3 max-h-[600px] overflow-y-auto">
+              {filtered.map((wo) => (
+                <button
+                  key={wo.id}
+                  onClick={() => handleViewDetails(wo)}
+                  className={`w-full text-left p-3 rounded-lg transition-colors ${
+                    selectedWorkOrder?.id === wo.id
+                      ? "bg-blue-100 border border-blue-300"
+                      : "bg-secondary/50 hover:bg-secondary border border-border"
+                  }`}
+                >
+                  <div className="flex items-start justify-between mb-1">
+                    <p className="font-semibold text-sm text-card-foreground">{wo.subject}</p>
+                    <StatusBadge label={wo.status} variant={statusMap[wo.status as keyof typeof statusMap] || "neutral"} />
+                  </div>
+                  <p className="text-xs text-muted-foreground mb-2">{wo.id}</p>
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-semibold text-primary">{wo.totalValue}</p>
+                    <p className="text-xs text-muted-foreground">{wo.end}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
           </div>
         </div>
-      )}
+
+        {/* Right Panel - Payment Details */}
+        <div className="lg:col-span-2">
+          {selectedWorkOrder ? (
+            <div className="bg-card rounded-xl card-shadow border border-border overflow-hidden">
+              <div className="p-6 border-b border-border bg-gradient-to-r from-blue-50 to-blue-100">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-bold text-card-foreground">Payment Details</h3>
+                  <button 
+                    onClick={() => setShowPaymentModal(true)}
+                    className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white hover:opacity-90 transition-all"
+                    style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}
+                  >
+                    Update Payments
+                  </button>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Project</p>
+                    <p className="font-semibold text-card-foreground">{selectedWorkOrder.subject}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Customer Name / Mobile No.</p>
+                    <p className="font-semibold text-card-foreground">{selectedWorkOrder.customer}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Project Value</p>
+                    <p className="font-semibold text-primary">{selectedWorkOrder.totalValue}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Balance Payment</p>
+                    <p className="font-semibold text-primary">₹{getBalancePayment(selectedWorkOrder).toLocaleString()}.00</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Project ID</p>
+                    <p className="font-semibold text-card-foreground">{selectedWorkOrder.id}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Due Date</p>
+                    <p className="font-semibold text-card-foreground">{selectedWorkOrder.end}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Payment History Table */}
+              <div className="p-6">
+                <h4 className="text-sm font-semibold text-card-foreground mb-4">Payment History</h4>
+                {getPaymentHistory(selectedWorkOrder).length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="border-b border-border">
+                          <th className="text-left px-3 py-2 font-semibold text-muted-foreground">Payment Method</th>
+                          <th className="text-left px-3 py-2 font-semibold text-muted-foreground">Payment ID</th>
+                          <th className="text-left px-3 py-2 font-semibold text-muted-foreground">Total Amount (₹)</th>
+                          <th className="text-left px-3 py-2 font-semibold text-muted-foreground">Date</th>
+                          <th className="text-left px-3 py-2 font-semibold text-muted-foreground">Payment By</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {getPaymentHistory(selectedWorkOrder).map((payment, idx) => (
+                          <tr key={idx} className="border-b border-border hover:bg-secondary/30">
+                            <td className="px-3 py-2 text-card-foreground">{payment.method}</td>
+                            <td className="px-3 py-2 text-muted-foreground text-xs truncate">{payment.paymentId}</td>
+                            <td className="px-3 py-2 text-primary font-semibold">{payment.amount.toLocaleString()}.00</td>
+                            <td className="px-3 py-2 text-muted-foreground">{payment.date}</td>
+                            <td className="px-3 py-2 text-muted-foreground">{payment.paidBy}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">No payments recorded yet</p>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="bg-card rounded-xl card-shadow border border-border p-12 flex items-center justify-center min-h-[400px]">
+              <p className="text-muted-foreground">Select a project to view payment details</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Modals */}
+      <WorkOrderDetailsModal 
+        open={showDetailsModal}
+        workOrder={selectedWorkOrder}
+        onClose={() => setShowDetailsModal(false)}
+      />
+      <PaymentUpdateModal 
+        open={showPaymentModal}
+        workOrder={selectedWorkOrder}
+        onClose={() => setShowPaymentModal(false)}
+      />
     </div>
   );
 };

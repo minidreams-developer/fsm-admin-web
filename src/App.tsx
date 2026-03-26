@@ -7,6 +7,7 @@ import { DashboardLayout } from "@/components/DashboardLayout";
 import Dashboard from "./pages/Dashboard";
 import LeadsPage from "./pages/LeadsPage";
 import ServicesPage from "./pages/ServicesPage";
+import ServiceManagementPage from "./pages/ServiceManagementPage";
 import PaymentsPage from "./pages/PaymentsPage";
 import ReportsPage from "./pages/ReportsPage";
 import InventoryPage from "./pages/InventoryPage";
@@ -15,6 +16,7 @@ import CustomersPage, { CustomerDetailPage } from "./pages/CustomersPage";
 import LoginPage from "./pages/LoginPage";
 import NotFound from "./pages/NotFound";
 import ProjectsPage from "./pages/ProjectsPage";
+import CreateWorkOrderPage from "./pages/CreateWorkOrderPage";
 import BranchesPage from "./pages/BranchesPage";
 import ProductsPage from "./pages/ProductsPage";
 
@@ -32,7 +34,9 @@ const App = () => (
             <Route path="/" element={<Dashboard />} />
             <Route path="/leads" element={<LeadsPage />} />
             <Route path="/projects" element={<ProjectsPage />} />
+            <Route path="/create-work-order" element={<CreateWorkOrderPage />} />
             <Route path="/services" element={<ServicesPage />} />
+            <Route path="/service-management" element={<ServiceManagementPage />} />
             <Route path="/payments" element={<PaymentsPage />} />
             <Route path="/reports" element={<ReportsPage />} />
             <Route path="/inventory" element={<InventoryPage />} />
