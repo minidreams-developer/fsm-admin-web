@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Plus, Search, Eye, EyeOff, X, Clock, CheckCircle2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -669,28 +670,29 @@ const LeadsPage = () => {
       )}
 
       {/* Send Quote Form Modal */}
-      {showQuoteForm && selectedLeadForQuote && (
-        <div className="fixed inset-0 bg-black/20 flex items-center justify-center z-50 animate-in fade-in duration-300">
-          <div className="bg-white rounded-xl shadow-lg w-full max-w-md mx-4 animate-in fade-in slide-in-from-top-2 duration-300">
-            <div className="p-6 space-y-5">
-              {/* Header */}
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-lg font-bold text-gray-800">Send Quote</h3>
-                  <p className="text-sm text-gray-600">{selectedLeadForQuote.name}</p>
-                </div>
-                <button
-                  onClick={() => {
-                    setShowQuoteForm(false);
-                    setSelectedLeadForQuote(null);
-                    setQuoteFormData({ amount: "", contract: "", notes: "" });
-                  }}
-                  className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
-                >
-                  <X className="w-5 h-5 text-gray-600" />
-                </button>
+      {showQuoteForm && selectedLeadForQuote && createPortal(
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4 overflow-hidden bg-black/75 rounded-[20px]">
+          <div className="bg-card rounded-[20px] shadow-lg w-full max-w-md max-h-[90vh] overflow-y-auto">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-6 border-b border-border">
+              <div>
+                <h2 className="text-lg font-bold text-card-foreground">Send Quote</h2>
+                <p className="text-sm text-muted-foreground mt-1">{selectedLeadForQuote.name}</p>
               </div>
+              <button
+                onClick={() => {
+                  setShowQuoteForm(false);
+                  setSelectedLeadForQuote(null);
+                  setQuoteFormData({ amount: "", contract: "", notes: "" });
+                }}
+                className="p-1 hover:bg-secondary rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5 text-muted-foreground" />
+              </button>
+            </div>
 
+            {/* Modal Content */}
+            <div className="p-6 space-y-4">
               {/* Services Summary */}
               <div className="rounded-lg p-4 border border-border bg-secondary/30">
                 <p className="text-xs font-semibold text-muted-foreground mb-3 uppercase tracking-wider">Services to Quote</p>
@@ -708,23 +710,23 @@ const LeadsPage = () => {
 
               {/* Quote Amount */}
               <div>
-                <label className="text-sm font-medium text-gray-700 mb-2 block">Quote Amount (₹)</label>
+                <label className="text-xs font-medium text-muted-foreground mb-2 block">Quote Amount (₹) *</label>
                 <input
                   type="number"
                   placeholder="Enter quote amount"
                   value={quoteFormData.amount}
                   onChange={(e) => setQuoteFormData({ ...quoteFormData, amount: e.target.value })}
-                  className="w-full px-4 py-2.5 rounded-lg bg-blue-50 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-300 border border-blue-100"
+                  className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
                 />
               </div>
 
               {/* Contract Duration */}
               <div>
-                <label className="text-sm font-medium text-gray-700 mb-2 block">Contract Duration</label>
+                <label className="text-xs font-medium text-muted-foreground mb-2 block">Contract Duration</label>
                 <select
                   value={quoteFormData.contract}
                   onChange={(e) => setQuoteFormData({ ...quoteFormData, contract: e.target.value })}
-                  className="w-full px-4 py-2.5 rounded-lg bg-blue-50 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-300 border border-blue-100"
+                  className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
                 >
                   <option value="">Select contract duration</option>
                   <option value="One-Time">One-Time</option>
@@ -736,32 +738,32 @@ const LeadsPage = () => {
 
               {/* Quote Notes */}
               <div>
-                <label className="text-sm font-medium text-gray-700 mb-2 block">Quote Details</label>
+                <label className="text-xs font-medium text-muted-foreground mb-2 block">Quote Details</label>
                 <textarea
                   placeholder="Add quote details, terms, or special notes..."
                   value={quoteFormData.notes}
                   onChange={(e) => setQuoteFormData({ ...quoteFormData, notes: e.target.value })}
                   rows={3}
-                  className="w-full px-4 py-2.5 rounded-lg bg-blue-50 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-300 border border-blue-100 resize-none"
+                  className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground resize-none"
                 />
               </div>
 
               {/* Action Buttons */}
-              <div className="flex gap-3 pt-2">
+              <div className="flex gap-3 pt-4 border-t border-border">
                 <button
                   onClick={() => {
                     setShowQuoteForm(false);
                     setSelectedLeadForQuote(null);
                     setQuoteFormData({ amount: "", contract: "", notes: "" });
                   }}
-                  className="flex-1 h-10 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium text-sm"
+                  className="flex-1 h-10 border border-border text-card-foreground text-sm font-medium hover:text-primary transition-colors rounded-lg"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleSendQuote}
                   disabled={!quoteFormData.amount}
-                  className="flex-1 h-10 text-white rounded-lg hover:opacity-90 shadow-lg transition-all font-semibold text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 h-10 text-white text-sm font-medium rounded-lg hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}
                 >
                   Send Quote
@@ -769,7 +771,8 @@ const LeadsPage = () => {
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Lead Details Modal */}

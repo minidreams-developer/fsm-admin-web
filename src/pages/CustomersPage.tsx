@@ -1,4 +1,4 @@
-import { Search, ChevronRight, Plus, Edit2, Trash2, ArrowLeft } from "lucide-react";
+import { Search, ChevronRight, Plus, Edit2, Trash2, ArrowLeft, Users } from "lucide-react";
 import { useState } from "react";
 import { StatusBadge } from "@/components/StatusBadge";
 import { CustomerFormModal } from "@/components/CustomerFormModal";
@@ -71,49 +71,88 @@ const CustomersPage = () => {
         <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search customers..." className="w-full pl-9 pr-4 py-2 rounded-lg bg-card text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20" />
       </div>
 
-      <div className="bg-card rounded-xl card-shadow overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[700px] text-sm">
-            <thead>
-              <tr className="border-b border-border">
-                {["Customer", "Phone", "Projects", "Total", "Balance", ""].map((h) => (
-                  <th key={h} className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((c) => {
-                const name = buildDisplayName(c);
-                const ledger = getLedger(workOrders, name);
-                const balance = ledger.balance;
-                return (
-                  <tr
-                    key={c.id}
-                    onClick={() => navigate(`/customers/${c.id}`)}
-                    className="border-b border-border last:border-0 cursor-pointer transition-colors hover:bg-secondary/30"
-                  >
-                    <td className="px-5 py-3.5 font-medium text-card-foreground">{name}</td>
-                    <td className="px-5 py-3.5 text-muted-foreground">{c.mobile}</td>
-                    <td className="px-5 py-3.5 text-muted-foreground">{ledger.projects}</td>
-                    <td className="px-5 py-3.5 text-muted-foreground">{formatRupee(ledger.total)}</td>
-                    <td className="px-5 py-3.5">
-                      {balance <= 0 ? (
-                        <StatusBadge label="Cleared" variant="success" />
-                      ) : (
-                        <span className="font-semibold text-destructive">{formatRupee(balance)}</span>
-                      )}
-                    </td>
-                    <td className="px-5 py-3.5">
-                      <ChevronRight className="w-4 h-4 text-muted-foreground" />
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+      {/* Overview Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-card rounded-xl p-5 card-shadow border border-border">
+          <div className="flex items-start gap-3">
+            <div className="p-2.5 bg-primary/10 rounded-lg flex-shrink-0">
+              <Users className="w-5 h-5 text-primary" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-medium text-muted-foreground mb-1">Total Customers</p>
+              <p className="text-2xl font-bold text-card-foreground">{customers.length}</p>
+            </div>
+          </div>
         </div>
+
+        <div className="bg-card rounded-xl p-5 card-shadow border border-border">
+          <div className="flex items-start gap-3">
+            <div className="p-2.5 bg-success/10 rounded-lg flex-shrink-0">
+              <Users className="w-5 h-5 text-success" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-medium text-muted-foreground mb-1">Active Customers</p>
+              <p className="text-2xl font-bold text-card-foreground">
+                {customers.filter((c) => c.customerType === "Commercial" || c.customerType === "Residential").length}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-card rounded-xl p-5 card-shadow border border-border">
+          <div className="flex items-start gap-3">
+            <div className="p-2.5 bg-warning/10 rounded-lg flex-shrink-0">
+              <Users className="w-5 h-5 text-warning" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-medium text-muted-foreground mb-1">Inactive Customers</p>
+              <p className="text-2xl font-bold text-card-foreground">0</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-card rounded-xl card-shadow overflow-hidden">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-border">
+              {["Customer", "Phone", "Projects", "Total", "Balance", ""].map((h) => (
+                <th key={h} className="text-left px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map((c) => {
+              const name = buildDisplayName(c);
+              const ledger = getLedger(workOrders, name);
+              const balance = ledger.balance;
+              return (
+                <tr
+                  key={c.id}
+                  onClick={() => navigate(`/customers/${c.id}`)}
+                  className="border-b border-border last:border-0 cursor-pointer transition-colors hover:bg-secondary/30"
+                >
+                  <td className="px-3 py-3 font-medium text-card-foreground text-xs">{name}</td>
+                  <td className="px-3 py-3 text-muted-foreground text-xs">{c.mobile}</td>
+                  <td className="px-3 py-3 text-muted-foreground text-xs">{ledger.projects}</td>
+                  <td className="px-3 py-3 text-muted-foreground text-xs">{formatRupee(ledger.total)}</td>
+                  <td className="px-3 py-3">
+                    {balance <= 0 ? (
+                      <StatusBadge label="Cleared" variant="success" />
+                    ) : (
+                      <span className="font-semibold text-destructive text-xs">{formatRupee(balance)}</span>
+                    )}
+                  </td>
+                  <td className="px-3 py-3">
+                    <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       </div>
 
       <CustomerFormModal

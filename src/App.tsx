@@ -12,6 +12,7 @@ import PaymentsPage from "./pages/PaymentsPage";
 import ReportsPage from "./pages/ReportsPage";
 import InventoryPage from "./pages/InventoryPage";
 import EmployeesPage from "./pages/EmployeesPage";
+import { EmployeeDetailPage } from "./pages/EmployeeDetailPage";
 import CustomersPage, { CustomerDetailPage } from "./pages/CustomersPage";
 import LoginPage from "./pages/LoginPage";
 import NotFound from "./pages/NotFound";
@@ -41,6 +42,7 @@ const App = () => (
             <Route path="/reports" element={<ReportsPage />} />
             <Route path="/inventory" element={<InventoryPage />} />
             <Route path="/employees" element={<EmployeesPage />} />
+            <Route path="/employees/:id" element={<EmployeeDetailPage />} />
             <Route path="/customers" element={<CustomersPage />} />
             <Route path="/customers/:id" element={<CustomerDetailPage />} />
             <Route path="/branches" element={<BranchesPage />} />

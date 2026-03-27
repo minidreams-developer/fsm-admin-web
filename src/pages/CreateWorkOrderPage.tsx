@@ -30,15 +30,28 @@ type WorkOrderFormData = z.infer<typeof workOrderSchema>;
 const taskSchema = z.object({
   title: z.string().min(1, "Task title is required"),
   description: z.string().optional(),
+  startDate: z.string().min(1, "Start date is required"),
+  endDate: z.string().min(1, "End date is required"),
+  assignedTo: z.string().min(1, "Task assigned is required"),
 });
 
 type TaskFormData = z.infer<typeof taskSchema>;
+
+type Task = {
+  id: string;
+  title: string;
+  description: string;
+  startDate: string;
+  endDate: string;
+  assignedTo: string;
+};
 
 const CreateWorkOrderPage = () => {
   const navigate = useNavigate();
   const { addWorkOrder, getNextWorkOrderId } = useProjectsStore();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showTaskModal, setShowTaskModal] = useState(false);
+  const [tasks, setTasks] = useState<Task[]>([]);
 
   const {
     register,
@@ -96,6 +109,15 @@ const CreateWorkOrderPage = () => {
   };
 
   const onTaskSubmit = (data: TaskFormData) => {
+    const newTask: Task = {
+      id: Date.now().toString(),
+      title: data.title,
+      description: data.description || "",
+      startDate: data.startDate,
+      endDate: data.endDate,
+      assignedTo: data.assignedTo,
+    };
+    setTasks([...tasks, newTask]);
     toast.success(`Task "${data.title}" added successfully!`);
     resetTaskForm();
     setShowTaskModal(false);
@@ -315,6 +337,43 @@ const CreateWorkOrderPage = () => {
             </div>
           </form>
         </div>
+
+        {/* Tasks Section - Separate Card */}
+        {tasks.length > 0 && (
+          <div className="bg-card rounded-xl border border-border shadow-lg mt-6">
+            <div className="p-6 border-b border-border">
+              <h2 className="text-lg font-bold text-card-foreground">Tasks</h2>
+              <p className="text-sm text-muted-foreground mt-1">Added tasks for this work order</p>
+            </div>
+
+            <div className="p-6">
+              <div className="overflow-x-auto rounded-lg border border-border">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="bg-secondary border-b border-border">
+                      <th className="text-left px-3 py-2 font-semibold text-muted-foreground">Task Title</th>
+                      <th className="text-left px-3 py-2 font-semibold text-muted-foreground">Description</th>
+                      <th className="text-left px-3 py-2 font-semibold text-muted-foreground">Start Date</th>
+                      <th className="text-left px-3 py-2 font-semibold text-muted-foreground">End Date</th>
+                      <th className="text-left px-3 py-2 font-semibold text-muted-foreground">Assigned To</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {tasks.map((task) => (
+                      <tr key={task.id} className="border-b border-border hover:bg-secondary/30">
+                        <td className="px-3 py-2 text-card-foreground">{task.title}</td>
+                        <td className="px-3 py-2 text-muted-foreground text-xs">{task.description || "-"}</td>
+                        <td className="px-3 py-2 text-muted-foreground">{task.startDate}</td>
+                        <td className="px-3 py-2 text-muted-foreground">{task.endDate}</td>
+                        <td className="px-3 py-2 text-muted-foreground">{task.assignedTo}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Task Modal */}
@@ -351,10 +410,47 @@ const CreateWorkOrderPage = () => {
                 <label className="text-xs font-medium text-muted-foreground mb-2 block">Description</label>
                 <textarea
                   placeholder="Enter task description (optional)"
-                  rows={3}
+                  rows={2}
                   {...registerTask("description")}
                   className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground resize-none"
                 />
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-2 block">Start Date *</label>
+                <input
+                  type="date"
+                  {...registerTask("startDate")}
+                  className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
+                />
+                {taskErrors.startDate && (
+                  <p className="text-xs text-red-500 mt-1">{taskErrors.startDate.message}</p>
+                )}
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-2 block">End Date *</label>
+                <input
+                  type="date"
+                  {...registerTask("endDate")}
+                  className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
+                />
+                {taskErrors.endDate && (
+                  <p className="text-xs text-red-500 mt-1">{taskErrors.endDate.message}</p>
+                )}
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-2 block">Task Assigned *</label>
+                <input
+                  type="text"
+                  placeholder="Enter assigned person name"
+                  {...registerTask("assignedTo")}
+                  className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
+                />
+                {taskErrors.assignedTo && (
+                  <p className="text-xs text-red-500 mt-1">{taskErrors.assignedTo.message}</p>
+                )}
               </div>
 
               {/* Modal Footer */}

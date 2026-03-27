@@ -24,35 +24,33 @@ const ReportsPage = () => {
         <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search reports..." className="w-full pl-9 pr-4 py-2 rounded-lg bg-card text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20" />
       </div>
       <div className="bg-card rounded-xl card-shadow overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[1200px] text-sm">
-            <thead><tr className="border-b border-border">
-              {["Report ID", "Service", "Customer", "Tech", "Date", "Chemicals Used", "Odometer", "Images", "Signature", "Status", "Actions"].map((h) => (
-                <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">{h}</th>
-              ))}
-            </tr></thead>
-            <tbody>
-              {filtered.map((r) => (
-                <tr key={r.id} className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors">
-                  <td className="px-4 py-3.5 font-semibold text-primary">{r.id}</td>
-                  <td className="px-4 py-3.5 text-muted-foreground">{r.service}</td>
-                  <td className="px-4 py-3.5 text-card-foreground">{r.customer}</td>
-                  <td className="px-4 py-3.5 text-muted-foreground">{r.tech}</td>
-                  <td className="px-4 py-3.5 text-muted-foreground">{r.date}</td>
-                  <td className="px-4 py-3.5 text-muted-foreground text-xs">{r.chemicals}</td>
-                  <td className="px-4 py-3.5 text-muted-foreground">{r.odometer}</td>
-                  <td className="px-4 py-3.5 text-muted-foreground">{r.images} photos</td>
-                  <td className="px-4 py-3.5">{r.signature ? <StatusBadge label="Signed" variant="success" /> : <StatusBadge label="Pending" variant="warning" />}</td>
-                  <td className="px-4 py-3.5"><StatusBadge label={r.status} variant={r.status === "Complete" ? "success" : "warning"} /></td>
-                  <td className="px-4 py-3.5 flex gap-2">
-                    <button className="p-1.5 rounded-md hover:bg-secondary text-primary"><Eye className="w-4 h-4" /></button>
-                    <button className="p-1.5 rounded-md hover:bg-secondary text-primary"><Download className="w-4 h-4" /></button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <table className="w-full text-sm">
+          <thead><tr className="border-b border-border">
+            {["Report ID", "Service", "Customer", "Tech", "Date", "Chemicals Used", "Odometer", "Images", "Signature", "Status", "Actions"].map((h) => (
+              <th key={h} className="text-left px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">{h}</th>
+            ))}
+          </tr></thead>
+          <tbody>
+            {filtered.map((r) => (
+              <tr key={r.id} className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors">
+                <td className="px-3 py-3 font-semibold text-primary text-xs">{r.id}</td>
+                <td className="px-3 py-3 text-muted-foreground text-xs">{r.service}</td>
+                <td className="px-3 py-3 text-card-foreground text-xs">{r.customer}</td>
+                <td className="px-3 py-3 text-muted-foreground text-xs">{r.tech}</td>
+                <td className="px-3 py-3 text-muted-foreground text-xs">{r.date}</td>
+                <td className="px-3 py-3 text-muted-foreground text-xs truncate">{r.chemicals}</td>
+                <td className="px-3 py-3 text-muted-foreground text-xs">{r.odometer}</td>
+                <td className="px-3 py-3 text-muted-foreground text-xs">{r.images} photos</td>
+                <td className="px-3 py-3">{r.signature ? <StatusBadge label="Signed" variant="success" /> : <StatusBadge label="Pending" variant="warning" />}</td>
+                <td className="px-3 py-3"><StatusBadge label={r.status} variant={r.status === "Complete" ? "success" : "warning"} /></td>
+                <td className="px-3 py-3 flex gap-1">
+                  <button className="p-1 rounded-md hover:bg-secondary text-primary"><Eye className="w-4 h-4" /></button>
+                  <button className="p-1 rounded-md hover:bg-secondary text-primary"><Download className="w-4 h-4" /></button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   );

@@ -76,58 +76,56 @@ const InventoryPage = () => {
       </div>
 
       <div className="bg-card rounded-xl card-shadow overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[800px] text-sm">
-            <thead><tr className="border-b border-border">
-              {["Product", "Branch", "Stock", "Unit", "Reorder Level", "Actions"].map((h) => (
-                <th key={h} className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">{h}</th>
-              ))}
-            </tr></thead>
-            <tbody>
-              {filtered.map((i) => {
-                const product = products.find((p) => p.name === i.name);
-                return (
-                  <tr key={i.id} className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors">
-                    <td className="px-5 py-3.5 font-medium text-card-foreground">{product?.name || i.name}</td>
-                    <td className="px-5 py-3.5 text-muted-foreground">{i.branch}</td>
-                    <td className="px-5 py-3.5 font-bold text-card-foreground">{i.stock}</td>
-                    <td className="px-5 py-3.5 text-muted-foreground">{i.unit}</td>
-                    <td className="px-5 py-3.5 text-muted-foreground">{i.reorder}</td>
-                    <td className="px-5 py-3.5 flex items-center gap-2">
-                      <button
-                        onClick={() => {
-                          setDetailsItem(i);
-                          setShowDetails(true);
-                        }}
-                        className="p-2 hover:bg-secondary rounded-lg transition-colors text-muted-foreground hover:text-primary"
-                        title="View Details"
-                      >
-                        <Eye className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleEdit(i)}
-                        className="p-2 hover:bg-secondary rounded-lg transition-colors text-muted-foreground hover:text-primary"
-                        title="Edit"
-                      >
-                        <Edit2 className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => {
-                          deleteItem(i.id);
-                          toast.success("Inventory item deleted");
-                        }}
-                        className="p-2 hover:bg-secondary rounded-lg transition-colors text-muted-foreground hover:text-destructive"
-                        title="Delete"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+        <table className="w-full text-sm">
+          <thead><tr className="border-b border-border">
+            {["Product", "Branch", "Stock", "Unit", "Reorder Level", "Actions"].map((h) => (
+              <th key={h} className="text-left px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">{h}</th>
+            ))}
+          </tr></thead>
+          <tbody>
+            {filtered.map((i) => {
+              const product = products.find((p) => p.name === i.name);
+              return (
+                <tr key={i.id} className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors">
+                  <td className="px-3 py-3 font-medium text-card-foreground text-xs">{product?.name || i.name}</td>
+                  <td className="px-3 py-3 text-muted-foreground text-xs">{i.branch}</td>
+                  <td className="px-3 py-3 font-bold text-card-foreground text-xs">{i.stock}</td>
+                  <td className="px-3 py-3 text-muted-foreground text-xs">{i.unit}</td>
+                  <td className="px-3 py-3 text-muted-foreground text-xs">{i.reorder}</td>
+                  <td className="px-3 py-3 flex items-center gap-1">
+                    <button
+                      onClick={() => {
+                        setDetailsItem(i);
+                        setShowDetails(true);
+                      }}
+                      className="p-1 hover:bg-secondary rounded-lg transition-colors text-muted-foreground hover:text-primary"
+                      title="View Details"
+                    >
+                      <Eye className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => handleEdit(i)}
+                      className="p-1 hover:bg-secondary rounded-lg transition-colors text-muted-foreground hover:text-primary"
+                      title="Edit"
+                    >
+                      <Edit2 className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => {
+                        deleteItem(i.id);
+                        toast.success("Inventory item deleted");
+                      }}
+                      className="p-1 hover:bg-secondary rounded-lg transition-colors text-muted-foreground hover:text-destructive"
+                      title="Delete"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       </div>
     </div>
   );

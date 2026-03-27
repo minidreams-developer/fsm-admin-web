@@ -98,74 +98,72 @@ const BranchesPage = () => {
 
       {/* Table */}
       <div className="bg-card rounded-xl card-shadow overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[900px] text-sm">
-            <thead>
-              <tr className="border-b border-border">
-                {["Branch ID", "Name", "Type", "Location", "Manager", "Status", "Actions"].map((h) => (
-                  <th key={h} className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.length > 0 ? (
-                filtered.map((branch) => (
-                  <tr key={branch.id} className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors">
-                    <td className="px-5 py-3.5 font-medium text-card-foreground">{branch.id}</td>
-                    <td className="px-5 py-3.5">
-                      <div className="flex items-center gap-2">
-                        <MapPin className="w-4 h-4 text-muted-foreground" />
-                        <span className="text-card-foreground">{branch.name}</span>
-                      </div>
-                    </td>
-                    <td className="px-5 py-3.5 text-muted-foreground text-xs">{branch.type}</td>
-                    <td className="px-5 py-3.5 text-muted-foreground">{branch.city}</td>
-                    <td className="px-5 py-3.5 text-muted-foreground">{branch.managerName}</td>
-                    <td className="px-5 py-3.5">
-                      <StatusBadge label={branch.status} variant={branch.status === "Active" ? "success" : "warning"} />
-                    </td>
-                    <td className="px-5 py-3.5">
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => {
-                            setDetailsBranch(branch);
-                            setShowDetails(true);
-                          }}
-                          className="p-1.5 rounded-lg text-muted-foreground hover:bg-secondary hover:text-primary transition-colors"
-                          title="View Details"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleEdit(branch)}
-                          className="p-1.5 rounded-lg text-muted-foreground hover:bg-secondary hover:text-primary transition-colors"
-                          title="Edit"
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(branch.id, branch.name)}
-                          className="p-1.5 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-border">
+              {["Branch ID", "Name", "Type", "Location", "Manager", "Status", "Actions"].map((h) => (
+                <th key={h} className="text-left px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.length > 0 ? (
+              filtered.map((branch) => (
+                <tr key={branch.id} className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors">
+                  <td className="px-3 py-3 font-medium text-card-foreground text-xs">{branch.id}</td>
+                  <td className="px-3 py-3">
+                    <div className="flex items-center gap-2">
+                      <MapPin className="w-4 h-4 text-muted-foreground" />
+                      <span className="text-card-foreground text-xs">{branch.name}</span>
+                    </div>
+                  </td>
+                  <td className="px-3 py-3 text-muted-foreground text-xs">{branch.type}</td>
+                  <td className="px-3 py-3 text-muted-foreground text-xs">{branch.city}</td>
+                  <td className="px-3 py-3 text-muted-foreground text-xs">{branch.managerName}</td>
+                  <td className="px-3 py-3">
+                    <StatusBadge label={branch.status} variant={branch.status === "Active" ? "success" : "warning"} />
+                  </td>
+                  <td className="px-3 py-3">
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => {
+                          setDetailsBranch(branch);
+                          setShowDetails(true);
+                        }}
+                        className="p-1 rounded-lg text-muted-foreground hover:bg-secondary hover:text-primary transition-colors"
+                        title="View Details"
+                      >
+                        <Eye className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleEdit(branch)}
+                        className="p-1 rounded-lg text-muted-foreground hover:bg-secondary hover:text-primary transition-colors"
+                        title="Edit"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(branch.id, branch.name)}
+                        className="p-1 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
                           title="Delete"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={7} className="px-5 py-8 text-center text-muted-foreground">
-                    No branches found
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+              ))
+            ) : (
+              <tr>
+                <td colSpan={7} className="px-3 py-8 text-center text-muted-foreground">
+                  No branches found
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
       </div>
 
       <BranchFormModal open={showForm} mode={formMode} branch={selectedBranch} onClose={handleFormClose} />

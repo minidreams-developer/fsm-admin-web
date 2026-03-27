@@ -211,7 +211,7 @@ const PaymentsPage = () => {
               <div className="p-6">
                 <h4 className="text-sm font-semibold text-card-foreground mb-4">Payment History</h4>
                 {getPaymentHistory(selectedWorkOrder).length > 0 ? (
-                  <div className="overflow-x-auto">
+                  <div className="overflow-hidden rounded-lg border border-border">
                     <table className="w-full text-xs">
                       <thead>
                         <tr className="border-b border-border">

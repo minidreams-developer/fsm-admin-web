@@ -397,32 +397,30 @@ const Dashboard = () => {
             )}
           </div>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border">
-                {["Service ID", "Customer", "Technician", "Payment Mode", "Amount", "Status", "Action"].map((h) => (
-                  <th key={h} className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {recentServices.map((s, i) => (
-                <tr key={i} className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors">
-                  <td className="px-5 py-3.5 font-semibold text-primary">{s.id}</td>
-                  <td className="px-5 py-3.5 text-card-foreground">{s.customer}</td>
-                  <td className="px-5 py-3.5 text-muted-foreground">{s.tech}</td>
-                  <td className="px-5 py-3.5 text-muted-foreground">{s.mode}</td>
-                  <td className="px-5 py-3.5 font-semibold text-card-foreground">{s.amount}</td>
-                  <td className="px-5 py-3.5"><StatusBadge label={s.status} variant={s.badge} /></td>
-                  <td className="px-5 py-3.5">
-                    <button className="text-xs font-semibold text-primary hover:underline">{s.action}</button>
-                  </td>
-                </tr>
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-border">
+              {["Service ID", "Customer", "Technician", "Payment Mode", "Amount", "Status", "Action"].map((h) => (
+                <th key={h} className="text-left px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">{h}</th>
               ))}
-            </tbody>
-          </table>
-        </div>
+            </tr>
+          </thead>
+          <tbody>
+            {recentServices.map((s, i) => (
+              <tr key={i} className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors">
+                <td className="px-3 py-3 font-semibold text-primary text-xs">{s.id}</td>
+                <td className="px-3 py-3 text-card-foreground text-xs">{s.customer}</td>
+                <td className="px-3 py-3 text-muted-foreground text-xs">{s.tech}</td>
+                <td className="px-3 py-3 text-muted-foreground text-xs">{s.mode}</td>
+                <td className="px-3 py-3 font-semibold text-card-foreground text-xs">{s.amount}</td>
+                <td className="px-3 py-3"><StatusBadge label={s.status} variant={s.badge} /></td>
+                <td className="px-3 py-3">
+                  <button className="text-xs font-semibold text-primary hover:underline">{s.action}</button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
 
       {/* Add New Lead Modal */}

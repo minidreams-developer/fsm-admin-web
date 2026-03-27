@@ -132,52 +132,51 @@ const ProductsPage = () => {
 
       {/* Table */}
       <div className="bg-card rounded-xl card-shadow overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[1000px] text-sm">
-            <thead>
-              <tr className="border-b border-border">
-                {["Product ID", "Name", "Category", "Unit", "Price", "Reorder Level", "Status", "Actions"].map((h) => (
-                  <th key={h} className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.length > 0 ? (
-                filtered.map((product) => (
-                  <tr key={product.id} className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors">
-                    <td className="px-5 py-3.5 font-medium text-card-foreground">{product.id}</td>
-                    <td className="px-5 py-3.5">
-                      <div className="flex items-center gap-2">
-                        <Package className="w-4 h-4 text-muted-foreground" />
-                        <span className="text-card-foreground">{product.name}</span>
-                      </div>
-                    </td>
-                    <td className="px-5 py-3.5 text-muted-foreground text-xs">{product.category}</td>
-                    <td className="px-5 py-3.5 text-muted-foreground">{product.unitOfMeasurement}</td>
-                    <td className="px-5 py-3.5 font-semibold text-card-foreground">₹{product.unitPrice}</td>
-                    <td className="px-5 py-3.5 text-muted-foreground">{product.reorderLevel}</td>
-                    <td className="px-5 py-3.5">
-                      <StatusBadge label={product.status} variant={product.status === "Active" ? "success" : "warning"} />
-                    </td>
-                    <td className="px-5 py-3.5">
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => {
-                            setDetailsProduct(product);
-                            setShowDetails(true);
-                          }}
-                          className="p-1.5 rounded-lg text-muted-foreground hover:bg-secondary hover:text-primary transition-colors"
-                          title="View Details"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleEdit(product)}
-                          className="p-1.5 rounded-lg text-muted-foreground hover:bg-secondary hover:text-primary transition-colors"
-                          title="Edit"
-                        >
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-border">
+              {["Product ID", "Name", "Category", "Unit", "Price", "Reorder Level", "Status", "Actions"].map((h) => (
+                <th key={h} className="text-left px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.length > 0 ? (
+              filtered.map((product) => (
+                <tr key={product.id} className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors">
+                  <td className="px-3 py-3 font-medium text-card-foreground text-xs">{product.id}</td>
+                  <td className="px-3 py-3">
+                    <div className="flex items-center gap-2">
+                      <Package className="w-4 h-4 text-muted-foreground" />
+                      <span className="text-card-foreground text-xs">{product.name}</span>
+                    </div>
+                  </td>
+                  <td className="px-3 py-3 text-muted-foreground text-xs">{product.category}</td>
+                  <td className="px-3 py-3 text-muted-foreground text-xs">{product.unitOfMeasurement}</td>
+                  <td className="px-3 py-3 font-semibold text-card-foreground text-xs">₹{product.unitPrice}</td>
+                  <td className="px-3 py-3 text-muted-foreground text-xs">{product.reorderLevel}</td>
+                  <td className="px-3 py-3">
+                    <StatusBadge label={product.status} variant={product.status === "Active" ? "success" : "warning"} />
+                  </td>
+                  <td className="px-3 py-3">
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => {
+                          setDetailsProduct(product);
+                          setShowDetails(true);
+                        }}
+                        className="p-1 rounded-lg text-muted-foreground hover:bg-secondary hover:text-primary transition-colors"
+                        title="View Details"
+                      >
+                        <Eye className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleEdit(product)}
+                        className="p-1 rounded-lg text-muted-foreground hover:bg-secondary hover:text-primary transition-colors"
+                        title="Edit"
+                      >
                           <Edit2 className="w-4 h-4" />
                         </button>
                         <button
@@ -200,7 +199,6 @@ const ProductsPage = () => {
               )}
             </tbody>
           </table>
-        </div>
       </div>
 
       <ProductFormModal open={showForm} mode={formMode} product={selectedProduct} onClose={handleFormClose} />

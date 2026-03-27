@@ -80,13 +80,13 @@ export const AppSidebar: FC<AppSidebarProps> = ({ className, onNavigate, collaps
             className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
             title={collapsed ? "Inventory Manage" : undefined}
           >
+            <Boxes className="w-[18px] h-[18px] flex-shrink-0" />
             {!collapsed && <span className="flex-1 text-left">Inventory Manage</span>}
             {!collapsed && (
               <ChevronDown
-                className={`w-4 h-4 transition-transform ${expandedMenu === "inventory" ? "rotate-180" : ""}`}
+                className={`w-4 h-4 transition-transform ${expandedMenu === "inventory" ? "-rotate-180" : ""}`}
               />
             )}
-            {collapsed && <Boxes className="w-[18px] h-[18px] flex-shrink-0" />}
           </button>
 
           {!collapsed && expandedMenu === "inventory" && (
