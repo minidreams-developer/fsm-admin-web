@@ -20,7 +20,7 @@ export function DashboardLayout() {
       </Sheet>
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <AppHeader onMenuClick={() => setMobileNavOpen(true)} onSidebarToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
-        <main className="flex-1 overflow-auto p-4 sm:p-6">
+        <main className="flex-1 overflow-auto p-4 sm:p-6 bg-transparent">
           <Outlet />
         </main>
       </div>

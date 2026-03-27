@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { X, Plus } from "lucide-react";
 import { useState } from "react";
 import { createPortal } from "react-dom";
@@ -48,10 +48,13 @@ type Task = {
 
 const CreateWorkOrderPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { addWorkOrder, getNextWorkOrderId } = useProjectsStore();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [tasks, setTasks] = useState<Task[]>([]);
+
+  const leadData = (location.state as any)?.leadData;
 
   const {
     register,
@@ -60,6 +63,11 @@ const CreateWorkOrderPage = () => {
   } = useForm<WorkOrderFormData>({
     resolver: zodResolver(workOrderSchema),
     defaultValues: {
+      customer: leadData?.name || "",
+      phone: leadData?.phone || "",
+      address: leadData?.address || "",
+      subject: leadData?.services?.join(", ") || "",
+      serviceType: leadData?.services?.[0] || "",
       status: "Open",
       start: new Date().toISOString().split("T")[0],
     },
@@ -124,257 +132,246 @@ const CreateWorkOrderPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background p-4 sm:p-6">
-      <div className="max-w-4xl mx-auto">
-        <div className="bg-card rounded-xl border border-border shadow-lg">
-          {/* Header */}
-          <div className="flex items-start justify-between p-6 border-b border-border gap-4">
-            <div className="flex-1">
-              <h1 className="text-2xl font-bold text-card-foreground">Create New Work Order</h1>
-              <p className="text-sm text-muted-foreground mt-1">Fill in the details to create a new work order</p>
-            </div>
-            <div className="flex items-start gap-2 flex-shrink-0">
-             
-              <button
-                onClick={() => navigate("/projects")}
-                className="p-2 hover:bg-secondary rounded-lg transition-colors flex-shrink-0"
-              >
-                <X className="w-6 h-6 text-muted-foreground" />
-              </button>
-            </div>
-          </div>
-
-          {/* Form */}
-          <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="text-xs font-medium text-muted-foreground mb-2 block">Customer Name *</label>
-                <input
-                  type="text"
-                  placeholder="Enter customer name"
-                  {...register("customer")}
-                  className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
-                />
-                {errors.customer && (
-                  <p className="text-xs text-red-500 mt-1">{errors.customer.message}</p>
-                )}
-              </div>
-
-              <div>
-                <label className="text-xs font-medium text-muted-foreground mb-2 block">Phone *</label>
-                <input
-                  type="tel"
-                  placeholder="9876543210"
-                  {...register("phone")}
-                  className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
-                />
-                {errors.phone && (
-                  <p className="text-xs text-red-500 mt-1">{errors.phone.message}</p>
-                )}
-              </div>
-
-              <div>
-                <label className="text-xs font-medium text-muted-foreground mb-2 block">Email</label>
-                <input
-                  type="email"
-                  placeholder="customer@email.com"
-                  {...register("email")}
-                  className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
-                />
-                {errors.email && (
-                  <p className="text-xs text-red-500 mt-1">{errors.email.message}</p>
-                )}
-              </div>
-
-              <div>
-                <label className="text-xs font-medium text-muted-foreground mb-2 block">Address *</label>
-                <input
-                  type="text"
-                  placeholder="Site address"
-                  {...register("address")}
-                  className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
-                />
-                {errors.address && (
-                  <p className="text-xs text-red-500 mt-1">{errors.address.message}</p>
-                )}
-              </div>
-
-              <div className="md:col-span-2">
-                <label className="text-xs font-medium text-muted-foreground mb-2 block">Subject *</label>
-                <input
-                  type="text"
-                  placeholder="Work order subject"
-                  {...register("subject")}
-                  className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
-                />
-                {errors.subject && (
-                  <p className="text-xs text-red-500 mt-1">{errors.subject.message}</p>
-                )}
-              </div>
-
-              <div>
-                <label className="text-xs font-medium text-muted-foreground mb-2 block">Service Type</label>
-                <input
-                  type="text"
-                  placeholder="e.g., Pest Control"
-                  {...register("serviceType")}
-                  className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
-                />
-              </div>
-
-              <div>
-                <label className="text-xs font-medium text-muted-foreground mb-2 block">Frequency</label>
-                <input
-                  type="text"
-                  placeholder="e.g., Monthly"
-                  {...register("frequency")}
-                  className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
-                />
-              </div>
-
-              <div>
-                <label className="text-xs font-medium text-muted-foreground mb-2 block">Start Date *</label>
-                <input
-                  type="date"
-                  {...register("start")}
-                  className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
-                />
-                {errors.start && (
-                  <p className="text-xs text-red-500 mt-1">{errors.start.message}</p>
-                )}
-              </div>
-
-              <div>
-                <label className="text-xs font-medium text-muted-foreground mb-2 block">End Date</label>
-                <input
-                  type="date"
-                  {...register("end")}
-                  className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
-                />
-              </div>
-
-              <div>
-                <label className="text-xs font-medium text-muted-foreground mb-2 block">Total Value (₹)</label>
-                <input
-                  type="number"
-                  placeholder="0"
-                  {...register("totalValue")}
-                  className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
-                />
-              </div>
-
-              <div>
-                <label className="text-xs font-medium text-muted-foreground mb-2 block">Paid Amount (₹)</label>
-                <input
-                  type="number"
-                  placeholder="0"
-                  {...register("paidAmount")}
-                  className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
-                />
-              </div>
-
-              <div>
-                <label className="text-xs font-medium text-muted-foreground mb-2 block">Status</label>
-                <select
-                  {...register("status")}
-                  className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
-                >
-                  <option value="Open">Open</option>
-                  <option value="Scheduled">Scheduled</option>
-                  <option value="Completed">Completed</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="text-xs font-medium text-muted-foreground mb-2 block">Assigned Tech</label>
-                <input
-                  type="text"
-                  placeholder="Technician name"
-                  {...register("assignedTech")}
-                  className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
-                />
-              </div>
-
-              <div className="md:col-span-2">
-                <label className="text-xs font-medium text-muted-foreground mb-2 block">Notes</label>
-                <textarea
-                  placeholder="Additional notes..."
-                  rows={4}
-                  {...register("notes")}
-                  className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground resize-none"
-                />
-              </div>
-            </div>
-
-            {/* Footer */}
-            <div className="flex gap-3 pt-4 border-t border-border">
-              
-              <button
-                type="button"
-                onClick={() => navigate("/projects")}
-                className="flex-1 h-10 border border-border text-card-foreground text-sm font-medium hover:text-primary transition-colors rounded-lg"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="flex-1 h-10 text-white text-sm font-medium rounded-lg hover:opacity-90 transition-all disabled:opacity-50"
-                style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}
-              >
-                {isSubmitting ? "Creating..." : "Create Work Order"}
-              </button>
-
-               <button
-                type="button"
-                onClick={() => setShowTaskModal(true)}
-                className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold text-white hover:opacity-90 transition-all whitespace-nowrap"
-                style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}
-              >
-                <Plus className="w-4 h-4" />
-                Add Task
-              </button>
-            </div>
-          </form>
+    <div className="space-y-6 animate-fade-in">
+      {/* Header */}
+      <div className="flex items-start justify-between gap-4 mb-8">
+        <div className="flex-1">
+          <h1 className="text-3xl font-bold text-card-foreground">Create New Work Order</h1>
+          <p className="text-sm text-muted-foreground mt-2">Fill in the details to create a new work order</p>
         </div>
+        <button
+          onClick={() => navigate("/projects")}
+          className="p-2 hover:bg-secondary rounded-lg transition-colors flex-shrink-0"
+        >
+          <X className="w-6 h-6 text-muted-foreground" />
+        </button>
+      </div>
 
-        {/* Tasks Section - Separate Card */}
-        {tasks.length > 0 && (
-          <div className="bg-card rounded-xl border border-border shadow-lg mt-6">
-            <div className="p-6 border-b border-border">
-              <h2 className="text-lg font-bold text-card-foreground">Tasks</h2>
-              <p className="text-sm text-muted-foreground mt-1">Added tasks for this work order</p>
+      {/* Form Section */}
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 bg-white rounded-lg p-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-2 block">Customer Name *</label>
+              <input
+                type="text"
+                placeholder="Enter customer name"
+                {...register("customer")}
+                className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
+              />
+              {errors.customer && (
+                <p className="text-xs text-red-500 mt-1">{errors.customer.message}</p>
+              )}
             </div>
 
-            <div className="p-6">
-              <div className="overflow-x-auto rounded-lg border border-border">
-                <table className="w-full text-xs">
-                  <thead>
-                    <tr className="bg-secondary border-b border-border">
-                      <th className="text-left px-3 py-2 font-semibold text-muted-foreground">Task Title</th>
-                      <th className="text-left px-3 py-2 font-semibold text-muted-foreground">Description</th>
-                      <th className="text-left px-3 py-2 font-semibold text-muted-foreground">Start Date</th>
-                      <th className="text-left px-3 py-2 font-semibold text-muted-foreground">End Date</th>
-                      <th className="text-left px-3 py-2 font-semibold text-muted-foreground">Assigned To</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {tasks.map((task) => (
-                      <tr key={task.id} className="border-b border-border hover:bg-secondary/30">
-                        <td className="px-3 py-2 text-card-foreground">{task.title}</td>
-                        <td className="px-3 py-2 text-muted-foreground text-xs">{task.description || "-"}</td>
-                        <td className="px-3 py-2 text-muted-foreground">{task.startDate}</td>
-                        <td className="px-3 py-2 text-muted-foreground">{task.endDate}</td>
-                        <td className="px-3 py-2 text-muted-foreground">{task.assignedTo}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-2 block">Phone *</label>
+              <input
+                type="tel"
+                placeholder="9876543210"
+                {...register("phone")}
+                className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
+              />
+              {errors.phone && (
+                <p className="text-xs text-red-500 mt-1">{errors.phone.message}</p>
+              )}
+            </div>
+
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-2 block">Email</label>
+              <input
+                type="email"
+                placeholder="customer@email.com"
+                {...register("email")}
+                className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
+              />
+              {errors.email && (
+                <p className="text-xs text-red-500 mt-1">{errors.email.message}</p>
+              )}
+            </div>
+
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-2 block">Address *</label>
+              <input
+                type="text"
+                placeholder="Site address"
+                {...register("address")}
+                className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
+              />
+              {errors.address && (
+                <p className="text-xs text-red-500 mt-1">{errors.address.message}</p>
+              )}
+            </div>
+
+            <div className="md:col-span-2">
+              <label className="text-xs font-medium text-muted-foreground mb-2 block">Subject *</label>
+              <input
+                type="text"
+                placeholder="Work order subject"
+                {...register("subject")}
+                className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
+              />
+              {errors.subject && (
+                <p className="text-xs text-red-500 mt-1">{errors.subject.message}</p>
+              )}
+            </div>
+
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-2 block">Service Type</label>
+              <input
+                type="text"
+                placeholder="e.g., Pest Control"
+                {...register("serviceType")}
+                className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-2 block">Frequency</label>
+              <input
+                type="text"
+                placeholder="e.g., Monthly"
+                {...register("frequency")}
+                className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-2 block">Start Date *</label>
+              <input
+                type="date"
+                {...register("start")}
+                className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
+              />
+              {errors.start && (
+                <p className="text-xs text-red-500 mt-1">{errors.start.message}</p>
+              )}
+            </div>
+
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-2 block">End Date</label>
+              <input
+                type="date"
+                {...register("end")}
+                className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-2 block">Total Value (₹)</label>
+              <input
+                type="number"
+                placeholder="0"
+                {...register("totalValue")}
+                className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-2 block">Paid Amount (₹)</label>
+              <input
+                type="number"
+                placeholder="0"
+                {...register("paidAmount")}
+                className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-2 block">Status</label>
+              <select
+                {...register("status")}
+                className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
+              >
+                <option value="Open">Open</option>
+                <option value="Scheduled">Scheduled</option>
+                <option value="Completed">Completed</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-2 block">Assigned Tech</label>
+              <input
+                type="text"
+                placeholder="Technician name"
+                {...register("assignedTech")}
+                className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
+              />
+            </div>
+
+            <div className="md:col-span-2">
+              <label className="text-xs font-medium text-muted-foreground mb-2 block">Notes</label>
+              <textarea
+                placeholder="Additional notes..."
+                rows={4}
+                {...register("notes")}
+                className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground resize-none"
+              />
             </div>
           </div>
-        )}
-      </div>
+
+          {/* Footer */}
+          <div className="flex gap-3 pt-6 border-t border-border">
+            <button
+              type="button"
+              onClick={() => navigate("/projects")}
+              className="px-6 py-2.5 border border-border text-card-foreground text-sm font-medium hover:text-primary transition-colors rounded-lg"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="px-6 py-2.5 text-white text-sm font-medium rounded-lg hover:opacity-90 transition-all disabled:opacity-50"
+              style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}
+            >
+              {isSubmitting ? "Creating..." : "Create Work Order"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowTaskModal(true)}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold text-white hover:opacity-90 transition-all whitespace-nowrap"
+              style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}
+            >
+              <Plus className="w-4 h-4" />
+              Add Task
+            </button>
+          </div>
+        </form>
+
+      {/* Tasks Section */}
+      {tasks.length > 0 && (
+        <div className="space-y-4">
+          <div>
+            <h2 className="text-2xl font-bold text-card-foreground">Tasks</h2>
+            <p className="text-sm text-muted-foreground mt-1">Added tasks for this work order</p>
+          </div>
+
+          <div className="overflow-x-auto rounded-lg border border-border">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="bg-secondary border-b border-border">
+                  <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Task Title</th>
+                  <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Description</th>
+                  <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Start Date</th>
+                  <th className="text-left px-4 py-3 font-semibold text-muted-foreground">End Date</th>
+                  <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Assigned To</th>
+                </tr>
+              </thead>
+              <tbody>
+                {tasks.map((task) => (
+                  <tr key={task.id} className="border-b border-border hover:bg-secondary/30 transition-colors">
+                    <td className="px-4 py-3 text-card-foreground">{task.title}</td>
+                    <td className="px-4 py-3 text-muted-foreground text-xs">{task.description || "-"}</td>
+                    <td className="px-4 py-3 text-muted-foreground">{task.startDate}</td>
+                    <td className="px-4 py-3 text-muted-foreground">{task.endDate}</td>
+                    <td className="px-4 py-3 text-muted-foreground">{task.assignedTo}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* Task Modal */}
       {showTaskModal && createPortal(

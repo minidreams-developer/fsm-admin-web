@@ -1,5 +1,5 @@
 import { StatusBadge } from "@/components/StatusBadge";
-import { Search, Plus, Clipboard, Calendar, User, CreditCard } from "lucide-react";
+import { Search, Plus, Clipboard, Calendar, User, CreditCard, Eye } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { useProjectsStore, type WorkOrder } from "@/store/projectsStore";
@@ -200,6 +200,7 @@ const ProjectsPage = () => {
           return (
             <div
               key={wo.id}
+              onClick={() => navigate(`/work-order/${wo.id}`)}
               className="bg-card rounded-xl p-5 card-shadow hover:card-shadow-hover transition-all cursor-pointer group border border-border"
             >
               {/* Header */}
@@ -263,7 +264,7 @@ const ProjectsPage = () => {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border">
-              {["Work Order ID", "Customer", "Service Type", "Status", "Payment", "Next Service"].map((h) => (
+              {["Work Order ID", "Customer", "Service Type", "Status", "Payment", "Next Service", "View Details"].map((h) => (
                 <th key={h} className="text-left px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">{h}</th>
               ))}
             </tr>
@@ -297,6 +298,14 @@ const ProjectsPage = () => {
                 </td>
                 <td className="px-3 py-3">
                   <div className="text-xs text-card-foreground">{project.nextService}</div>
+                </td>
+                <td className="px-3 py-3">
+                  <button
+                    onClick={() => navigate(`/work-order/${project.id}`)}
+                    className="inline-flex items-center justify-center p-2 rounded-lg hover:bg-secondary transition-colors text-primary"
+                  >
+                    <Eye className="w-4 h-4" />
+                  </button>
                 </td>
               </tr>
             ))}

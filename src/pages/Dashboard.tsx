@@ -4,6 +4,8 @@ import { FolderKanban, CreditCard, Wallet, AlertTriangle, Plus, Wrench, Eye, Pac
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from "recharts";
 import { Link, useNavigate } from "react-router-dom";
 import { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
+import { toast } from "sonner";
 import { useLeadsStore, type UrgencyLevel } from "@/store/leadsStore";
 
 const revenueData = [
@@ -424,10 +426,10 @@ const Dashboard = () => {
       </div>
 
       {/* Add New Lead Modal */}
-      {showAddLeadModal && (
-        <div className="fixed inset-0 bg-black/20 flex items-center justify-center z-50 animate-in fade-in duration-300">
-          <div className="bg-card w-full h-full md:w-full md:h-auto md:rounded-xl md:shadow-lg md:max-w-md mx-4 animate-in fade-in slide-in-from-top-2 duration-300 border border-border">
-            <div className="p-6 space-y-5">
+      {showAddLeadModal && createPortal(
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4 overflow-hidden bg-black/75 rounded-[20px]">
+          <div className="bg-card rounded-[20px] shadow-lg w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <div className="p-6 space-y-5 sticky top-0 bg-card border-b border-border">
               {/* Header */}
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-bold text-card-foreground">Add New Lead</h3>
@@ -441,63 +443,63 @@ const Dashboard = () => {
                   <X className="w-5 h-5 text-muted-foreground" />
                 </button>
               </div>
+            </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="md:col-span-2">
-                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Customer Info</label>
-                  <input
-                    type="text"
-                    placeholder="Customer name"
-                    value={leadFormData.name}
-                    onChange={(e) => setLeadFormData({ ...leadFormData, name: e.target.value })}
-                    className="w-full px-3 py-2 rounded-lg bg-secondary text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 border border-border"
-                  />
-                </div>
+            <div className="p-6 space-y-5">
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">Customer Name</label>
+                <input
+                  type="text"
+                  placeholder="Customer name"
+                  value={leadFormData.name}
+                  onChange={(e) => setLeadFormData({ ...leadFormData, name: e.target.value })}
+                  className="w-full px-3 py-2 rounded-lg bg-secondary text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 border border-border"
+                />
+              </div>
 
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Phone</label>
-                  <input
-                    type="tel"
-                    placeholder="Phone number"
-                    value={leadFormData.phone}
-                    onChange={(e) => setLeadFormData({ ...leadFormData, phone: e.target.value })}
-                    className="w-full px-3 py-2 rounded-lg bg-secondary text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 border border-border"
-                  />
-                </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">Phone</label>
+                <input
+                  type="tel"
+                  placeholder="Phone number"
+                  value={leadFormData.phone}
+                  onChange={(e) => setLeadFormData({ ...leadFormData, phone: e.target.value })}
+                  className="w-full px-3 py-2 rounded-lg bg-secondary text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 border border-border"
+                />
+              </div>
 
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Address</label>
-                  <input
-                    type="text"
-                    placeholder="Service address"
-                    value={leadFormData.address}
-                    onChange={(e) => setLeadFormData({ ...leadFormData, address: e.target.value })}
-                    className="w-full px-3 py-2 rounded-lg bg-secondary text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 border border-border"
-                  />
-                </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">Address</label>
+                <input
+                  type="text"
+                  placeholder="Service address"
+                  value={leadFormData.address}
+                  onChange={(e) => setLeadFormData({ ...leadFormData, address: e.target.value })}
+                  className="w-full px-3 py-2 rounded-lg bg-secondary text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 border border-border"
+                />
+              </div>
 
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Urgency Level ( Low, High, Medium )</label>
-                  <select
-                    value={leadFormData.urgencyLevel}
-                    onChange={(e) => setLeadFormData({ ...leadFormData, urgencyLevel: e.target.value as UrgencyLevel })}
-                    className="w-full px-3 py-2 rounded-lg bg-secondary text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 border border-border"
-                  >
-                    {urgencyLevels.map((u) => (
-                      <option key={u} value={u}>{u}</option>
-                    ))}
-                  </select>
-                </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">Urgency Level</label>
+                <select
+                  value={leadFormData.urgencyLevel}
+                  onChange={(e) => setLeadFormData({ ...leadFormData, urgencyLevel: e.target.value as UrgencyLevel })}
+                  className="w-full px-3 py-2 rounded-lg bg-secondary text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 border border-border"
+                >
+                  {urgencyLevels.map((u) => (
+                    <option key={u} value={u}>{u}</option>
+                  ))}
+                </select>
+              </div>
 
-                <div className="md:col-span-2">
-                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Expected Date & Time</label>
-                  <input
-                    type="datetime-local"
-                    value={leadFormData.expectedDateTime}
-                    onChange={(e) => setLeadFormData({ ...leadFormData, expectedDateTime: e.target.value })}
-                    className="w-full px-3 py-2 rounded-lg bg-secondary text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 border border-border"
-                  />
-                </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">Expected Date & Time</label>
+                <input
+                  type="datetime-local"
+                  value={leadFormData.expectedDateTime}
+                  onChange={(e) => setLeadFormData({ ...leadFormData, expectedDateTime: e.target.value })}
+                  className="w-full px-3 py-2 rounded-lg bg-secondary text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 border border-border"
+                />
               </div>
 
               {/* Services */}
@@ -624,7 +626,7 @@ const Dashboard = () => {
               )}
 
               {/* Action Buttons */}
-              <div className="flex gap-3 pt-2">
+              <div className="flex gap-3 pt-4 border-t border-border">
                 <button
                   onClick={() => {
                     setShowAddLeadModal(false);
@@ -654,6 +656,7 @@ const Dashboard = () => {
                       quoteIsViewed: false,
                       quoteViewedAt: null,
                     });
+                    toast.success("Lead created successfully!");
                     setShowAddLeadModal(false);
                     resetLeadForm();
                     navigate("/leads");
@@ -666,7 +669,8 @@ const Dashboard = () => {
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

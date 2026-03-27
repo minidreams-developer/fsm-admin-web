@@ -18,6 +18,7 @@ import LoginPage from "./pages/LoginPage";
 import NotFound from "./pages/NotFound";
 import ProjectsPage from "./pages/ProjectsPage";
 import CreateWorkOrderPage from "./pages/CreateWorkOrderPage";
+import { WorkOrderDetailsPage } from "./pages/WorkOrderDetailsPage";
 import BranchesPage from "./pages/BranchesPage";
 import ProductsPage from "./pages/ProductsPage";
 
@@ -36,6 +37,7 @@ const App = () => (
             <Route path="/leads" element={<LeadsPage />} />
             <Route path="/projects" element={<ProjectsPage />} />
             <Route path="/create-work-order" element={<CreateWorkOrderPage />} />
+            <Route path="/work-order/:id" element={<WorkOrderDetailsPage />} />
             <Route path="/services" element={<ServicesPage />} />
             <Route path="/service-management" element={<ServiceManagementPage />} />
             <Route path="/payments" element={<PaymentsPage />} />

@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useLeadsStore, type LeadStatus, type Lead, type UrgencyLevel } from "@/store/leadsStore";
 import { LeadDetailsModal } from "@/components/LeadDetailsModal";
+import { ConvertLeadModal } from "@/components/ConvertLeadModal";
 
 const statusBadge: Record<LeadStatus, "info" | "warning" | "success" | "error" | "neutral"> = {
   New: "info", Contacted: "warning", "Quote Sent": "warning", Converted: "success", Lost: "error",
@@ -34,6 +35,8 @@ const LeadsPage = () => {
   const [showQuoteForm, setShowQuoteForm] = useState(false);
   const [quoteFormData, setQuoteFormData] = useState({ amount: "", contract: "", notes: "" });
   const [showMoreFields, setShowMoreFields] = useState(false);
+  const [showConvertModal, setShowConvertModal] = useState(false);
+  const [leadToConvert, setLeadToConvert] = useState<Lead | null>(null);
   
   // Form state for new lead
   const [formData, setFormData] = useState({
@@ -364,7 +367,7 @@ const LeadsPage = () => {
         <div className="w-full">
           <table className="w-full text-sm">
             <thead><tr className="border-b border-border">
-              {["Lead ID ( Automated Generated )", "Customer Info", "Services", "Amount", "Expected Date & Time", "Urgency", "Status", "Date", "View Details", "Action"].map((h) => (
+              {["Lead ID ( Automated Generated )", "Customer Info", "Services", "Amount", "Expected Date & Time", "Urgency", "Status", "Date", "View Details", "Action", "Convert"].map((h) => (
                 <th key={h} className="text-left px-3 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">{h}</th>
               ))}
             </tr></thead>
@@ -433,7 +436,8 @@ const LeadsPage = () => {
                       l.quoteIsViewed ? (
                         <button
                           onClick={() => {
-                            navigate(`/projects?convertLeadId=${l.id}`);
+                            setLeadToConvert(l);
+                            setShowConvertModal(true);
                           }}
                           className="px-3 py-1.5 text-xs font-semibold text-white rounded-lg hover:opacity-90 transition-all shadow-[0px_5px_12px_rgba(39,47,158,0.2)]"
                           style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}
@@ -466,9 +470,29 @@ const LeadsPage = () => {
                       <span className="text-xs font-medium text-muted-foreground">—</span>
                     )}
                   </td>
-                  </tr>
-                );
-              })}
+                  <td className="px-3 py-2.5">
+                    {l.status !== "Converted" && l.status !== "Lost" ? (
+                      <button
+                        onClick={() => {
+                          navigate("/create-work-order", { state: { leadData: l } });
+                        }}
+                        className="px-1.5 py-1.5 text-xs font-semibold text-white rounded-lg hover:opacity-90 transition-all shadow-[0px_5px_12px_rgba(148,43,244,0.3)]"
+                        style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}
+                      >
+                        Convert to Project
+                      </button>
+                    ) : l.status === "Converted" ? (
+                      <span className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-success bg-success/10 rounded-lg border border-success/20">
+                        <span>✓</span>
+                        <span>Converted</span>
+                      </span>
+                    ) : (
+                      <span className="text-xs font-medium text-muted-foreground">—</span>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
             </tbody>
           </table>
         </div>
@@ -780,6 +804,20 @@ const LeadsPage = () => {
         open={showDetailsModal}
         lead={selectedLeadForDetails || undefined}
         onClose={() => {
+          setShowDetailsModal(false);
+          setSelectedLeadForDetails(null);
+        }}
+      />
+
+      {/* Convert Lead Modal */}
+      <ConvertLeadModal
+        lead={leadToConvert}
+        isOpen={showConvertModal}
+        onClose={() => {
+          setShowConvertModal(false);
+          setLeadToConvert(null);
+        }}
+        onSuccess={() => {
           setShowDetailsModal(false);
           setSelectedLeadForDetails(null);
         }}
