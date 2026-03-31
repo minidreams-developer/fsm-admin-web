@@ -396,7 +396,7 @@ export const CustomerDetailPage = () => {
                       const paid = parseRupee(wo.paidAmount);
                       const bal = total - paid;
                       return (
-                        <tr key={wo.id} className="border-b border-border last:border-0">
+                        <tr key={wo.id} onClick={() => navigate("/payments", { state: { workOrderId: wo.id } })} className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors cursor-pointer">
                           <td className="px-3 py-3 font-medium text-card-foreground text-xs">{wo.id}</td>
                           <td className="px-3 py-3 text-muted-foreground text-xs">{wo.serviceType}</td>
                           <td className="px-3 py-3 text-muted-foreground text-xs">{formatRupee(total)}</td>
@@ -411,17 +411,6 @@ export const CustomerDetailPage = () => {
                       );
                     })}
                   </tbody>
-                  <tfoot>
-                    <tr className="border-t-2 border-border">
-                      <td colSpan={2} className="px-3 py-3 text-xs font-bold text-card-foreground">Total</td>
-                      <td className="px-3 py-3 text-xs font-bold text-card-foreground">{formatRupee(ledger.total)}</td>
-                      <td className="px-3 py-3 text-xs font-bold text-success">{formatRupee(ledger.paid)}</td>
-                      <td className="px-3 py-3 text-xs font-bold">
-                        <span className={ledger.balance <= 0 ? "text-success" : "text-destructive"}>{formatRupee(ledger.balance)}</span>
-                      </td>
-                      <td />
-                    </tr>
-                  </tfoot>
                 </table>
               </div>
             )}

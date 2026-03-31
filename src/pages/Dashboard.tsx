@@ -205,7 +205,6 @@ const recentServices = [
 
 const quickActions = [
   { label: "Add New Lead", icon: Plus, path: null, color: "text-white hover:opacity-90 shadow-[0px_5px_12px_rgba(39,47,158,0.2)]", style: { background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" } },
-  { label: "Assign Service", icon: Wrench, path: "/services", color: "text-white hover:opacity-90 shadow-[0px_5px_12px_rgba(39,47,158,0.2)]", style: { background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" } },
   { label: "Pending Payments", icon: Eye, path: "/payments", color: "text-white hover:opacity-90 shadow-[0px_5px_12px_rgba(39,47,158,0.2)]", style: { background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" } },
   { label: "Quick Stock Update", icon: Package, path: "/inventory", color: "text-white hover:opacity-90 shadow-[0px_5px_12px_rgba(39,47,158,0.2)]", style: { background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" } },
 ];
@@ -213,6 +212,7 @@ const quickActions = [
 const Dashboard = () => {
   const navigate = useNavigate();
   const { addLead } = useLeadsStore();
+  const { workOrders } = useProjectsStore();
   const [revenueFilter, setRevenueFilter] = useState("This Week");
   const [serviceFilter, setServiceFilter] = useState("This Week");
   const [servicesTableFilter, setServicesTableFilter] = useState("Recent");
@@ -798,23 +798,29 @@ const Dashboard = () => {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border">
-              {["Service ID", "Customer", "Technician", "Payment Mode", "Amount", "Status", "Action"].map((h) => (
+              {["Service ID", "Customer", "Technician", "Payment Mode", "Amount", "Status"].map((h) => (
                 <th key={h} className="text-left px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {recentServices.map((s, i) => (
-              <tr key={i} className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors">
-                <td className="px-3 py-3 font-semibold text-primary text-xs">{s.id}</td>
-                <td className="px-3 py-3 text-card-foreground text-xs">{s.customer}</td>
-                <td className="px-3 py-3 text-muted-foreground text-xs">{s.tech}</td>
-                <td className="px-3 py-3 text-muted-foreground text-xs">{s.mode}</td>
-                <td className="px-3 py-3 font-semibold text-card-foreground text-xs">{s.amount}</td>
-                <td className="px-3 py-3"><StatusBadge label={s.status} variant={s.badge} /></td>
-                <td className="px-3 py-3"><button className="text-xs font-semibold text-primary hover:underline">{s.action}</button></td>
-              </tr>
-            ))}
+            {recentServices.map((s, i) => {
+              const wo = workOrders.find((w) => w.customer.toLowerCase().includes(s.customer.split(" ")[0].toLowerCase()));
+              return (
+                <tr
+                  key={i}
+                  onClick={() => navigate("/payments", { state: { workOrderId: wo?.id } })}
+                  className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors cursor-pointer"
+                >
+                  <td className="px-3 py-3 font-semibold text-primary text-xs">{s.id}</td>
+                  <td className="px-3 py-3 text-card-foreground text-xs">{s.customer}</td>
+                  <td className="px-3 py-3 text-muted-foreground text-xs">{s.tech}</td>
+                  <td className="px-3 py-3 text-muted-foreground text-xs">{s.mode}</td>
+                  <td className="px-3 py-3 font-semibold text-card-foreground text-xs">{s.amount}</td>
+                  <td className="px-3 py-3"><StatusBadge label={s.status} variant={s.badge} /></td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

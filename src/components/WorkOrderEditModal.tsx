@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { useProjectsStore, type WorkOrder } from "@/store/projectsStore";
 import { useProductsStore } from "@/store/productsStore";
 import { useEmployeesStore } from "@/store/employeesStore";
+import { useTasksStore } from "@/store/tasksStore";
 
 const workOrderSchema = z.object({
   customer: z.string().min(1, "Customer name is required"),
@@ -39,6 +40,7 @@ export function WorkOrderEditModal({ workOrder, isOpen, onClose, onSave }: WorkO
   const { updateWorkOrder } = useProjectsStore();
   const { products } = useProductsStore();
   const { employees } = useEmployeesStore();
+  const { addTask, getTasksByWorkOrder } = useTasksStore();
   const [selectedServices, setSelectedServices] = useState<string[]>(
     workOrder.serviceTypes ?? (workOrder.serviceType ? [workOrder.serviceType] : [])
   );
@@ -47,8 +49,25 @@ export function WorkOrderEditModal({ workOrder, isOpen, onClose, onSave }: WorkO
 
   const toggleService = (value: string) => {
     setSelectedServices((prev) => {
-      const next = prev.includes(value) ? prev.filter((s) => s !== value) : [...prev, value];
+      const isAdding = !prev.includes(value);
+      const next = isAdding ? [...prev, value] : prev.filter((s) => s !== value);
       setValue("serviceType", next[0] ?? "");
+      // Auto-add task for newly added service if not already exists
+      if (isAdding) {
+        const existingTasks = getTasksByWorkOrder(workOrder.id);
+        if (!existingTasks.find((t) => t.title === value)) {
+          addTask({
+            id: `TASK-${Date.now()}`,
+            workOrderId: workOrder.id,
+            title: value,
+            description: "",
+            startDate: "",
+            endDate: "",
+            assignedTo: "",
+            status: "Pending",
+          });
+        }
+      }
       return next;
     });
   };

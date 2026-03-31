@@ -9,7 +9,7 @@ import { useState } from "react";
 import { logout } from "@/lib/auth";
 
 const menuItems = [
-  { label: "Dashboard", icon: LayoutDashboard, path: "/" },
+  { label: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
   { label: "Customers", icon: UserCircle, path: "/customers" },
   { label: "Employees", icon: UserCog, path: "/employees" },
   { label: "Leads", icon: Users, path: "/leads" },
@@ -18,7 +18,7 @@ const menuItems = [
   
   { label: "Work Orders", icon: FolderKanban, path: "/projects" },
   { label: "Payments", icon: CreditCard, path: "/payments" },
-  { label: "Role", icon: Shield, path: "/roles" },
+  // { label: "Role", icon: Shield, path: "/roles" },
   // { label: "Reports", icon: FileText, path: "/reports" },
 ];
 
@@ -130,7 +130,7 @@ export const AppSidebar: FC<AppSidebarProps> = ({ className, onNavigate, collaps
           <button
             onClick={() => {
               logout();
-              navigate("/login");
+              navigate("/");
               onNavigate?.();
             }}
             className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors flex-shrink-0"

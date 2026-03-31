@@ -70,26 +70,6 @@ export function ServiceDetailsModal({ open, service, onClose }: Props) {
                 <p className="text-sm text-card-foreground whitespace-pre-wrap">{service.instructions}</p>
               </div>
             )}
-            {service.tasks && service.tasks.length > 0 && (
-              <div className="md:col-span-2">
-                <label className="text-xs font-medium text-muted-foreground mb-2 block">Tasks</label>
-                <div className="space-y-2">
-                  {service.tasks.map((task, idx) => (
-                    <div key={task.id} className="flex items-center gap-3 p-3 rounded-lg bg-secondary/30 border border-border">
-                      <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 flex-shrink-0">
-                        <span className="text-xs font-bold text-primary">{idx + 1}</span>
-                      </div>
-                      <div className="flex-1">
-                        <p className="text-sm font-medium text-card-foreground">{task.title}</p>
-                        {task.completed && (
-                          <p className="text-xs text-success">✓ Completed</p>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
         </div>
 

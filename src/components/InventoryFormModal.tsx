@@ -177,19 +177,6 @@ export function InventoryFormModal({ open, mode, item, onClose, onSaved }: Props
                 className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
               />
             </div>
-
-            <div>
-              <label className="text-xs font-medium text-muted-foreground mb-2 block">{LABELS.status}</label>
-              <select
-                value={form.status}
-                onChange={(e) => setField("status", e.target.value as "OK" | "Low" | "Critical")}
-                className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
-              >
-                <option value="OK">OK</option>
-                <option value="Low">Low</option>
-                <option value="Critical">Critical</option>
-              </select>
-            </div>
           </div>
         </div>
 

@@ -13,7 +13,7 @@ const LoginPage = () => {
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     login();
-    navigate("/");
+    navigate("/dashboard");
   };
 
   return (

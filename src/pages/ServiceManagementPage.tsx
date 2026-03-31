@@ -103,7 +103,7 @@ const ServiceManagementPage = () => {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border">
-                {["Ref No", "Subject", "Active/Inactive", "Warranty", "Tasks", "Action"].map((h) => (
+                {["Ref No", "Subject", "Active/Inactive", "Warranty", "Action"].map((h) => (
                   <th key={h} className="text-left px-3 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">{h}</th>
                 ))}
               </tr>
@@ -136,11 +136,7 @@ const ServiceManagementPage = () => {
                     </button>
                   </td>
                   <td className="px-3 py-2.5 text-xs text-card-foreground">{apt.warrantyPeriod || "—"}</td>
-                  <td className="px-3 py-2.5 text-xs">
-                    <span className="inline-flex items-center justify-center px-2 py-1 rounded-lg bg-primary/10 text-primary font-medium">
-                      {apt.tasks?.length || 0}
-                    </span>
-                  </td>
+
                   <td className="px-3 py-2.5">
                     <div className="flex items-center gap-2">
                       <button 

@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Bell, X, Edit2, FolderKanban } from "lucide-react";
+import { ArrowLeft, Plus, X, Edit2, FolderKanban } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { toast } from "sonner";
 import { useLeadsStore } from "@/store/leadsStore";
@@ -109,7 +109,7 @@ export const LeadDetailPage = () => {
               className="relative inline-flex items-center gap-2 h-10 px-4 rounded-lg border border-border bg-card hover:bg-secondary transition-colors text-sm font-semibold text-card-foreground"
               title="Comments"
             >
-              <Bell className="w-4 h-4 text-muted-foreground" />
+              <Plus className="w-4 h-4 text-muted-foreground" />
               Comment
               {(lead.reminders?.length ?? 0) > 0 && (
                 <span className="w-4 h-4 rounded-full bg-primary text-white text-[10px] flex items-center justify-center">{lead.reminders?.length}</span>

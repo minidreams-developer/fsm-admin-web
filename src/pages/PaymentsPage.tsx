@@ -1,14 +1,16 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Search } from "lucide-react";
 import { useProjectsStore, type WorkOrder } from "@/store/projectsStore";
 import { StatusBadge } from "@/components/StatusBadge";
 import { WorkOrderDetailsModal } from "@/components/WorkOrderDetailsModal";
 import { PaymentUpdateModal } from "@/components/PaymentUpdateModal";
+import { useLocation } from "react-router-dom";
 
 const statusMap = { "Open": "warning", "Scheduled": "info", "Completed": "success" } as const;
 
 const PaymentsPage = () => {
   const { workOrders } = useProjectsStore();
+  const location = useLocation();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"All" | "Open" | "Scheduled" | "Completed">("All");
   const [showDetailsModal, setShowDetailsModal] = useState(false);
@@ -16,6 +18,14 @@ const PaymentsPage = () => {
   const [selectedWorkOrder, setSelectedWorkOrder] = useState<WorkOrder | undefined>(
     workOrders.length > 0 ? workOrders[0] : undefined
   );
+
+  useEffect(() => {
+    const woId = (location.state as any)?.workOrderId;
+    if (woId) {
+      const found = workOrders.find((w) => w.id === woId);
+      if (found) setSelectedWorkOrder(found);
+    }
+  }, [location.state, workOrders]);
 
   const filtered = workOrders.filter((wo) => {
     const matchStatus = statusFilter === "All" || wo.status === statusFilter;
