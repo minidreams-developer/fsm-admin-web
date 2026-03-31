@@ -17,6 +17,7 @@ export type Employee = {
   idleHours: number;
   servicesCompleted: number;
   avgServiceTime: number;
+  profilePhoto?: string;
 };
 
 interface EmployeesStore {

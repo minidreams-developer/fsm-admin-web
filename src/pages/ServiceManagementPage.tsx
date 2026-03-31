@@ -10,7 +10,7 @@ import type { ServiceAppointment } from "@/store/servicesStore";
 const statusMap = { Scheduled: "info", Unscheduled: "neutral", Completed: "success", Cancelled: "error" } as const;
 
 const ServiceManagementPage = () => {
-  const { appointments } = useServicesStore();
+  const { appointments, updateAppointment } = useServicesStore();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"All" | "Scheduled" | "Unscheduled" | "Completed" | "Cancelled">("All");
   const [showForm, setShowForm] = useState(false);
@@ -77,20 +77,23 @@ const ServiceManagementPage = () => {
           />
         </div>
         <div className="flex flex-wrap gap-2">
-          {["All", "Scheduled", "Unscheduled", "Completed", "Cancelled"].map((status) => (
-            <button 
-              key={status}
-              onClick={() => setStatusFilter(status as any)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap ${
-                statusFilter === status 
-                  ? "text-white shadow-[0px_5px_12px_rgba(39,47,158,0.2)]" 
-                  : "bg-card text-muted-foreground border border-border hover:bg-secondary"
-              }`}
-              style={statusFilter === status ? { background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" } : {}}
-            >
-              {status}
-            </button>
-          ))}
+          {(["All", "Scheduled", "Unscheduled", "Completed", "Cancelled"] as const).map((status) => {
+            const count = status === "All" ? appointments.length : appointments.filter(a => a.status === status).length;
+            return (
+              <button 
+                key={status}
+                onClick={() => setStatusFilter(status)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap ${
+                  statusFilter === status 
+                    ? "text-white shadow-[0px_5px_12px_rgba(39,47,158,0.2)]" 
+                    : "bg-card text-muted-foreground border border-border hover:bg-secondary"
+                }`}
+                style={statusFilter === status ? { background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" } : {}}
+              >
+                {status} ({count})
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -100,14 +103,18 @@ const ServiceManagementPage = () => {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border">
-                {["Ref No", "Subject", "Employee", "Date & Time", "Status", "Warranty", "Tasks", "Action"].map((h) => (
+                {["Ref No", "Subject", "Active/Inactive", "Warranty", "Tasks", "Action"].map((h) => (
                   <th key={h} className="text-left px-3 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {filtered.map((apt) => (
-                <tr key={apt.id} className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors">
+                <tr
+                  key={apt.id}
+                  onClick={() => { setSelectedService(apt); setShowDetailsModal(true); }}
+                  className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors cursor-pointer"
+                >
                   <td className="px-3 py-2.5 font-semibold text-primary text-xs">{apt.refNo || "—"}</td>
                   <td className="px-3 py-2.5">
                     <div className="space-y-0.5">
@@ -115,12 +122,18 @@ const ServiceManagementPage = () => {
                       <p className="text-xs text-muted-foreground">{apt.serviceDescription || "—"}</p>
                     </div>
                   </td>
-                  <td className="px-3 py-2.5 text-xs text-card-foreground">{apt.employeeName}</td>
-                  <td className="px-3 py-2.5 text-xs text-muted-foreground">
-                    {apt.date} {apt.time}
-                  </td>
                   <td className="px-3 py-2.5">
-                    <StatusBadge label={apt.status} variant={statusMap[apt.status]} />
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const next = apt.status === "Completed" ? "Scheduled" : "Completed";
+                        updateAppointment(apt.id, { status: next });
+                      }}
+                      className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${apt.status === "Completed" ? "bg-green-500" : "bg-muted"}`}
+                      title={apt.status}
+                    >
+                      <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${apt.status === "Completed" ? "translate-x-4" : "translate-x-1"}`} />
+                    </button>
                   </td>
                   <td className="px-3 py-2.5 text-xs text-card-foreground">{apt.warrantyPeriod || "—"}</td>
                   <td className="px-3 py-2.5 text-xs">
@@ -131,16 +144,7 @@ const ServiceManagementPage = () => {
                   <td className="px-3 py-2.5">
                     <div className="flex items-center gap-2">
                       <button 
-                        onClick={() => {
-                          setSelectedService(apt);
-                          setShowDetailsModal(true);
-                        }}
-                        className="p-1.5 rounded-lg border border-border hover:bg-secondary transition-colors"
-                        title="View details"
-                      >
-                        <Eye className="w-4 h-4 text-muted-foreground" />
-                      </button>
-                      <button 
+                        onClick={(e) => e.stopPropagation()}
                         className="p-1.5 rounded-lg border border-border hover:bg-secondary transition-colors"
                         title="Edit"
                       >
@@ -149,7 +153,7 @@ const ServiceManagementPage = () => {
                       <button 
                         className="p-1.5 rounded-lg border border-border hover:bg-destructive/10 transition-colors"
                         title="Delete"
-                        onClick={() => toast.error("Delete functionality coming soon")}
+                        onClick={(e) => { e.stopPropagation(); toast.error("Delete functionality coming soon"); }}
                       >
                         <Trash2 className="w-4 h-4 text-destructive" />
                       </button>

@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { createPortal } from "react-dom";
-import { X } from "lucide-react";
+import { X, Camera } from "lucide-react";
 import { toast } from "sonner";
 import { useEmployeesStore, type Employee } from "@/store/employeesStore";
+import { useRolesStore } from "@/store/rolesStore";
 
 type Mode = "create" | "edit";
 
@@ -24,6 +25,9 @@ const LABELS = {
 
 export function EmployeeFormModal({ open, mode, employee, onClose, onSaved }: Props) {
   const { addEmployee, updateEmployee, getNextEmployeeId } = useEmployeesStore();
+  const { roles } = useRolesStore();
+  const activeRoles = roles.filter((r) => r.active);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [form, setForm] = useState<Employee>({
     id: getNextEmployeeId(),
@@ -71,6 +75,14 @@ export function EmployeeFormModal({ open, mode, employee, onClose, onSaved }: Pr
 
   const setField = <K extends keyof Employee>(key: K, value: Employee[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => setField("profilePhoto", reader.result as string);
+    reader.readAsDataURL(file);
   };
 
   const save = () => {
@@ -129,6 +141,30 @@ export function EmployeeFormModal({ open, mode, employee, onClose, onSaved }: Pr
         {/* Content */}
         <div className="overflow-y-auto flex-1 p-6 space-y-6 min-h-0">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Profile Photo */}
+            <div className="md:col-span-2 flex flex-col items-center gap-3">
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                className="relative w-24 h-24 rounded-full bg-secondary border-2 border-dashed border-border cursor-pointer hover:border-primary/50 transition-colors flex items-center justify-center overflow-hidden"
+              >
+                {form.profilePhoto ? (
+                  <img src={form.profilePhoto} alt="Profile" className="w-full h-full object-cover" />
+                ) : (
+                  <div className="flex flex-col items-center gap-1">
+                    <Camera className="w-6 h-6 text-muted-foreground" />
+                    <span className="text-[10px] text-muted-foreground">Upload</span>
+                  </div>
+                )}
+                <div className="absolute inset-0 bg-black/20 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center rounded-full">
+                  <Camera className="w-5 h-5 text-white" />
+                </div>
+              </div>
+              <input ref={fileInputRef} type="file" accept="image/*" onChange={handlePhotoChange} className="hidden" />
+              {form.profilePhoto && (
+                <button type="button" onClick={() => setField("profilePhoto", undefined)} className="text-xs text-destructive hover:opacity-80 transition-opacity">Remove photo</button>
+              )}
+            </div>
+
             <div className="md:col-span-2">
               <label className="text-xs font-medium text-muted-foreground mb-2 block">{LABELS.employeeId}</label>
               <input
@@ -166,12 +202,9 @@ export function EmployeeFormModal({ open, mode, employee, onClose, onSaved }: Pr
                 className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
               >
                 <option value="">Select role</option>
-                <option value="Senior Technician">Senior Technician</option>
-                <option value="Technician">Technician</option>
-                <option value="Junior Technician">Junior Technician</option>
-                <option value="Supervisor">Supervisor</option>
-                <option value="Manager">Manager</option>
-                <option value="Assistant">Assistant</option>
+                {activeRoles.map((r) => (
+                  <option key={r.id} value={r.name}>{r.name}</option>
+                ))}
               </select>
             </div>
           </div>

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { createPortal } from "react-dom";
 import { StatusBadge } from "@/components/StatusBadge";
-import { Plus, Search, Eye, EyeOff, X, Clock, CheckCircle2 } from "lucide-react";
+import { Plus, Search, Eye, EyeOff, X, Clock, CheckCircle2, Edit2, Users, TrendingUp, CheckCircle, XCircle, Bell } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useLeadsStore, type LeadStatus, type Lead, type UrgencyLevel } from "@/store/leadsStore";
@@ -37,6 +37,10 @@ const LeadsPage = () => {
   const [showMoreFields, setShowMoreFields] = useState(false);
   const [showConvertModal, setShowConvertModal] = useState(false);
   const [leadToConvert, setLeadToConvert] = useState<Lead | null>(null);
+  const [editingLead, setEditingLead] = useState<Lead | null>(null);
+  const [reminderLeadId, setReminderLeadId] = useState<number | null>(null);
+  const [reminderDate, setReminderDate] = useState("");
+  const [reminderText, setReminderText] = useState("");
   
   // Form state for new lead
   const [formData, setFormData] = useState({
@@ -70,6 +74,21 @@ const LeadsPage = () => {
   });
 
   const closeModal = () => setSelectedLead(null);
+
+  const saveReminder = (leadId: number) => {
+    if (!reminderDate || !reminderText.trim()) {
+      toast.error("Please select a date and enter reminder text");
+      return;
+    }
+    const lead = leads.find((l) => l.id === leadId);
+    if (!lead) return;
+    const newReminder = { id: `REM-${Date.now()}`, date: reminderDate, text: reminderText.trim(), createdAt: new Date().toISOString() };
+    updateLead(leadId, { reminders: [...(lead.reminders ?? []), newReminder] });
+    setReminderDate("");
+    setReminderText("");
+    setReminderLeadId(null);
+    toast.success("Reminder saved");
+  };
 
   const getServiceCount = (lead: Lead) => lead.services.length;
 
@@ -172,9 +191,57 @@ const LeadsPage = () => {
           <h2 className="text-lg sm:text-xl font-bold text-card-foreground">Leads</h2>
           <p className="text-sm text-muted-foreground">Manage your sales pipeline</p>
         </div>
-        <button onClick={() => setShowForm(!showForm)} className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 transition-all text-white shadow-[0px_5px_12px_rgba(39,47,158,0.2)]" style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}>
+        <button onClick={() => navigate("/leads/new")} className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 transition-all text-white shadow-[0px_5px_12px_rgba(39,47,158,0.2)]" style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}>
           <Plus className="w-4 h-4" /> Add New Lead
         </button>
+      </div>
+
+      {/* Overview Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="bg-card rounded-xl p-5 card-shadow border border-border">
+          <div className="flex items-start gap-3">
+            <div className="p-2.5 bg-primary/10 rounded-lg flex-shrink-0">
+              <Users className="w-5 h-5 text-primary" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-medium text-muted-foreground mb-1">Total Leads</p>
+              <p className="text-2xl font-bold text-card-foreground">{leads.length}</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-card rounded-xl p-5 card-shadow border border-border">
+          <div className="flex items-start gap-3">
+            <div className="p-2.5 bg-warning/10 rounded-lg flex-shrink-0">
+              <TrendingUp className="w-5 h-5 text-warning" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-medium text-muted-foreground mb-1">New</p>
+              <p className="text-2xl font-bold text-card-foreground">{leads.filter(l => l.status === "New").length}</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-card rounded-xl p-5 card-shadow border border-border">
+          <div className="flex items-start gap-3">
+            <div className="p-2.5 bg-success/10 rounded-lg flex-shrink-0">
+              <CheckCircle className="w-5 h-5 text-success" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-medium text-muted-foreground mb-1">Converted</p>
+              <p className="text-2xl font-bold text-card-foreground">{leads.filter(l => l.status === "Converted").length}</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-card rounded-xl p-5 card-shadow border border-border">
+          <div className="flex items-start gap-3">
+            <div className="p-2.5 bg-destructive/10 rounded-lg flex-shrink-0">
+              <XCircle className="w-5 h-5 text-destructive" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-medium text-muted-foreground mb-1">Lost</p>
+              <p className="text-2xl font-bold text-card-foreground">{leads.filter(l => l.status === "Lost").length}</p>
+            </div>
+          </div>
+        </div>
       </div>
 
       {showForm && (
@@ -367,7 +434,7 @@ const LeadsPage = () => {
         <div className="w-full">
           <table className="w-full text-sm">
             <thead><tr className="border-b border-border">
-              {["Lead ID ( Automated Generated )", "Customer Info", "Services", "Amount", "Expected Date & Time", "Urgency", "Status", "Date", "View Details", "Action", "Convert"].map((h) => (
+              {["Lead ID", "Customer Name", "Services", "Urgency", "Lead incharge", "Status", "Actions"].map((h) => (
                 <th key={h} className="text-left px-3 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">{h}</th>
               ))}
             </tr></thead>
@@ -375,120 +442,51 @@ const LeadsPage = () => {
               {filtered.map((l) => {
                 const serviceCount = getServiceCount(l);
                 return (
-                  <tr key={l.id} className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors">
+                  <tr key={l.id} onClick={() => navigate(`/leads/${l.id}`)} className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors cursor-pointer">
                     <td className="px-3 py-2.5 font-semibold text-primary text-xs">{formatLeadId(l.id)}</td>
-                  <td className="px-3 py-2.5">
-                    <div className="space-y-0.5">
-                      <p className="font-semibold text-card-foreground text-xs">{l.name}</p>
-                      <p className="text-xs text-muted-foreground">{l.phone} • {l.address}</p>
-                    </div>
-                  </td>
+                  <td className="px-3 py-2.5 font-medium text-card-foreground text-xs">{l.name}</td>
                   <td className="px-3 py-2.5">
                     <div className="flex items-center gap-2">
                       <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-primary/10 text-primary text-xs font-bold">{serviceCount}</span>
                       <span className="text-xs text-muted-foreground">{serviceCount === 1 ? "Service" : "Services"}</span>
                     </div>
                   </td>
-                  <td className="px-3 py-2.5 text-muted-foreground text-xs">{typeof l.amount === "number" ? `₹ ${l.amount.toLocaleString()}` : "—"}</td>
-                  <td className="px-3 py-2.5 text-muted-foreground text-xs">{l.expectedDateTime ? new Date(l.expectedDateTime).toLocaleString() : "—"}</td>
                   <td className="px-3 py-2.5 text-muted-foreground text-xs">{l.urgencyLevel}</td>
+                  <td className="px-3 py-2.5 text-muted-foreground text-xs">{l.assignedOwner || "—"}</td>
                   <td className="px-3 py-2.5"><StatusBadge label={l.status} variant={statusBadge[l.status]} /></td>
-                  <td className="px-3 py-2.5 text-muted-foreground text-xs">{l.date}</td>
                   <td className="px-3 py-2.5">
-                    <button
-                      onClick={() => {
-                        setSelectedLeadForDetails(l);
-                        setShowDetailsModal(true);
-                      }}
-                      className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-border bg-card hover:bg-secondary transition-colors"
-                      title="View lead details"
-                    >
-                      <Eye className="w-4 h-4 text-muted-foreground" />
-                    </button>
-                  </td>
-                  <td className="px-3 py-2.5">
-                    {l.status === "New" && (
+                    <div className="flex items-center gap-1">
                       <button
-                        onClick={() => {
-                          updateLead(l.id, { status: "Contacted" });
-                          toast.success("Lead marked as contacted");
-                        }}
-                        className="px-3 py-1.5 text-xs font-semibold text-white rounded-lg hover:opacity-90 transition-all shadow-[0px_5px_12px_rgba(39,47,158,0.2)]"
-                        style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}
-                        title="Mark as contacted"
+                        onClick={(e) => { e.stopPropagation(); setEditingLead(l); setShowDetailsModal(true); }}
+                        className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-border bg-card hover:bg-secondary transition-colors"
+                        title="Edit lead"
                       >
-                        Mark Contacted
+                        <Edit2 className="w-4 h-4 text-muted-foreground" />
                       </button>
-                    )}
-                    {l.status === "Contacted" && (
-                      <button
-                        onClick={() => {
-                          setSelectedLeadForQuote(l);
-                          setShowQuoteForm(true);
-                        }}
-                        className="px-3 py-1.5 text-xs font-semibold text-warning border border-warning/20 rounded-lg hover:bg-warning/5 transition-all"
-                        title="Send quote to customer"
-                      >
-                        Send Quote
-                      </button>
-                    )}
-                    {l.status === "Quote Sent" && (
-                      l.quoteIsViewed ? (
+                      <div className="relative">
                         <button
-                          onClick={() => {
-                            setLeadToConvert(l);
-                            setShowConvertModal(true);
-                          }}
-                          className="px-3 py-1.5 text-xs font-semibold text-white rounded-lg hover:opacity-90 transition-all shadow-[0px_5px_12px_rgba(39,47,158,0.2)]"
-                          style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}
-                          title="Convert to project"
+                          onClick={(e) => { e.stopPropagation(); setReminderLeadId(reminderLeadId === l.id ? null : l.id); setReminderDate(""); setReminderText(""); }}
+                          className="relative inline-flex items-center justify-center w-8 h-8 rounded-lg border border-border bg-card hover:bg-secondary transition-colors"
+                          title="Add reminder"
                         >
-                          Convert to Project
+                          <Bell className="w-4 h-4 text-muted-foreground" />
+                          {(l.reminders?.length ?? 0) > 0 && (
+                            <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-primary text-white text-[9px] flex items-center justify-center">{l.reminders?.length}</span>
+                          )}
                         </button>
-                      ) : (
-                        <button
-                          onClick={() => {
-                            toast.info("Reminder sent to customer");
-                          }}
-                          className="px-3 py-1.5 text-xs font-semibold text-warning border border-warning/20 rounded-lg hover:bg-warning/5 transition-all"
-                          title="Send reminder to customer"
-                        >
-                          Send Reminder
-                        </button>
-                      )
-                    )}
-                    {l.status === "Converted" && (
-                      <button
-                        onClick={() => setSelectedLead(l)}
-                        className="px-3 py-1.5 text-xs font-semibold text-primary border border-primary/20 rounded-lg hover:bg-primary/5 transition-all"
-                        title="View lead details"
-                      >
-                        View Details
-                      </button>
-                    )}
-                    {l.status === "Lost" && (
-                      <span className="text-xs font-medium text-muted-foreground">—</span>
-                    )}
-                  </td>
-                  <td className="px-3 py-2.5">
-                    {l.status !== "Converted" && l.status !== "Lost" ? (
-                      <button
-                        onClick={() => {
-                          navigate("/create-work-order", { state: { leadData: l } });
-                        }}
-                        className="px-1.5 py-1.5 text-xs font-semibold text-white rounded-lg hover:opacity-90 transition-all shadow-[0px_5px_12px_rgba(148,43,244,0.3)]"
-                        style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}
-                      >
-                        Convert to Project
-                      </button>
-                    ) : l.status === "Converted" ? (
-                      <span className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-success bg-success/10 rounded-lg border border-success/20">
-                        <span>✓</span>
-                        <span>Converted</span>
-                      </span>
-                    ) : (
-                      <span className="text-xs font-medium text-muted-foreground">—</span>
-                    )}
+                        {reminderLeadId === l.id && (
+                          <div className="absolute right-0 top-10 z-50 w-72 bg-card border border-border rounded-xl shadow-2xl p-4 space-y-2">
+                            <p className="text-xs font-semibold text-card-foreground">Add Reminder</p>
+                            <input type="date" value={reminderDate} onChange={(e) => setReminderDate(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                            <input value={reminderText} onChange={(e) => setReminderText(e.target.value)} placeholder="Reminder text..." className="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                            <div className="flex gap-2">
+                              <button onClick={() => saveReminder(l.id)} className="flex-1 h-8 text-xs font-semibold hover:opacity-90 text-white rounded-lg transition-all" style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}>Save</button>
+                              <button onClick={() => setReminderLeadId(null)} className="flex-1 h-8 text-xs font-medium border border-border rounded-lg hover:bg-secondary transition-colors">Cancel</button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </td>
                 </tr>
               );
@@ -802,10 +800,12 @@ const LeadsPage = () => {
       {/* Lead Details Modal */}
       <LeadDetailsModal
         open={showDetailsModal}
-        lead={selectedLeadForDetails || undefined}
+        lead={editingLead ?? selectedLeadForDetails ?? undefined}
+        initialEdit={!!editingLead}
         onClose={() => {
           setShowDetailsModal(false);
           setSelectedLeadForDetails(null);
+          setEditingLead(null);
         }}
       />
 

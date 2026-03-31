@@ -9,7 +9,7 @@ import { toast } from "sonner";
 const CATEGORIES: ProductCategory[] = ["Chemicals", "Equipment", "Supplies", "Services", "Other"];
 
 const ProductsPage = () => {
-  const { products, deleteProduct, getProductsByCategory } = useProductsStore();
+  const { products, deleteProduct, getProductsByCategory, updateProduct } = useProductsStore();
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<ProductCategory | "All">("All");
   const [showForm, setShowForm] = useState(false);
@@ -135,7 +135,7 @@ const ProductsPage = () => {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border">
-              {["Product ID", "Name", "Category", "Unit", "Price", "Reorder Level", "Status", "Actions"].map((h) => (
+              {["Product ID", "Name", "Category", "Unit", "Price", "Reorder Level", "Active/Inactive", "Actions"].map((h) => (
                 <th key={h} className="text-left px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                   {h}
                 </th>
@@ -145,7 +145,7 @@ const ProductsPage = () => {
           <tbody>
             {filtered.length > 0 ? (
               filtered.map((product) => (
-                <tr key={product.id} className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors">
+                <tr key={product.id} onClick={() => { setDetailsProduct(product); setShowDetails(true); }} className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors cursor-pointer">
                   <td className="px-3 py-3 font-medium text-card-foreground text-xs">{product.id}</td>
                   <td className="px-3 py-3">
                     <div className="flex items-center gap-2">
@@ -158,35 +158,31 @@ const ProductsPage = () => {
                   <td className="px-3 py-3 font-semibold text-card-foreground text-xs">₹{product.unitPrice}</td>
                   <td className="px-3 py-3 text-muted-foreground text-xs">{product.reorderLevel}</td>
                   <td className="px-3 py-3">
-                    <StatusBadge label={product.status} variant={product.status === "Active" ? "success" : "warning"} />
+                    <button
+                      onClick={(e) => { e.stopPropagation(); updateProduct(product.id, { status: product.status === "Active" ? "Inactive" : "Active" }); }}
+                      className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${product.status === "Active" ? "bg-green-500" : "bg-muted"}`}
+                      title={product.status}
+                    >
+                      <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${product.status === "Active" ? "translate-x-4" : "translate-x-1"}`} />
+                    </button>
                   </td>
                   <td className="px-3 py-3">
                     <div className="flex items-center gap-1">
                       <button
-                        onClick={() => {
-                          setDetailsProduct(product);
-                          setShowDetails(true);
-                        }}
-                        className="p-1 rounded-lg text-muted-foreground hover:bg-secondary hover:text-primary transition-colors"
-                        title="View Details"
-                      >
-                        <Eye className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleEdit(product)}
+                        onClick={(e) => { e.stopPropagation(); handleEdit(product); }}
                         className="p-1 rounded-lg text-muted-foreground hover:bg-secondary hover:text-primary transition-colors"
                         title="Edit"
                       >
-                          <Edit2 className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(product.id, product.name)}
-                          className="p-1.5 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
-                          title="Delete"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleDelete(product.id, product.name); }}
+                        className="p-1.5 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+                        title="Delete"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                     </td>
                   </tr>
                 ))

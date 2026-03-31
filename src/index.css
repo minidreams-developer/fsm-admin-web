@@ -125,3 +125,12 @@
 .bg-primary-gradient {
   background: linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%);
 }
+
+/* Hide scrollbars globally while keeping scroll functionality */
+* {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+}
+*::-webkit-scrollbar {
+  display: none; /* Chrome/Safari/Opera */
+}

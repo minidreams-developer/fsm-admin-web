@@ -7,7 +7,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 const BranchesPage = () => {
-  const { branches, deleteBranch } = useBranchesStore();
+  const { branches, deleteBranch, updateBranch } = useBranchesStore();
   const [search, setSearch] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [formMode, setFormMode] = useState<"create" | "edit">("create");
@@ -101,7 +101,7 @@ const BranchesPage = () => {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border">
-              {["Branch ID", "Name", "Type", "Location", "Manager", "Status", "Actions"].map((h) => (
+              {["Branch ID", "Name", "Type", "Location", "Manager", "Active/Inactive", "Actions"].map((h) => (
                 <th key={h} className="text-left px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                   {h}
                 </th>
@@ -111,7 +111,7 @@ const BranchesPage = () => {
           <tbody>
             {filtered.length > 0 ? (
               filtered.map((branch) => (
-                <tr key={branch.id} className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors">
+                <tr key={branch.id} onClick={() => { setDetailsBranch(branch); setShowDetails(true); }} className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors cursor-pointer">
                   <td className="px-3 py-3 font-medium text-card-foreground text-xs">{branch.id}</td>
                   <td className="px-3 py-3">
                     <div className="flex items-center gap-2">
@@ -123,31 +123,27 @@ const BranchesPage = () => {
                   <td className="px-3 py-3 text-muted-foreground text-xs">{branch.city}</td>
                   <td className="px-3 py-3 text-muted-foreground text-xs">{branch.managerName}</td>
                   <td className="px-3 py-3">
-                    <StatusBadge label={branch.status} variant={branch.status === "Active" ? "success" : "warning"} />
+                    <button
+                      onClick={(e) => { e.stopPropagation(); updateBranch(branch.id, { status: branch.status === "Active" ? "Inactive" : "Active" }); }}
+                      className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${branch.status === "Active" ? "bg-green-500" : "bg-muted"}`}
+                      title={branch.status}
+                    >
+                      <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${branch.status === "Active" ? "translate-x-4" : "translate-x-1"}`} />
+                    </button>
                   </td>
                   <td className="px-3 py-3">
                     <div className="flex items-center gap-1">
                       <button
-                        onClick={() => {
-                          setDetailsBranch(branch);
-                          setShowDetails(true);
-                        }}
-                        className="p-1 rounded-lg text-muted-foreground hover:bg-secondary hover:text-primary transition-colors"
-                        title="View Details"
-                      >
-                        <Eye className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleEdit(branch)}
+                        onClick={(e) => { e.stopPropagation(); handleEdit(branch); }}
                         className="p-1 rounded-lg text-muted-foreground hover:bg-secondary hover:text-primary transition-colors"
                         title="Edit"
                       >
                         <Edit2 className="w-4 h-4" />
                       </button>
                       <button
-                        onClick={() => handleDelete(branch.id, branch.name)}
+                        onClick={(e) => { e.stopPropagation(); handleDelete(branch.id, branch.name); }}
                         className="p-1 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
-                          title="Delete"
+                        title="Delete"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>

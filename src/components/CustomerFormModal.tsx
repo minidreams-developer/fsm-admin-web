@@ -56,13 +56,11 @@ export function CustomerFormModal({ open, mode, customer, prefill, onClose, onSa
     contactPersonsDetails: "",
     customerDocuments: [],
   });
-  const [showMore, setShowMore] = useState(false);
 
   useEffect(() => {
     if (!open) return;
     if (mode === "edit" && customer) {
       setForm(customer);
-      setShowMore(true);
       return;
     }
     const nextId = getNextCustomerId();
@@ -84,16 +82,6 @@ export function CustomerFormModal({ open, mode, customer, prefill, onClose, onSa
     } satisfies Customer;
     const merged: Customer = { ...next, ...prefill, id: nextId };
     setForm(merged);
-    const hasOptional =
-      Boolean(merged.emailAddress.trim()) ||
-      Boolean(merged.landline.trim()) ||
-      Boolean(merged.gstNumber.trim()) ||
-      Boolean(merged.placeOfSupply.trim()) ||
-      Boolean(merged.paymentTerms.trim()) ||
-      Boolean(merged.billingAddress.trim()) ||
-      Boolean(merged.contactPersonsDetails.trim()) ||
-      merged.customerDocuments.length > 0;
-    setShowMore(hasOptional);
   }, [open, mode, customer, getNextCustomerId, prefill]);
 
   const setField = <K extends keyof Customer>(key: K, value: Customer[K]) => {
@@ -206,6 +194,7 @@ export function CustomerFormModal({ open, mode, customer, prefill, onClose, onSa
               <input
                 value={form.firstName}
                 onChange={(e) => setField("firstName", e.target.value)}
+                placeholder="e.g. Praveen"
                 className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
               />
             </div>
@@ -215,6 +204,7 @@ export function CustomerFormModal({ open, mode, customer, prefill, onClose, onSa
               <input
                 value={form.lastName}
                 onChange={(e) => setField("lastName", e.target.value)}
+                placeholder="e.g. Kumar"
                 className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
               />
             </div>
@@ -224,6 +214,7 @@ export function CustomerFormModal({ open, mode, customer, prefill, onClose, onSa
               <input
                 value={form.mobile}
                 onChange={(e) => setField("mobile", e.target.value)}
+                placeholder="e.g. 9876543210"
                 className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
               />
             </div>
@@ -233,125 +224,94 @@ export function CustomerFormModal({ open, mode, customer, prefill, onClose, onSa
               <textarea
                 value={form.siteAddress}
                 onChange={(e) => setField("siteAddress", e.target.value)}
+                placeholder="e.g. 12 MG Road, Kochi"
                 rows={2}
                 className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none"
               />
             </div>
 
             <div className="md:col-span-2">
-              <button
-                type="button"
-                onClick={() => setShowMore((v) => !v)}
-                className="w-full px-4 py-2 rounded-lg border border-border bg-secondary/30 hover:bg-secondary/50 transition-colors text-sm font-semibold text-card-foreground"
-              >
-                {showMore ? "Hide additional customer fields" : "Show additional customer fields"}
-              </button>
+              <div className="flex items-center justify-between gap-3 mb-2">
+                <label className="text-xs font-medium text-muted-foreground block">{LABELS.billingAddress}</label>
+                <button
+                  type="button"
+                  onClick={() => setField("billingAddress", form.siteAddress)}
+                  className="text-xs font-semibold text-primary hover:opacity-80 transition-opacity"
+                >
+                  Same as Site Address
+                </button>
+              </div>
+              <textarea
+                value={form.billingAddress}
+                onChange={(e) => setField("billingAddress", e.target.value)}
+                placeholder="e.g. 12 MG Road, Kochi"
+                rows={2}
+                className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none"
+              />
             </div>
 
-            {showMore && (
-              <>
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-2 block">{LABELS.emailAddress}</label>
-                  <input
-                    type="email"
-                    value={form.emailAddress}
-                    onChange={(e) => setField("emailAddress", e.target.value)}
-                    className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
-                  />
-                </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-2 block">{LABELS.emailAddress}</label>
+              <input
+                type="email"
+                value={form.emailAddress}
+                onChange={(e) => setField("emailAddress", e.target.value)}
+                placeholder="e.g. customer@email.com"
+                className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
 
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-2 block">{LABELS.landline}</label>
-                  <input
-                    value={form.landline}
-                    onChange={(e) => setField("landline", e.target.value)}
-                    className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
-                  />
-                </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-2 block">{LABELS.landline}</label>
+              <input
+                value={form.landline}
+                onChange={(e) => setField("landline", e.target.value)}
+                placeholder="e.g. 044-12345678"
+                className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
 
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-2 block">{LABELS.gstNumber}</label>
-                  <input
-                    value={form.gstNumber}
-                    onChange={(e) => setField("gstNumber", e.target.value)}
-                    className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
-                  />
-                </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-2 block">{LABELS.gstNumber}</label>
+              <input
+                value={form.gstNumber}
+                onChange={(e) => setField("gstNumber", e.target.value)}
+                placeholder="e.g. 29ABCDE1234F1Z5"
+                className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
 
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-2 block">{LABELS.placeOfSupply}</label>
-                  <input
-                    value={form.placeOfSupply}
-                    onChange={(e) => setField("placeOfSupply", e.target.value)}
-                    className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
-                  />
-                </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-2 block">{LABELS.placeOfSupply}</label>
+              <input
+                value={form.placeOfSupply}
+                onChange={(e) => setField("placeOfSupply", e.target.value)}
+                placeholder="e.g. Kerala"
+                className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
 
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-2 block">{LABELS.paymentTerms}</label>
-                  <input
-                    value={form.paymentTerms}
-                    onChange={(e) => setField("paymentTerms", e.target.value)}
-                    className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
-                  />
-                </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-2 block">{LABELS.paymentTerms}</label>
+              <input
+                value={form.paymentTerms}
+                onChange={(e) => setField("paymentTerms", e.target.value)}
+                placeholder="e.g. Net 30"
+                className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
 
-                <div className="md:col-span-2">
-                  <div className="flex items-center justify-between gap-3 mb-2">
-                    <label className="text-xs font-medium text-muted-foreground block">{LABELS.billingAddress}</label>
-                    <button
-                      type="button"
-                      onClick={() => setField("billingAddress", form.siteAddress)}
-                      className="text-xs font-semibold text-primary hover:opacity-80 transition-opacity"
-                    >
-                      Same as Site Address
-                    </button>
-                  </div>
-                  <textarea
-                    value={form.billingAddress}
-                    onChange={(e) => setField("billingAddress", e.target.value)}
-                    rows={2}
-                    className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none"
-                  />
-                </div>
+            <div className="md:col-span-2">
+              <label className="text-xs font-medium text-muted-foreground mb-2 block">{LABELS.contactPersonsDetails}</label>
+              <textarea
+                value={form.contactPersonsDetails}
+                onChange={(e) => setField("contactPersonsDetails", e.target.value)}
+                placeholder="e.g. John - 9876543210, Manager"
+                rows={3}
+                className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none"
+              />
+            </div>
 
-                <div className="md:col-span-2">
-                  <label className="text-xs font-medium text-muted-foreground mb-2 block">{LABELS.contactPersonsDetails}</label>
-                  <textarea
-                    value={form.contactPersonsDetails}
-                    onChange={(e) => setField("contactPersonsDetails", e.target.value)}
-                    rows={3}
-                    className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none"
-                  />
-                </div>
-
-                <div className="md:col-span-2">
-                  <label className="text-xs font-medium text-muted-foreground mb-2 block">{LABELS.customerDocuments}</label>
-                  <input
-                    type="file"
-                    multiple
-                    onChange={(e) => handleFiles(e.target.files)}
-                    className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground file:mr-3 file:px-3 file:py-2 file:rounded-lg file:border-0 file:bg-primary/10 file:text-primary file:text-xs file:font-semibold"
-                  />
-                  {form.customerDocuments.length > 0 && (
-                    <div className="mt-3 space-y-2">
-                      {form.customerDocuments.map((d) => (
-                        <div key={d.id} className="flex items-center justify-between gap-3 p-3 rounded-lg bg-secondary/30 border border-border">
-                          <span className="text-sm text-card-foreground truncate">{d.fileName}</span>
-                          <button
-                            type="button"
-                            onClick={() => removeDoc(d.id)}
-                            className="px-2 py-1 rounded-lg text-xs font-semibold text-destructive hover:bg-destructive/10 transition-colors"
-                          >
-                            Remove
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </>
-            )}
           </div>
         </div>
 

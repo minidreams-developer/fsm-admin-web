@@ -1,15 +1,21 @@
-import { Search, AlertCircle, Plus, Users } from "lucide-react";
+import { Search, Plus, Users, ChevronLeft, ChevronRight, TrendingUp } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useEmployeesStore, type Employee } from "@/store/employeesStore";
 import { EmployeeFormModal } from "@/components/EmployeeFormModal";
 
+const PAGE_SIZE = 6;
+
 const EmployeesPage = () => {
   const { employees } = useEmployeesStore();
   const [search, setSearch] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
+  const [page, setPage] = useState(1);
   const navigate = useNavigate();
+
   const filtered = employees.filter((e) => e.name.toLowerCase().includes(search.toLowerCase()));
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -32,14 +38,14 @@ const EmployeesPage = () => {
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <input
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => { setSearch(e.target.value); setPage(1); }}
           placeholder="Search employees..."
           className="w-full pl-9 pr-4 py-2 rounded-lg bg-card text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20"
         />
       </div>
 
       {/* Overview Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-card rounded-xl p-5 card-shadow border border-border">
           <div className="flex items-start gap-3">
             <div className="p-2.5 bg-primary/10 rounded-lg flex-shrink-0">
@@ -75,17 +81,36 @@ const EmployeesPage = () => {
             </div>
           </div>
         </div>
-      </div>
+        <div className="bg-card rounded-xl p-5 card-shadow border border-border">
+          <div className="flex items-start gap-3">
+            <div className="p-2.5 bg-primary/10 rounded-lg flex-shrink-0">
+              <TrendingUp className="w-5 h-5 text-primary" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-medium text-muted-foreground mb-1">Avg Performance</p>
+              <p className="text-2xl font-bold text-card-foreground">
+                {employees.length > 0
+                  ? Math.round(employees.reduce((sum, e) => sum + (parseInt(e.performance) || 0), 0) / employees.length)
+                  : 0}%
+              </p>
+            </div>
+          </div>
+        </div>      </div>
 
-      {/* Productivity Cards Grid */}
+      {/* Employee Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {filtered.map((e) => {
-          const productivityRatio = (e.serviceHours / e.totalHours) * 100;
+        {paginated.map((e) => {
+          const productivity = e.totalHours > 0 ? Math.round((e.serviceHours / e.totalHours) * 100) : 0;
+          const perfValue = parseInt(e.performance) || 0;
+          const perfColor = perfValue >= 90 ? "text-success" : perfValue >= 75 ? "text-warning" : "text-destructive";
+          const perfBg = perfValue >= 90 ? "bg-success" : perfValue >= 75 ? "bg-warning" : "bg-destructive";
+          const perfLabel = perfValue >= 90 ? "Excellent" : perfValue >= 75 ? "Good" : "Needs Improvement";
+          const perfLabelColor = perfValue >= 90 ? "bg-success/10 text-success border-success/20" : perfValue >= 75 ? "bg-warning/10 text-warning border-warning/20" : "bg-destructive/10 text-destructive border-destructive/20";
           return (
             <div
               key={e.id}
               onClick={() => navigate(`/employees/${e.id}`)}
-              className="bg-card rounded-xl p-5 card-shadow hover:card-shadow-hover transition-all cursor-pointer group"
+              className="bg-card rounded-xl p-5 card-shadow hover:card-shadow-hover transition-all cursor-pointer group border border-border"
             >
               {/* Header */}
               <div className="flex items-start gap-4 mb-4">
@@ -93,34 +118,94 @@ const EmployeesPage = () => {
                   <span className="text-lg font-bold text-primary">{e.name[0]}</span>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-card-foreground">{e.name}</h3>
-                  <p className="text-xs text-muted-foreground">{e.role}</p>
+                  <div className="flex items-center justify-between gap-2">
+                    <h3 className="font-semibold text-card-foreground">{e.name}</h3>
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-semibold border ${perfLabelColor}`}>{perfLabel}</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">{e.role} • {e.id}</p>
                 </div>
               </div>
 
-              {/* Employee Details */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-medium text-muted-foreground">Employee ID</span>
-                  <span className="text-sm font-semibold text-card-foreground">{e.id}</span>
+              {/* Performance Bar */}
+              <div className="mb-4">
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-xs font-medium text-muted-foreground flex items-center gap-1"><TrendingUp className="w-3 h-3" /> Performance</span>
+                  <span className={`text-xs font-bold ${perfColor}`}>{e.performance}</span>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-medium text-muted-foreground">Full Name</span>
-                  <span className="text-sm font-semibold text-card-foreground">{e.name}</span>
+                <div className="w-full bg-secondary rounded-full h-2 overflow-hidden">
+                  <div className={`h-full ${perfBg} transition-all`} style={{ width: `${perfValue}%` }} />
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-medium text-muted-foreground">Phone Number</span>
-                  <span className="text-sm font-semibold text-card-foreground">{e.phone || "—"}</span>
+              </div>
+
+              {/* Productivity Bar */}
+              <div className="mb-4">
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-xs font-medium text-muted-foreground">Productivity</span>
+                  <span className="text-xs font-bold text-primary">{productivity}%</span>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-medium text-muted-foreground">Role/Position</span>
-                  <span className="text-sm font-semibold text-card-foreground">{e.role}</span>
+                <div className="w-full bg-secondary rounded-full h-2 overflow-hidden">
+                  <div className="h-full bg-primary transition-all" style={{ width: `${productivity}%` }} />
+                </div>
+              </div>
+
+              {/* Stats Row */}
+              <div className="grid grid-cols-3 gap-3 pt-3 border-t border-border">
+                <div className="text-center">
+                  <p className="text-xs text-muted-foreground mb-0.5">Services</p>
+                  <p className="text-sm font-bold text-card-foreground">{e.servicesCompleted}</p>
+                </div>
+                <div className="text-center border-x border-border">
+                  <p className="text-xs text-muted-foreground mb-0.5">Hours</p>
+                  <p className="text-sm font-bold text-card-foreground">{e.totalHours}h</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-xs text-muted-foreground mb-0.5">Projects</p>
+                  <p className="text-sm font-bold text-card-foreground">{e.projects}</p>
                 </div>
               </div>
             </div>
           );
         })}
       </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between">
+          <p className="text-xs text-muted-foreground">
+            Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filtered.length)} of {filtered.length} employees
+          </p>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className="p-2 rounded-lg border border-border bg-card hover:bg-secondary transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <ChevronLeft className="w-4 h-4 text-muted-foreground" />
+            </button>
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+              <button
+                key={p}
+                onClick={() => setPage(p)}
+                className={`w-8 h-8 rounded-lg text-xs font-semibold transition-colors ${
+                  p === page
+                    ? "text-white shadow-[0px_5px_12px_rgba(39,47,158,0.2)]"
+                    : "border border-border bg-card text-muted-foreground hover:bg-secondary"
+                }`}
+                style={p === page ? { background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" } : {}}
+              >
+                {p}
+              </button>
+            ))}
+            <button
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page === totalPages}
+              className="p-2 rounded-lg border border-border bg-card hover:bg-secondary transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <ChevronRight className="w-4 h-4 text-muted-foreground" />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Employee Form Modal */}
       <EmployeeFormModal

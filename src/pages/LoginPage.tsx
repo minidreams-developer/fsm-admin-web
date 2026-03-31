@@ -1,15 +1,18 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Bug, Eye, EyeOff } from "lucide-react";
+import { login } from "@/lib/auth";
 
 const LoginPage = () => {
   const navigate = useNavigate();
   const [showPw, setShowPw] = useState(false);
   const [email, setEmail] = useState("");
   const [pw, setPw] = useState("");
+  const [error, setError] = useState("");
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
+    login();
     navigate("/");
   };
 
@@ -53,6 +56,7 @@ const LoginPage = () => {
           <button type="submit" className="w-full py-2.5 rounded-lg bg-primary text-primary-foreground font-semibold text-sm hover:opacity-90 transition-opacity">
             Sign In
           </button>
+          {error && <p className="text-center text-xs text-destructive">{error}</p>}
           <p className="text-center text-xs text-muted-foreground">Forgot your password? Contact IT Support</p>
         </form>
       </div>

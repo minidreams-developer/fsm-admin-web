@@ -7,6 +7,7 @@ import { z } from "zod";
 import { toast } from "sonner";
 import type { WorkOrder } from "@/store/projectsStore";
 import { useProjectsStore } from "@/store/projectsStore";
+import { useEmployeesStore } from "@/store/employeesStore";
 
 const paymentSchema = z.object({
   paymentMethod: z.enum(["Cash", "UPI", "Check", "Bank Transfer"]),
@@ -25,6 +26,7 @@ type Props = {
 
 export function PaymentUpdateModal({ open, workOrder, onClose }: Props) {
   const { updateWorkOrder } = useProjectsStore();
+  const { employees } = useEmployeesStore();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const {
@@ -126,13 +128,16 @@ export function PaymentUpdateModal({ open, workOrder, onClose }: Props) {
           </div>
 
           <div>
-            <label className="text-xs font-medium text-muted-foreground mb-2 block">Paid By</label>
-            <input
-              type="text"
-              placeholder="Enter name"
+            <label className="text-xs font-medium text-muted-foreground mb-2 block">Collect By</label>
+            <select
               {...register("paidBy")}
               className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
-            />
+            >
+              <option value="">Select employee</option>
+              {employees.map((emp) => (
+                <option key={emp.id} value={emp.name}>{emp.name} — {emp.role}</option>
+              ))}
+            </select>
             {errors.paidBy && (
               <p className="text-xs text-red-500 mt-1">{errors.paidBy.message}</p>
             )}

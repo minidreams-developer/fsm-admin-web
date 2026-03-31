@@ -1,12 +1,166 @@
 import { KPICard } from "@/components/KPICard";
 import { StatusBadge } from "@/components/StatusBadge";
-import { FolderKanban, CreditCard, Wallet, AlertTriangle, Plus, Wrench, Eye, Package, Filter, Calendar, ChevronDown, X, Search } from "lucide-react";
+import { FolderKanban, CreditCard, Wallet, AlertTriangle, Plus, Wrench, Eye, Package, Filter, Calendar, ChevronDown, X, Search, TrendingUp, CheckCircle2, Clock, AlertCircle } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from "recharts";
 import { Link, useNavigate } from "react-router-dom";
 import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import { useLeadsStore, type UrgencyLevel } from "@/store/leadsStore";
+import { useProjectsStore } from "@/store/projectsStore";
+
+function WorkOrderReports() {
+  const { workOrders } = useProjectsStore();
+
+  const total = workOrders.length;
+  const open = workOrders.filter(w => w.status === "Open").length;
+  const scheduled = workOrders.filter(w => w.status === "Scheduled").length;
+  const completed = workOrders.filter(w => w.status === "Completed").length;
+
+  const totalRevenue = workOrders.reduce((sum, w) => sum + (parseInt(w.totalValue.replace(/[₹,\s]/g, "")) || 0), 0);
+  const totalCollected = workOrders.reduce((sum, w) => sum + (parseInt(w.paidAmount.replace(/[₹,\s]/g, "")) || 0), 0);
+  const totalPending = totalRevenue - totalCollected;
+  const collectionRate = totalRevenue > 0 ? Math.round((totalCollected / totalRevenue) * 100) : 0;
+
+  const statusData = [
+    { name: "Open", value: open, color: "hsl(38, 92%, 50%)" },
+    { name: "Scheduled", value: scheduled, color: "hsl(236, 60%, 39%)" },
+    { name: "Completed", value: completed, color: "hsl(142, 72%, 40%)" },
+  ];
+
+  // Top customers by revenue
+  const customerRevenue: Record<string, number> = {};
+  workOrders.forEach(w => {
+    const val = parseInt(w.totalValue.replace(/[₹,\s]/g, "")) || 0;
+    customerRevenue[w.customer] = (customerRevenue[w.customer] || 0) + val;
+  });
+  const topCustomers = Object.entries(customerRevenue)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([name, value]) => ({ name, value }));
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <h3 className="text-base font-bold text-card-foreground">Work Order Reports</h3>
+        <p className="text-xs text-muted-foreground">Overview of all work orders and revenue</p>
+      </div>
+
+      {/* Summary Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="bg-card rounded-xl p-4 card-shadow border border-border">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="p-2 bg-primary/10 rounded-lg"><FolderKanban className="w-4 h-4 text-primary" /></div>
+            <p className="text-xs text-muted-foreground">Total Orders</p>
+          </div>
+          <p className="text-2xl font-bold text-card-foreground">{total}</p>
+        </div>
+        <div className="bg-card rounded-xl p-4 card-shadow border border-border">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="p-2 bg-success/10 rounded-lg"><CheckCircle2 className="w-4 h-4 text-success" /></div>
+            <p className="text-xs text-muted-foreground">Completed</p>
+          </div>
+          <p className="text-2xl font-bold text-success">{completed}</p>
+        </div>
+        <div className="bg-card rounded-xl p-4 card-shadow border border-border">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="p-2 bg-warning/10 rounded-lg"><Clock className="w-4 h-4 text-warning" /></div>
+            <p className="text-xs text-muted-foreground">Scheduled</p>
+          </div>
+          <p className="text-2xl font-bold text-warning">{scheduled}</p>
+        </div>
+        <div className="bg-card rounded-xl p-4 card-shadow border border-border">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="p-2 bg-destructive/10 rounded-lg"><AlertCircle className="w-4 h-4 text-destructive" /></div>
+            <p className="text-xs text-muted-foreground">Open</p>
+          </div>
+          <p className="text-2xl font-bold text-destructive">{open}</p>
+        </div>
+      </div>
+
+      {/* Revenue + Status Charts */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Revenue Summary */}
+        <div className="bg-card rounded-xl p-5 card-shadow border border-border">
+          <h4 className="text-sm font-semibold text-card-foreground mb-4 flex items-center gap-2"><TrendingUp className="w-4 h-4" /> Revenue Summary</h4>
+          <div className="space-y-4">
+            <div>
+              <div className="flex justify-between text-xs mb-1.5">
+                <span className="text-muted-foreground">Total Revenue</span>
+                <span className="font-bold text-card-foreground">₹ {totalRevenue.toLocaleString()}</span>
+              </div>
+              <div className="w-full bg-secondary rounded-full h-2"><div className="h-full bg-primary rounded-full" style={{ width: "100%" }} /></div>
+            </div>
+            <div>
+              <div className="flex justify-between text-xs mb-1.5">
+                <span className="text-muted-foreground">Collected</span>
+                <span className="font-bold text-success">₹ {totalCollected.toLocaleString()}</span>
+              </div>
+              <div className="w-full bg-secondary rounded-full h-2"><div className="h-full bg-success rounded-full" style={{ width: `${collectionRate}%` }} /></div>
+            </div>
+            <div>
+              <div className="flex justify-between text-xs mb-1.5">
+                <span className="text-muted-foreground">Pending</span>
+                <span className="font-bold text-destructive">₹ {totalPending.toLocaleString()}</span>
+              </div>
+              <div className="w-full bg-secondary rounded-full h-2"><div className="h-full bg-destructive rounded-full" style={{ width: `${100 - collectionRate}%` }} /></div>
+            </div>
+            <div className="pt-2 border-t border-border flex justify-between text-xs">
+              <span className="text-muted-foreground">Collection Rate</span>
+              <span className="font-bold text-primary">{collectionRate}%</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Status Distribution */}
+        <div className="bg-card rounded-xl p-5 card-shadow border border-border">
+          <h4 className="text-sm font-semibold text-card-foreground mb-4">Status Distribution</h4>
+          <div className="flex items-center justify-center gap-6">
+            <ResponsiveContainer width={160} height={160}>
+              <PieChart>
+                <Pie data={statusData} cx="50%" cy="50%" innerRadius={45} outerRadius={70} dataKey="value" strokeWidth={0}>
+                  {statusData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
+                </Pie>
+              </PieChart>
+            </ResponsiveContainer>
+            <div className="space-y-3">
+              {statusData.map((s) => (
+                <div key={s.name} className="flex items-center gap-2 text-sm">
+                  <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: s.color }} />
+                  <span className="text-muted-foreground text-xs">{s.name}</span>
+                  <span className="font-bold text-card-foreground ml-1">{s.value}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Top Customers */}
+      {topCustomers.length > 0 && (
+        <div className="bg-card rounded-xl p-5 card-shadow border border-border">
+          <h4 className="text-sm font-semibold text-card-foreground mb-4">Top Customers by Revenue</h4>
+          <div className="space-y-3">
+            {topCustomers.map((c, i) => {
+              const pct = totalRevenue > 0 ? Math.round((c.value / totalRevenue) * 100) : 0;
+              return (
+                <div key={c.name}>
+                  <div className="flex justify-between text-xs mb-1">
+                    <span className="font-medium text-card-foreground">{i + 1}. {c.name}</span>
+                    <span className="text-muted-foreground">₹ {c.value.toLocaleString()} ({pct}%)</span>
+                  </div>
+                  <div className="w-full bg-secondary rounded-full h-1.5">
+                    <div className="h-full bg-primary rounded-full" style={{ width: `${pct}%` }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 const revenueData = [
   { day: "Mon", expected: 4200, collected: 3800 },
@@ -366,65 +520,6 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Recent Services Table */}
-      <div className="bg-card rounded-xl card-shadow">
-        <div className="p-5 border-b border-border flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-card-foreground">Recent Transactions</h3>
-          <div className="relative" ref={servicesTableDropdownRef}>
-            <button
-              onClick={() => setShowServicesTableDropdown(!showServicesTableDropdown)}
-              className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-card-foreground bg-secondary/50 hover:bg-secondary rounded-lg transition-colors"
-            >
-              <Filter className="w-3 h-3" />
-              {servicesTableFilter}
-              <ChevronDown className="w-3 h-3" />
-            </button>
-            {showServicesTableDropdown && (
-              <div className="absolute right-0 top-full mt-1 bg-card border border-border rounded-lg shadow-lg z-10 min-w-[120px]">
-                {servicesTableOptions.map((option) => (
-                  <button
-                    key={option}
-                    onClick={() => {
-                      setServicesTableFilter(option);
-                      setShowServicesTableDropdown(false);
-                    }}
-                    className={`w-full text-left px-3 py-2 text-xs hover:bg-secondary transition-colors first:rounded-t-lg last:rounded-b-lg ${
-                      servicesTableFilter === option ? 'text-primary font-medium bg-primary/5' : 'text-card-foreground'
-                    }`}
-                  >
-                    {option}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-border">
-              {["Service ID", "Customer", "Technician", "Payment Mode", "Amount", "Status", "Action"].map((h) => (
-                <th key={h} className="text-left px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {recentServices.map((s, i) => (
-              <tr key={i} className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors">
-                <td className="px-3 py-3 font-semibold text-primary text-xs">{s.id}</td>
-                <td className="px-3 py-3 text-card-foreground text-xs">{s.customer}</td>
-                <td className="px-3 py-3 text-muted-foreground text-xs">{s.tech}</td>
-                <td className="px-3 py-3 text-muted-foreground text-xs">{s.mode}</td>
-                <td className="px-3 py-3 font-semibold text-card-foreground text-xs">{s.amount}</td>
-                <td className="px-3 py-3"><StatusBadge label={s.status} variant={s.badge} /></td>
-                <td className="px-3 py-3">
-                  <button className="text-xs font-semibold text-primary hover:underline">{s.action}</button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
       {/* Add New Lead Modal */}
       {showAddLeadModal && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4 overflow-hidden bg-black/75 rounded-[20px]">
@@ -672,8 +767,58 @@ const Dashboard = () => {
         </div>,
         document.body
       )}
-    </div>
-  );
+
+      {/* Work Order Reports */}
+      <WorkOrderReports />
+
+      {/* Recent Transactions */}
+      <div className="bg-card rounded-xl card-shadow">
+        <div className="p-5 border-b border-border flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-card-foreground">Recent Transactions</h3>
+          <div className="relative" ref={servicesTableDropdownRef}>
+            <button
+              onClick={() => setShowServicesTableDropdown(!showServicesTableDropdown)}
+              className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-card-foreground bg-secondary/50 hover:bg-secondary rounded-lg transition-colors"
+            >
+              <Filter className="w-3 h-3" />
+              {servicesTableFilter}
+              <ChevronDown className="w-3 h-3" />
+            </button>
+            {showServicesTableDropdown && (
+              <div className="absolute right-0 top-full mt-1 bg-card border border-border rounded-lg shadow-lg z-10 min-w-[120px]">
+                {servicesTableOptions.map((option) => (
+                  <button key={option} onClick={() => { setServicesTableFilter(option); setShowServicesTableDropdown(false); }}
+                    className={`w-full text-left px-3 py-2 text-xs hover:bg-secondary transition-colors first:rounded-t-lg last:rounded-b-lg ${servicesTableFilter === option ? 'text-primary font-medium bg-primary/5' : 'text-card-foreground'}`}
+                  >{option}</button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-border">
+              {["Service ID", "Customer", "Technician", "Payment Mode", "Amount", "Status", "Action"].map((h) => (
+                <th key={h} className="text-left px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {recentServices.map((s, i) => (
+              <tr key={i} className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors">
+                <td className="px-3 py-3 font-semibold text-primary text-xs">{s.id}</td>
+                <td className="px-3 py-3 text-card-foreground text-xs">{s.customer}</td>
+                <td className="px-3 py-3 text-muted-foreground text-xs">{s.tech}</td>
+                <td className="px-3 py-3 text-muted-foreground text-xs">{s.mode}</td>
+                <td className="px-3 py-3 font-semibold text-card-foreground text-xs">{s.amount}</td>
+                <td className="px-3 py-3"><StatusBadge label={s.status} variant={s.badge} /></td>
+                <td className="px-3 py-3"><button className="text-xs font-semibold text-primary hover:underline">{s.action}</button></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>  );
 };
 
 export default Dashboard;

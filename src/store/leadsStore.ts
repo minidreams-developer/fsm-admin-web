@@ -12,7 +12,7 @@ export type Lead = {
   address: string;
   services: string[];
   amount: number | null;
-  expectedDateTime: string;
+  expectedDateTime?: string;
   leadSource: string;
   urgencyLevel: UrgencyLevel;
   branch: string;
@@ -26,6 +26,10 @@ export type Lead = {
   quoteContract?: string;
   quoteNotes?: string;
   quoteLost?: boolean;
+  assignedOwner?: string;
+  leadIncharge?: string;
+  nextFollowUpDate?: string;
+  reminders?: { id: string; date: string; text: string; createdAt: string }[];
 };
 
 interface LeadsStore {

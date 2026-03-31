@@ -1,22 +1,25 @@
 import { useLocation, Link, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, Users, FolderKanban, Wrench, CreditCard,
-  Package, UserCog, UserCircle, FileText, LogOut, Bug, Building2, Boxes, ChevronDown
+  Package, UserCog, UserCircle, FileText, LogOut, Bug, Building2, Boxes, ChevronDown, Shield
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { FC } from "react";
 import { useState } from "react";
+import { logout } from "@/lib/auth";
 
 const menuItems = [
   { label: "Dashboard", icon: LayoutDashboard, path: "/" },
-  { label: "Leads", icon: Users, path: "/leads" },
-  { label: "Work Orders", icon: FolderKanban, path: "/projects" },
-  { label: "Service Management", icon: Wrench, path: "/service-management" },
-  { label: "Service Appointments", icon: Wrench, path: "/services" },
-  { label: "Payments", icon: CreditCard, path: "/payments" },
-  { label: "Reports", icon: FileText, path: "/reports" },
-  { label: "Employees", icon: UserCog, path: "/employees" },
   { label: "Customers", icon: UserCircle, path: "/customers" },
+  { label: "Employees", icon: UserCog, path: "/employees" },
+  { label: "Leads", icon: Users, path: "/leads" },
+  { label: "Service Management", icon: Wrench, path: "/service-management" },
+  // { label: "Service Appointments", icon: Wrench, path: "/services" },
+  
+  { label: "Work Orders", icon: FolderKanban, path: "/projects" },
+  { label: "Payments", icon: CreditCard, path: "/payments" },
+  { label: "Role", icon: Shield, path: "/roles" },
+  // { label: "Reports", icon: FileText, path: "/reports" },
 ];
 
 const inventoryMenuItems = [
@@ -126,6 +129,7 @@ export const AppSidebar: FC<AppSidebarProps> = ({ className, onNavigate, collaps
           )}
           <button
             onClick={() => {
+              logout();
               navigate("/login");
               onNavigate?.();
             }}

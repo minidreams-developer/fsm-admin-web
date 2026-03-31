@@ -9,6 +9,7 @@ const statusMap = {
   Scheduled: "success",
   Open: "warning",
   Completed: "neutral",
+  Converted: "info",
 } as const;
 
 const ProjectsPage = () => {
@@ -18,6 +19,12 @@ const ProjectsPage = () => {
   const { getLead, updateLead } = useLeadsStore();
   const [search, setSearch] = useState("");
   const [dateFilter, setDateFilter] = useState<"All" | "Due Today">("All");
+  const [statusFilter, setStatusFilter] = useState<"All" | "Open" | "Scheduled" | "Completed" | "Converted">("All");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [showDateFilter, setShowDateFilter] = useState(false);
+  const [appliedStart, setAppliedStart] = useState("");
+  const [appliedEnd, setAppliedEnd] = useState("");
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [convertedLeadName, setConvertedLeadName] = useState("");
 
@@ -59,8 +66,12 @@ const ProjectsPage = () => {
       wo.address.toLowerCase().includes(q);
 
     const matchDate = dateFilter === "All" ? true : isDueToday(wo);
+    const matchStatus = statusFilter === "All" || wo.status === statusFilter;
 
-    return matchSearch && matchDate;
+    const matchStart = !appliedStart || (wo.start && wo.start >= appliedStart);
+    const matchEnd = !appliedEnd || (wo.end && wo.end <= appliedEnd);
+
+    return matchSearch && matchDate && matchStatus && matchStart && matchEnd;
   });
 
   const getPaymentProgress = (project: WorkOrder) => {
@@ -164,114 +175,62 @@ const ProjectsPage = () => {
         </div>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
-        <div className="relative w-full sm:max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by name, ID, or location..."
-            className="w-full pl-10 pr-4 py-2 border border-border rounded-lg bg-background text-card-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-          />
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
+          <div className="relative w-full sm:max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search by name, ID, or location..."
+              className="w-full pl-10 pr-4 py-2 border border-border rounded-lg bg-background text-card-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+            />
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="px-3 py-2 rounded-lg border border-border bg-card text-xs text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20" />
+            <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="px-3 py-2 rounded-lg border border-border bg-card text-xs text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20" />
+            <button
+              onClick={() => { setAppliedStart(startDate); setAppliedEnd(endDate); }}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold text-white transition-all hover:opacity-90 shadow-[0px_5px_12px_rgba(39,47,158,0.2)]"
+              style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}
+            >
+              <Calendar className="w-3.5 h-3.5" />
+              Filter
+            </button>
+            <button
+              onClick={() => { setStartDate(""); setEndDate(""); setAppliedStart(""); setAppliedEnd(""); }}
+              className="px-4 py-2 rounded-lg text-xs font-semibold border border-border bg-card text-muted-foreground hover:text-destructive hover:border-destructive/30 transition-colors"
+            >
+              Reset
+            </button>
+          </div>
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          {(["All", "Due Today"] as const).map((t) => (
-            <button
-              key={t}
-              type="button"
-              onClick={() => setDateFilter(t)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
-                dateFilter === t
-                  ? "bg-primary/10 border-primary/20 text-primary"
-                  : "bg-card border-border text-muted-foreground hover:text-card-foreground"
-              }`}
+          {(["All", "Open", "Scheduled", "Completed", "Converted"] as const).map((s) => (
+            <button key={s} type="button" onClick={() => setStatusFilter(s)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap ${statusFilter === s ? "text-white shadow-[0px_5px_12px_rgba(39,47,158,0.2)]" : "bg-card border border-border text-muted-foreground hover:text-card-foreground"}`}
+              style={statusFilter === s ? { background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" } : {}}
             >
-              {t}
+              {s} ({s === "All" ? workOrders.length : workOrders.filter(w => w.status === s).length})
             </button>
           ))}
         </div>
       </div>
 
-      {/* Work Orders Card Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {filtered.map((wo) => {
-          const paymentProgress = getPaymentProgress(wo);
-          return (
-            <div
-              key={wo.id}
-              onClick={() => navigate(`/work-order/${wo.id}`)}
-              className="bg-card rounded-xl p-5 card-shadow hover:card-shadow-hover transition-all cursor-pointer group border border-border"
-            >
-              {/* Header */}
-              <div className="flex items-start gap-4 mb-4">
-                <div className="w-12 h-12 rounded-full bg-secondary flex items-center justify-center shrink-0 group-hover:bg-primary/10 transition-colors">
-                  <span className="text-lg font-bold text-primary">{wo.customer[0]}</span>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-card-foreground">{wo.customer}</h3>
-                  <p className="text-xs text-muted-foreground truncate">{wo.id}</p>
-                </div>
-              </div>
-
-              {/* Service Info */}
-              <div className="space-y-3 mb-4 pb-4 border-b border-border">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground flex items-center gap-1">
-                    <Clipboard className="w-3 h-3" />
-                    Service Type
-                  </span>
-                  <span className="text-sm font-semibold text-card-foreground">{wo.serviceType}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground flex items-center gap-1">
-                    <Calendar className="w-3 h-3" />
-                    Status
-                  </span>
-                  <StatusBadge label={wo.status} variant={statusMap[wo.status as keyof typeof statusMap] || "neutral"} />
-                </div>
-              </div>
-
-              {/* Payment Info */}
-              <div className="space-y-3 mb-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground flex items-center gap-1">
-                    <CreditCard className="w-3 h-3" />
-                    Total Value
-                  </span>
-                  <span className="text-sm font-semibold text-primary">{wo.totalValue}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground">Payment Progress</span>
-                  <span className="text-sm font-semibold text-card-foreground">{paymentProgress}%</span>
-                </div>
-                <div className="w-full bg-secondary rounded-full h-2 overflow-hidden">
-                  <div
-                    className="h-full bg-primary transition-all"
-                    style={{ width: `${paymentProgress}%` }}
-                  />
-                </div>
-              </div>
-
-              {/* Address */}
-              <div className="text-xs text-muted-foreground truncate">{wo.address}</div>
-            </div>
-          );
-        })}
-      </div>
-
+      {/* Work Orders Table */}
       <div className="bg-card rounded-xl card-shadow overflow-hidden">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border">
-              {["Work Order ID", "Customer", "Service Type", "Status", "Payment", "Next Service", "View Details"].map((h) => (
+              {["Work Order ID", "Customer", "Services", "Start Date", "End Date", "Status"].map((h) => (
                 <th key={h} className="text-left px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {filtered.map((project) => (
-              <tr key={project.id} className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors">
+              <tr key={project.id} onClick={() => navigate(`/work-order/${project.id}`)} className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors cursor-pointer">
                 <td className="px-3 py-3">
                   <div className="font-semibold text-primary text-xs">{project.id}</div>
                 </td>
@@ -280,32 +239,22 @@ const ProjectsPage = () => {
                   <div className="text-xs text-muted-foreground truncate">{project.address}</div>
                 </td>
                 <td className="px-3 py-3">
-                  <div className="text-xs text-card-foreground">{project.serviceType}</div>
+                  {(() => {
+                    const count = project.serviceTypes?.length
+                      ? project.serviceTypes.length
+                      : project.serviceType?.trim() ? 1 : 0;
+                    return (
+                      <div className="flex items-center gap-2">
+                        <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-primary/10 text-primary text-xs font-bold">{count}</span>
+                        <span className="text-xs text-muted-foreground">{count === 1 ? "Service" : "Services"}</span>
+                      </div>
+                    );
+                  })()}
                 </td>
+                <td className="px-3 py-3 text-xs text-muted-foreground">{project.start || "—"}</td>
+                <td className="px-3 py-3 text-xs text-muted-foreground">{project.end || "—"}</td>
                 <td className="px-3 py-3">
                   <StatusBadge label={project.status} variant={statusMap[project.status as keyof typeof statusMap] || "neutral"} />
-                </td>
-                <td className="px-3 py-3">
-                  <div className="flex items-center gap-2">
-                    <div className="flex-1 bg-secondary rounded-full h-2 overflow-hidden">
-                      <div
-                        className="h-full bg-primary transition-all"
-                        style={{ width: `${getPaymentProgress(project)}%` }}
-                      />
-                    </div>
-                    <span className="text-xs font-semibold text-muted-foreground">{getPaymentProgress(project)}%</span>
-                  </div>
-                </td>
-                <td className="px-3 py-3">
-                  <div className="text-xs text-card-foreground">{project.nextService}</div>
-                </td>
-                <td className="px-3 py-3">
-                  <button
-                    onClick={() => navigate(`/work-order/${project.id}`)}
-                    className="inline-flex items-center justify-center p-2 rounded-lg hover:bg-secondary transition-colors text-primary"
-                  >
-                    <Eye className="w-4 h-4" />
-                  </button>
                 </td>
               </tr>
             ))}

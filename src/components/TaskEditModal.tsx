@@ -5,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
 import { useTasksStore, type Task } from "@/store/tasksStore";
+import { useEmployeesStore } from "@/store/employeesStore";
 
 const taskSchema = z.object({
   title: z.string().min(1, "Task title is required"),
@@ -26,6 +27,7 @@ interface TaskEditModalProps {
 
 export function TaskEditModal({ task, isOpen, onClose, onSave }: TaskEditModalProps) {
   const { updateTask } = useTasksStore();
+  const { employees } = useEmployeesStore();
   const {
     register,
     handleSubmit,
@@ -119,11 +121,15 @@ export function TaskEditModal({ task, isOpen, onClose, onSave }: TaskEditModalPr
 
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-2 block">Assigned To *</label>
-            <input
-              type="text"
+            <select
               {...register("assignedTo")}
               className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
-            />
+            >
+              <option value="">Unassigned</option>
+              {employees.map((emp) => (
+                <option key={emp.id} value={emp.name}>{emp.name} — {emp.role}</option>
+              ))}
+            </select>
             {errors.assignedTo && <p className="text-xs text-red-500 mt-1">{errors.assignedTo.message}</p>}
           </div>
 
