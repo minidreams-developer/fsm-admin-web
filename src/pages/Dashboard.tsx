@@ -1,16 +1,23 @@
 import { KPICard } from "@/components/KPICard";
 import { StatusBadge } from "@/components/StatusBadge";
-import { FolderKanban, CreditCard, Wallet, AlertTriangle, Plus, Wrench, Eye, Package, Filter, Calendar, ChevronDown, X, Search, TrendingUp, CheckCircle2, Clock, AlertCircle } from "lucide-react";
+import { FolderKanban, CreditCard, Wallet, AlertTriangle, Plus, Wrench, Eye, Package, Filter, Calendar, ChevronDown, X, Search, TrendingUp, CheckCircle2, Clock, AlertCircle, ClipboardList } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from "recharts";
 import { Link, useNavigate } from "react-router-dom";
 import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { toast } from "sonner";
-import { useLeadsStore, type UrgencyLevel } from "@/store/leadsStore";
+import { useLeadsStore, type UrgencyLevel, type LeadStatus } from "@/store/leadsStore";
 import { useProjectsStore } from "@/store/projectsStore";
+import { useInventoryStore } from "@/store/inventoryStore";
+import type { WorkOrder } from "@/store/projectsStore";
 
-function WorkOrderReports() {
-  const { workOrders } = useProjectsStore();
+const allDummyCustomers = Array.from({ length: 50 }, (_, i) => ({
+  name: ["Praveen Kumar", "Hotel Grand", "Lakshmi Stores", "Suresh Nair", "Ramesh Singh", "Anitha Raj", "Vijay Enterprises", "Meena Textiles", "Ravi & Sons", "Deepa Clinic"][i % 10] + (i >= 10 ? ` ${Math.floor(i / 10) + 1}` : ""),
+  value: Math.max(500, 52000 - i * 980),
+}));
+
+function WorkOrderReports({ workOrders }: { workOrders: WorkOrder[] }) {
+  const [showAllCustomers, setShowAllCustomers] = useState(false);
 
   const total = workOrders.length;
   const open = workOrders.filter(w => w.status === "Open").length;
@@ -58,7 +65,7 @@ function WorkOrderReports() {
         <div className="bg-card rounded-xl p-4 card-shadow border border-border">
           <div className="flex items-center gap-2 mb-2">
             <div className="p-2 bg-success/10 rounded-lg"><CheckCircle2 className="w-4 h-4 text-success" /></div>
-            <p className="text-xs text-muted-foreground">Completed</p>
+            <p className="text-xs text-muted-foreground">Billing</p>
           </div>
           <p className="text-2xl font-bold text-success">{completed}</p>
         </div>
@@ -139,12 +146,23 @@ function WorkOrderReports() {
       {/* Top Customers */}
       {topCustomers.length > 0 && (
         <div className="bg-card rounded-xl p-5 card-shadow border border-border">
-          <h4 className="text-sm font-semibold text-card-foreground mb-4">Top Customers by Revenue</h4>
-          <div className="space-y-3">
-            {topCustomers.map((c, i) => {
-              const pct = totalRevenue > 0 ? Math.round((c.value / totalRevenue) * 100) : 0;
+          <div className="flex items-center justify-between mb-4">
+            <h4 className="text-sm font-semibold text-card-foreground">Top Customers by Revenue</h4>
+            <button
+              onClick={() => setShowAllCustomers(!showAllCustomers)}
+              className="px-3 py-1 rounded-lg text-xs font-semibold text-white transition-all hover:opacity-90"
+              style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}
+            >
+              {showAllCustomers ? "Show Less" : "See More"}
+            </button>
+          </div>
+          <div className={`space-y-3 overflow-y-auto transition-all ${showAllCustomers ? "max-h-[400px]" : ""}`}>
+            {(showAllCustomers ? allDummyCustomers : topCustomers).map((c, i) => {
+              const pct = showAllCustomers
+                ? Math.round((c.value / allDummyCustomers[0].value) * 100)
+                : totalRevenue > 0 ? Math.round((c.value / totalRevenue) * 100) : 0;
               return (
-                <div key={c.name}>
+                <div key={c.name + i}>
                   <div className="flex justify-between text-xs mb-1">
                     <span className="font-medium text-card-foreground">{i + 1}. {c.name}</span>
                     <span className="text-muted-foreground">₹ {c.value.toLocaleString()} ({pct}%)</span>
@@ -178,14 +196,6 @@ const taskData = [
   { name: "Overdue", value: 5, color: "hsl(0, 72%, 51%)" },
 ];
 
-const inventoryData = [
-  { name: "Cypermethrin", stock: 45, reorder: 20 },
-  { name: "Bifenthrin", stock: 12, reorder: 20 },
-  { name: "Gel Bait", stock: 8, reorder: 15 },
-  { name: "Termiticide", stock: 32, reorder: 10 },
-  { name: "Rodent Blocks", stock: 5, reorder: 10 },
-];
-
 const serviceData = [
   { day: "Mon", scheduled: 8, completed: 7 },
   { day: "Tue", scheduled: 6, completed: 6 },
@@ -209,10 +219,103 @@ const quickActions = [
   { label: "Quick Stock Update", icon: Package, path: "/inventory", color: "text-white hover:opacity-90 shadow-[0px_5px_12px_rgba(39,47,158,0.2)]", style: { background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" } },
 ];
 
+const statusBadgeMap: Record<LeadStatus, "info" | "warning" | "success" | "error" | "neutral"> = {
+  New: "info", Contacted: "warning", "Quote Sent": "warning", Converted: "success", Lost: "error",
+};
+const leadStatuses: (LeadStatus | "All")[] = ["All", "New", "Contacted", "Quote Sent", "Converted", "Lost"];
+
+function formatLeadId(id: number) {
+  return `LEAD-${String(id).padStart(4, "0")}`;
+}
+
+function DashboardLeadsSection() {
+  const navigate = useNavigate();
+  const { leads } = useLeadsStore();
+  const [filter, setFilter] = useState<LeadStatus | "All">("All");
+  const [search, setSearch] = useState("");
+
+  const filtered = leads.filter((l) => {
+    const matchStatus = filter === "All" || l.status === filter;
+    const matchSearch = l.name.toLowerCase().includes(search.toLowerCase()) || l.phone.includes(search);
+    return matchStatus && matchSearch;
+  });
+
+  return (
+    <div className="bg-card rounded-xl card-shadow overflow-hidden">
+      <div className="p-5 border-b border-border">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <h3 className="text-sm font-semibold text-card-foreground">Leads</h3>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+              <input
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder="Search leads..."
+                className="pl-8 pr-3 py-1.5 rounded-lg bg-secondary border border-border text-xs text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 w-44"
+              />
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {leadStatuses.map(s => (
+                <button
+                  key={s}
+                  onClick={() => setFilter(s)}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap ${filter === s ? "text-white" : "bg-secondary text-muted-foreground hover:text-foreground border border-border"}`}
+                  style={filter === s ? { background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" } : {}}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+      <div className="w-full overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-border">
+              {["Lead ID", "Customer Name", "Services", "Urgency", "Lead Incharge", "Status"].map(h => (
+                <th key={h} className="text-left px-3 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.length === 0 ? (
+              <tr><td colSpan={6} className="px-3 py-6 text-center text-xs text-muted-foreground">No leads found.</td></tr>
+            ) : filtered.map(l => (
+              <tr
+                key={l.id}
+                onClick={() => navigate(`/leads/${l.id}`)}
+                className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors cursor-pointer"
+              >
+                <td className="px-3 py-2.5 font-semibold text-primary text-xs">{formatLeadId(l.id)}</td>
+                <td className="px-3 py-2.5 font-medium text-card-foreground text-xs">{l.name}</td>
+                <td className="px-3 py-2.5">
+                  <div className="flex items-center gap-1.5">
+                    <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-primary/10 text-primary text-xs font-bold">{l.services.length}</span>
+                    <span className="text-xs text-muted-foreground">{l.services.length === 1 ? "Service" : "Services"}</span>
+                  </div>
+                </td>
+                <td className="px-3 py-2.5 text-muted-foreground text-xs">{l.urgencyLevel}</td>
+                <td className="px-3 py-2.5 text-muted-foreground text-xs">{l.assignedOwner || "—"}</td>
+                <td className="px-3 py-2.5"><StatusBadge label={l.status} variant={statusBadgeMap[l.status]} /></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 const Dashboard = () => {
   const navigate = useNavigate();
   const { addLead } = useLeadsStore();
   const { workOrders } = useProjectsStore();
+  const { inventory } = useInventoryStore();
+  const [stockBranchFilter, setStockBranchFilter] = useState("All");
+  const [showStockBranchDropdown, setShowStockBranchDropdown] = useState(false);
+  const stockBranchDropdownRef = useRef<HTMLDivElement>(null);
   const [revenueFilter, setRevenueFilter] = useState("This Week");
   const [serviceFilter, setServiceFilter] = useState("This Week");
   const [servicesTableFilter, setServicesTableFilter] = useState("Recent");
@@ -222,6 +325,31 @@ const Dashboard = () => {
   const [showServicesTableDropdown, setShowServicesTableDropdown] = useState(false);
   const [showServiceBreakdownDropdown, setShowServiceBreakdownDropdown] = useState(false);
   const [showAddLeadModal, setShowAddLeadModal] = useState(false);
+
+  // Global date range filter
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [appliedFrom, setAppliedFrom] = useState("");
+  const [appliedTo, setAppliedTo] = useState("");
+
+  const applyDateFilter = () => {
+    setAppliedFrom(dateFrom);
+    setAppliedTo(dateTo);
+  };
+  const resetDateFilter = () => {
+    setDateFrom("");
+    setDateTo("");
+    setAppliedFrom("");
+    setAppliedTo("");
+  };
+
+  const filteredWorkOrders = workOrders.filter(w => {
+    if (!appliedFrom && !appliedTo) return true;
+    const d = new Date(w.start);
+    if (appliedFrom && d < new Date(appliedFrom)) return false;
+    if (appliedTo && d > new Date(appliedTo + "T23:59:59")) return false;
+    return true;
+  });
   const [showLeadMoreFields, setShowLeadMoreFields] = useState(false);
   const [leadFormData, setLeadFormData] = useState({
     name: "",
@@ -299,6 +427,9 @@ const Dashboard = () => {
       if (leadServiceDropdownRef.current && !leadServiceDropdownRef.current.contains(event.target as Node)) {
         setShowLeadServiceDropdown(false);
       }
+      if (stockBranchDropdownRef.current && !stockBranchDropdownRef.current.contains(event.target as Node)) {
+        setShowStockBranchDropdown(false);
+      }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
@@ -307,14 +438,51 @@ const Dashboard = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div>
-        <h2 className="text-xl font-bold text-card-foreground">Dashboard</h2>
-        <p className="text-sm text-muted-foreground">Overview of today's activities and key metrics</p>
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+        <div>
+          <h2 className="text-xl font-bold text-card-foreground">Dashboard</h2>
+          <p className="text-sm text-muted-foreground">Overview of today's activities and key metrics</p>
+        </div>
+        {/* Global Date Range Filter */}
+        <div className="flex items-center gap-2 bg-card border border-border rounded-xl px-3 py-2 shadow-sm">
+          
+           <span className="text-xs text-muted-foreground">From :</span>
+           <input
+            type="date"
+            value={dateFrom}
+            onChange={e => setDateFrom(e.target.value)}
+            className="bg-transparent text-xs text-card-foreground focus:outline-none w-[120px]"
+          />
+          <span className="text-xs text-muted-foreground">To :</span>
+          <input
+            type="date"
+            value={dateTo}
+            min={dateFrom}
+            onChange={e => setDateTo(e.target.value)}
+            className="bg-transparent text-xs text-card-foreground focus:outline-none w-[120px]"
+          />
+          <div className="flex items-center gap-1.5 ml-1 pl-2 border-l border-border">
+            <button
+              onClick={applyDateFilter}
+              disabled={!dateFrom && !dateTo}
+              className="px-3 py-1 rounded-lg text-xs font-semibold text-white transition-all hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
+              style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}
+            >
+              Apply
+            </button>
+            <button
+              onClick={resetDateFilter}
+              className="px-3 py-1 rounded-lg text-xs font-semibold border border-border text-muted-foreground hover:text-card-foreground hover:bg-secondary transition-colors"
+            >
+              Reset
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* KPIs */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <KPICard title="Active Projects" value="24" trend="+2 this week" trendType="up" icon={FolderKanban} />
+        <KPICard title="Orders" value="24" trend="+2 this week" trendType="up" icon={FolderKanban} />
         <KPICard title="Pending Payments" value="₹ 12,450" trend="-5% vs last month" trendType="down" icon={CreditCard} />
         <KPICard title="Cash to Settle" value="₹ 5,800" trend="From technicians" trendType="neutral" icon={Wallet} />
         <KPICard title="Low Stock Items" value="3" trend="Needs reordering" trendType="warning" icon={AlertTriangle} />
@@ -345,6 +513,22 @@ const Dashboard = () => {
             </button>
           )
         ))}
+        <button
+          onClick={() => navigate("/service-management")}
+          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all hover:opacity-90 text-white shadow-[0px_5px_12px_rgba(39,47,158,0.2)]"
+          style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}
+        >
+          <Wrench className="w-4 h-4" />
+          Service Management
+        </button>
+        <button
+          onClick={() => navigate("/projects")}
+          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all hover:opacity-90 text-white shadow-[0px_5px_12px_rgba(39,47,158,0.2)]"
+          style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}
+        >
+          <ClipboardList className="w-4 h-4" />
+          Work Orders
+        </button>
       </div>
 
       {/* Charts Row 1 */}
@@ -352,34 +536,6 @@ const Dashboard = () => {
         <div className="bg-card rounded-xl p-5 card-shadow">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-semibold text-card-foreground">Weekly Revenue</h3>
-            <div className="relative" ref={revenueDropdownRef}>
-              <button
-                onClick={() => setShowRevenueDropdown(!showRevenueDropdown)}
-                className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-card-foreground bg-secondary/50 hover:bg-secondary rounded-lg transition-colors"
-              >
-                <Calendar className="w-3 h-3" />
-                {revenueFilter}
-                <ChevronDown className="w-3 h-3" />
-              </button>
-              {showRevenueDropdown && (
-                <div className="absolute right-0 top-full mt-1 bg-card border border-border rounded-lg shadow-lg z-10 min-w-[120px]">
-                  {filterOptions.map((option) => (
-                    <button
-                      key={option}
-                      onClick={() => {
-                        setRevenueFilter(option);
-                        setShowRevenueDropdown(false);
-                      }}
-                      className={`w-full text-left px-3 py-2 text-xs hover:bg-secondary transition-colors first:rounded-t-lg last:rounded-b-lg ${
-                        revenueFilter === option ? 'text-primary font-medium bg-primary/5' : 'text-card-foreground'
-                      }`}
-                    >
-                      {option}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
           </div>
           <ResponsiveContainer width="100%" height={220}>
             <AreaChart data={revenueData}>
@@ -400,34 +556,6 @@ const Dashboard = () => {
         <div className="bg-card rounded-xl p-5 card-shadow">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-semibold text-card-foreground">Service Breakdown</h3>
-            <div className="relative" ref={serviceBreakdownDropdownRef}>
-              <button
-                onClick={() => setShowServiceBreakdownDropdown(!showServiceBreakdownDropdown)}
-                className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-card-foreground bg-secondary/50 hover:bg-secondary rounded-lg transition-colors"
-              >
-                <Calendar className="w-3 h-3" />
-                {serviceBreakdownFilter}
-                <ChevronDown className="w-3 h-3" />
-              </button>
-              {showServiceBreakdownDropdown && (
-                <div className="absolute right-0 top-full mt-1 bg-card border border-border rounded-lg shadow-lg z-10 min-w-[120px]">
-                  {serviceBreakdownOptions.map((option) => (
-                    <button
-                      key={option}
-                      onClick={() => {
-                        setServiceBreakdownFilter(option);
-                        setShowServiceBreakdownDropdown(false);
-                      }}
-                      className={`w-full text-left px-3 py-2 text-xs hover:bg-secondary transition-colors first:rounded-t-lg last:rounded-b-lg ${
-                        serviceBreakdownFilter === option ? 'text-primary font-medium bg-primary/5' : 'text-card-foreground'
-                      }`}
-                    >
-                      {option}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
           </div>
           <div className="flex items-center justify-center">
             <ResponsiveContainer width={200} height={200}>
@@ -456,34 +584,6 @@ const Dashboard = () => {
         <div className="bg-card rounded-xl p-5 card-shadow">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-semibold text-card-foreground">Service Performance</h3>
-            <div className="relative" ref={serviceDropdownRef}>
-              <button
-                onClick={() => setShowServiceDropdown(!showServiceDropdown)}
-                className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-card-foreground bg-secondary/50 hover:bg-secondary rounded-lg transition-colors"
-              >
-                <Calendar className="w-3 h-3" />
-                {serviceFilter}
-                <ChevronDown className="w-3 h-3" />
-              </button>
-              {showServiceDropdown && (
-                <div className="absolute right-0 top-full mt-1 bg-card border border-border rounded-lg shadow-lg z-10 min-w-[120px]">
-                  {filterOptions.map((option) => (
-                    <button
-                      key={option}
-                      onClick={() => {
-                        setServiceFilter(option);
-                        setShowServiceDropdown(false);
-                      }}
-                      className={`w-full text-left px-3 py-2 text-xs hover:bg-secondary transition-colors first:rounded-t-lg last:rounded-b-lg ${
-                        serviceFilter === option ? 'text-primary font-medium bg-primary/5' : 'text-card-foreground'
-                      }`}
-                    >
-                      {option}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
           </div>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={serviceData}>
@@ -502,9 +602,37 @@ const Dashboard = () => {
         </div>
 
         <div className="bg-card rounded-xl p-5 card-shadow">
-          <h3 className="text-sm font-semibold text-card-foreground mb-4">Stock Levels</h3>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-semibold text-card-foreground">Stock Levels</h3>
+            <div className="relative" ref={stockBranchDropdownRef}>
+              <button
+                onClick={() => setShowStockBranchDropdown(!showStockBranchDropdown)}
+                className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-card-foreground bg-secondary/50 hover:bg-secondary rounded-lg transition-colors"
+              >
+                <Filter className="w-3 h-3" />
+                {stockBranchFilter}
+                <ChevronDown className="w-3 h-3" />
+              </button>
+              {showStockBranchDropdown && (
+                <div className="absolute right-0 top-full mt-1 bg-card border border-border rounded-lg shadow-lg z-10 min-w-[120px]">
+                  {["All", ...Array.from(new Set(inventory.map(i => i.branch)))].map((branch) => (
+                    <button
+                      key={branch}
+                      onClick={() => { setStockBranchFilter(branch); setShowStockBranchDropdown(false); }}
+                      className={`w-full text-left px-3 py-2 text-xs hover:bg-secondary transition-colors first:rounded-t-lg last:rounded-b-lg ${stockBranchFilter === branch ? 'text-primary font-medium bg-primary/5' : 'text-card-foreground'}`}
+                    >
+                      {branch}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
           <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={inventoryData} layout="vertical">
+            <BarChart
+              data={(stockBranchFilter === "All" ? inventory : inventory.filter(i => i.branch === stockBranchFilter)).map(i => ({ name: i.name, stock: i.stock, reorder: i.reorder }))}
+              layout="vertical"
+            >
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(214, 40%, 90%)" />
               <XAxis type="number" tick={{ fontSize: 12 }} stroke="hsl(220, 10%, 50%)" />
               <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={90} stroke="hsl(220, 10%, 50%)" />
@@ -769,31 +897,12 @@ const Dashboard = () => {
       )}
 
       {/* Work Order Reports */}
-      <WorkOrderReports />
+      <WorkOrderReports workOrders={filteredWorkOrders} />
 
       {/* Recent Transactions */}
       <div className="bg-card rounded-xl card-shadow">
         <div className="p-5 border-b border-border flex items-center justify-between">
           <h3 className="text-sm font-semibold text-card-foreground">Recent Transactions</h3>
-          <div className="relative" ref={servicesTableDropdownRef}>
-            <button
-              onClick={() => setShowServicesTableDropdown(!showServicesTableDropdown)}
-              className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-card-foreground bg-secondary/50 hover:bg-secondary rounded-lg transition-colors"
-            >
-              <Filter className="w-3 h-3" />
-              {servicesTableFilter}
-              <ChevronDown className="w-3 h-3" />
-            </button>
-            {showServicesTableDropdown && (
-              <div className="absolute right-0 top-full mt-1 bg-card border border-border rounded-lg shadow-lg z-10 min-w-[120px]">
-                {servicesTableOptions.map((option) => (
-                  <button key={option} onClick={() => { setServicesTableFilter(option); setShowServicesTableDropdown(false); }}
-                    className={`w-full text-left px-3 py-2 text-xs hover:bg-secondary transition-colors first:rounded-t-lg last:rounded-b-lg ${servicesTableFilter === option ? 'text-primary font-medium bg-primary/5' : 'text-card-foreground'}`}
-                  >{option}</button>
-                ))}
-              </div>
-            )}
-          </div>
         </div>
         <table className="w-full text-sm">
           <thead>
@@ -824,6 +933,9 @@ const Dashboard = () => {
           </tbody>
         </table>
       </div>
+
+      {/* Leads Table */}
+      <DashboardLeadsSection />
     </div>  );
 };
 
