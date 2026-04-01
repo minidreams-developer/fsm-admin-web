@@ -12,13 +12,13 @@ const statusMap = { Scheduled: "info", Unscheduled: "neutral", Completed: "succe
 const ServiceManagementPage = () => {
   const { appointments, updateAppointment } = useServicesStore();
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"All" | "Scheduled" | "Unscheduled" | "Completed" | "Cancelled">("All");
+  const [statusFilter, setStatusFilter] = useState<"All" | "Active" | "Inactive">("All");
   const [showForm, setShowForm] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [selectedService, setSelectedService] = useState<ServiceAppointment | null>(null);
 
   const filtered = appointments.filter((apt) => {
-    const matchStatus = statusFilter === "All" || apt.status === statusFilter;
+    const matchStatus = statusFilter === "All" || (statusFilter === "Active" ? apt.status === "Completed" : apt.status !== "Completed");
     const matchSearch = 
       apt.subject?.toLowerCase().includes(search.toLowerCase()) ||
       apt.employeeName.toLowerCase().includes(search.toLowerCase()) ||
@@ -77,8 +77,8 @@ const ServiceManagementPage = () => {
           />
         </div>
         <div className="flex flex-wrap gap-2">
-          {(["All", "Scheduled", "Unscheduled", "Completed", "Cancelled"] as const).map((status) => {
-            const count = status === "All" ? appointments.length : appointments.filter(a => a.status === status).length;
+          {(["All", "Active", "Inactive"] as const).map((status) => {
+            const count = status === "All" ? appointments.length : status === "Active" ? appointments.filter(a => a.status === "Completed").length : appointments.filter(a => a.status !== "Completed").length;
             return (
               <button 
                 key={status}
