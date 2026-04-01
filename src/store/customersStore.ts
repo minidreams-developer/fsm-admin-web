@@ -8,6 +8,14 @@ export type CustomerDocument = {
   fileName: string;
 };
 
+export type ContactPerson = {
+  name: string;
+  email: string;
+  city: string;
+  pincode: string;
+  address: string;
+};
+
 export type Customer = {
   id: string;
   customerType: CustomerType;
@@ -21,7 +29,7 @@ export type Customer = {
   paymentTerms: string;
   billingAddress: string;
   siteAddress: string;
-  contactPersonsDetails: string;
+  contactPersonsDetails: ContactPerson[];
   customerDocuments: CustomerDocument[];
 };
 
@@ -48,7 +56,7 @@ const initialCustomers: Customer[] = [
     paymentTerms: "",
     billingAddress: "",
     siteAddress: "12 MG Road, Kochi",
-    contactPersonsDetails: "",
+    contactPersonsDetails: [],
     customerDocuments: [],
   },
   {
@@ -64,7 +72,7 @@ const initialCustomers: Customer[] = [
     paymentTerms: "",
     billingAddress: "",
     siteAddress: "Beach Road, Calicut",
-    contactPersonsDetails: "",
+    contactPersonsDetails: [],
     customerDocuments: [],
   },
   {
@@ -80,7 +88,7 @@ const initialCustomers: Customer[] = [
     paymentTerms: "",
     billingAddress: "",
     siteAddress: "Market Road, Ernakulam",
-    contactPersonsDetails: "",
+    contactPersonsDetails: [],
     customerDocuments: [],
   },
 ];

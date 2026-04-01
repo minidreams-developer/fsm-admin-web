@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { X } from "lucide-react";
+import { X, Plus, Upload } from "lucide-react";
 import { toast } from "sonner";
-import { useCustomersStore, type Customer, type CustomerDocument, type CustomerType } from "@/store/customersStore";
+import { useCustomersStore, type Customer, type CustomerDocument, type CustomerType, type ContactPerson } from "@/store/customersStore";
 
 type Mode = "create" | "edit";
 
@@ -39,6 +39,9 @@ function buildDisplayName(firstName: string, lastName: string) {
 
 export function CustomerFormModal({ open, mode, customer, prefill, onClose, onSaved }: Props) {
   const { addCustomer, updateCustomer, getNextCustomerId } = useCustomersStore();
+  const [extraSiteAddresses, setExtraSiteAddresses] = useState<string[]>([]);
+  const [isCustomPayment, setIsCustomPayment] = useState(false);
+  const [commercialDoc, setCommercialDoc] = useState<File | null>(null);
 
   const [form, setForm] = useState<Customer>({
     id: getNextCustomerId(),
@@ -53,14 +56,21 @@ export function CustomerFormModal({ open, mode, customer, prefill, onClose, onSa
     paymentTerms: "",
     billingAddress: "",
     siteAddress: "",
-    contactPersonsDetails: "",
+    contactPersonsDetails: [{ name: "", email: "", city: "", pincode: "", address: "" }],
     customerDocuments: [],
   });
 
   useEffect(() => {
     if (!open) return;
+    setExtraSiteAddresses([]);
+    setIsCustomPayment(false);
+    setCommercialDoc(null);
     if (mode === "edit" && customer) {
-      setForm(customer);
+      const contacts = Array.isArray(customer.contactPersonsDetails) && customer.contactPersonsDetails.length > 0
+        ? customer.contactPersonsDetails
+        : [{ name: "", email: "", city: "", pincode: "", address: "" }];
+      setForm({ ...customer, contactPersonsDetails: contacts });
+      setIsCustomPayment(!["30", "60", "90", ""].includes(customer.paymentTerms));
       return;
     }
     const nextId = getNextCustomerId();
@@ -77,7 +87,7 @@ export function CustomerFormModal({ open, mode, customer, prefill, onClose, onSa
       paymentTerms: "",
       billingAddress: "",
       siteAddress: "",
-      contactPersonsDetails: "",
+      contactPersonsDetails: [{ name: "", email: "", city: "", pincode: "", address: "" }],
       customerDocuments: [],
     } satisfies Customer;
     const merged: Customer = { ...next, ...prefill, id: nextId };
@@ -130,7 +140,7 @@ export function CustomerFormModal({ open, mode, customer, prefill, onClose, onSa
       paymentTerms: form.paymentTerms.trim(),
       billingAddress: (form.billingAddress.trim() || form.siteAddress.trim()).trim(),
       siteAddress: form.siteAddress.trim(),
-      contactPersonsDetails: form.contactPersonsDetails.trim(),
+      contactPersonsDetails: form.contactPersonsDetails,
     };
 
     if (mode === "edit") {
@@ -181,13 +191,46 @@ export function CustomerFormModal({ open, mode, customer, prefill, onClose, onSa
               <label className="text-xs font-medium text-muted-foreground mb-2 block">{LABELS.customerType}</label>
               <select
                 value={form.customerType}
-                onChange={(e) => setField("customerType", e.target.value as CustomerType)}
+                onChange={(e) => {
+                  setField("customerType", e.target.value as CustomerType);
+                  if (e.target.value !== "Commercial") setCommercialDoc(null);
+                }}
                 className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
               >
                 <option value="Residential">Residential</option>
                 <option value="Commercial">Commercial</option>
               </select>
             </div>
+
+            {form.customerType === "Commercial" && (
+              <div className="md:col-span-2">
+                <label className="text-xs font-medium text-muted-foreground mb-2 block">Company Document (PDF only)</label>
+                <label className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg bg-secondary border border-border cursor-pointer hover:bg-secondary/80 transition-colors">
+                  <Upload className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                  <span className="text-sm text-muted-foreground truncate">
+                    {commercialDoc ? commercialDoc.name : "Click to upload PDF"}
+                  </span>
+                  <input
+                    type="file"
+                    accept="application/pdf"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) setCommercialDoc(file);
+                    }}
+                  />
+                </label>
+                {commercialDoc && (
+                  <button
+                    type="button"
+                    onClick={() => setCommercialDoc(null)}
+                    className="mt-1 text-xs text-destructive hover:opacity-80 transition-opacity"
+                  >
+                    Remove
+                  </button>
+                )}
+              </div>
+            )}
 
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-2 block">{LABELS.firstName}</label>
@@ -220,7 +263,17 @@ export function CustomerFormModal({ open, mode, customer, prefill, onClose, onSa
             </div>
 
             <div className="md:col-span-2">
-              <label className="text-xs font-medium text-muted-foreground mb-2 block">{LABELS.siteAddress}</label>
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-xs font-medium text-muted-foreground block">{LABELS.siteAddress}</label>
+                <button
+                  type="button"
+                  onClick={() => setExtraSiteAddresses(prev => [...prev, ""])}
+                  className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:opacity-80 transition-opacity"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  Add
+                </button>
+              </div>
               <textarea
                 value={form.siteAddress}
                 onChange={(e) => setField("siteAddress", e.target.value)}
@@ -228,6 +281,24 @@ export function CustomerFormModal({ open, mode, customer, prefill, onClose, onSa
                 rows={2}
                 className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none"
               />
+              {extraSiteAddresses.map((addr, idx) => (
+                <div key={idx} className="relative mt-2">
+                  <textarea
+                    value={addr}
+                    onChange={(e) => setExtraSiteAddresses(prev => prev.map((a, i) => i === idx ? e.target.value : a))}
+                    placeholder={`e.g. Site Address ${idx + 2}`}
+                    rows={2}
+                    className="w-full px-3 py-2.5 pr-9 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setExtraSiteAddresses(prev => prev.filter((_, i) => i !== idx))}
+                    className="absolute top-2.5 right-2.5 p-0.5 hover:bg-destructive/10 rounded transition-colors"
+                  >
+                    <X className="w-3.5 h-3.5 text-muted-foreground hover:text-destructive" />
+                  </button>
+                </div>
+              ))}
             </div>
 
             <div className="md:col-span-2">
@@ -328,25 +399,73 @@ export function CustomerFormModal({ open, mode, customer, prefill, onClose, onSa
               </select>
             </div>
 
-            <div>
+            <div className={isCustomPayment ? "md:col-span-2" : ""}>
               <label className="text-xs font-medium text-muted-foreground mb-2 block">{LABELS.paymentTerms}</label>
-              <input
-                value={form.paymentTerms}
-                onChange={(e) => setField("paymentTerms", e.target.value)}
-                placeholder="e.g. Net 30"
-                className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
-              />
+              <div className={isCustomPayment ? "flex gap-2" : ""}>
+                <select
+                  value={isCustomPayment ? "custom" : form.paymentTerms}
+                  onChange={(e) => {
+                    if (e.target.value === "custom") {
+                      setIsCustomPayment(true);
+                      setField("paymentTerms", "");
+                    } else {
+                      setIsCustomPayment(false);
+                      setField("paymentTerms", e.target.value);
+                    }
+                  }}
+                  className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+                >
+                  <option value="">Select</option>
+                  <option value="30">30 Days</option>
+                  <option value="60">60 Days</option>
+                  <option value="90">90 Days</option>
+                  <option value="custom">Custom</option>
+                </select>
+                {isCustomPayment && (
+                  <input
+                    value={form.paymentTerms}
+                    onChange={(e) => setField("paymentTerms", e.target.value)}
+                    placeholder="Enter custom payment terms"
+                    className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  />
+                )}
+              </div>
             </div>
 
             <div className="md:col-span-2">
-              <label className="text-xs font-medium text-muted-foreground mb-2 block">{LABELS.contactPersonsDetails}</label>
-              <textarea
-                value={form.contactPersonsDetails}
-                onChange={(e) => setField("contactPersonsDetails", e.target.value)}
-                placeholder="e.g. John - 9876543210, Manager"
-                rows={3}
-                className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none"
-              />
+              <label className="text-xs font-semibold text-card-foreground mb-3 block">{LABELS.contactPersonsDetails}</label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {form.contactPersonsDetails.map((cp, idx) => {
+                  const update = (field: keyof ContactPerson, val: string) => {
+                    const updated = form.contactPersonsDetails.map((p, i) => i === idx ? { ...p, [field]: val } : p);
+                    setField("contactPersonsDetails", updated);
+                  };
+                  return (
+                    <>
+                      <div key={`name-${idx}`}>
+                        <label className="text-xs text-muted-foreground mb-1 block">Name</label>
+                        <input value={cp.name} onChange={e => update("name", e.target.value)} placeholder="e.g. John" className="w-full px-2.5 py-2 rounded-lg bg-secondary border border-border text-xs text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                      </div>
+                      <div key={`email-${idx}`}>
+                        <label className="text-xs text-muted-foreground mb-1 block">Email</label>
+                        <input value={cp.email} onChange={e => update("email", e.target.value)} placeholder="e.g. john@email.com" className="w-full px-2.5 py-2 rounded-lg bg-secondary border border-border text-xs text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                      </div>
+                      <div key={`city-${idx}`}>
+                        <label className="text-xs text-muted-foreground mb-1 block">City</label>
+                        <input value={cp.city} onChange={e => update("city", e.target.value)} placeholder="e.g. Kochi" className="w-full px-2.5 py-2 rounded-lg bg-secondary border border-border text-xs text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                      </div>
+                      <div key={`pincode-${idx}`}>
+                        <label className="text-xs text-muted-foreground mb-1 block">Pincode</label>
+                        <input value={cp.pincode} onChange={e => update("pincode", e.target.value)} placeholder="e.g. 682001" className="w-full px-2.5 py-2 rounded-lg bg-secondary border border-border text-xs text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                      </div>
+                      <div key={`address-${idx}`} className="sm:col-span-2">
+                        <label className="text-xs text-muted-foreground mb-1 block">Address</label>
+                        <input value={cp.address} onChange={e => update("address", e.target.value)} placeholder="e.g. 12 MG Road" className="w-full px-2.5 py-2 rounded-lg bg-secondary border border-border text-xs text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                      </div>
+                    </>
+                  );
+                })}
+              </div>
             </div>
 
           </div>
