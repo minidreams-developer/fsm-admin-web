@@ -296,9 +296,8 @@ export const EmployeeDetailPage = () => {
                       </div>
                       <StatusBadge label={item.status} variant={item.status === "OK" ? "success" : item.status === "Low" ? "warning" : "destructive"} />
                     </div>
-                    <div className="grid grid-cols-3 gap-2 text-xs">
+                    <div className="grid grid-cols-2 gap-2 text-xs">
                       <div><p className="text-muted-foreground">Stock</p><p className="font-semibold text-card-foreground">{item.stock} {item.unit}</p></div>
-                      <div><p className="text-muted-foreground">Reorder</p><p className="font-semibold text-card-foreground">{item.reorder} {item.unit}</p></div>
                       <div><p className="text-muted-foreground">Unit</p><p className="font-semibold text-card-foreground">{item.unit}</p></div>
                     </div>
                   </div>
