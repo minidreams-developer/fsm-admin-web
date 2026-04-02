@@ -21,6 +21,7 @@ export type Employee = {
   profilePhoto?: string;
   aadharNumber?: string;
   aadharDocument?: string;
+  isActive?: boolean;
 };
 
 interface EmployeesStore {

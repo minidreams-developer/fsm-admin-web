@@ -121,6 +121,10 @@ const initialProducts: Product[] = [
     notes: "Standard service package",
     createdAt: "2024-01-15",
   },
+  { id: "PROD-1007", name: "Termite Treatment", category: "Services", description: "Pre and post construction termite treatment", unitOfMeasurement: "Pieces", unitPrice: 3500, sku: "SERV-002", status: "Active", notes: "Annual contract available", createdAt: "2024-01-15" },
+  { id: "PROD-1008", name: "Cockroach Control", category: "Services", description: "Gel and spray treatment for cockroach elimination", unitOfMeasurement: "Pieces", unitPrice: 1200, sku: "SERV-003", status: "Active", notes: "Includes follow-up visit", createdAt: "2024-01-15" },
+  { id: "PROD-1009", name: "Rodent Control", category: "Services", description: "Trapping and baiting for rodent management", unitOfMeasurement: "Pieces", unitPrice: 2000, sku: "SERV-004", status: "Active", notes: "Monthly service available", createdAt: "2024-01-15" },
+  { id: "PROD-1010", name: "Bed Bug Treatment", category: "Services", description: "Heat and chemical treatment for bed bugs", unitOfMeasurement: "Pieces", unitPrice: 2500, sku: "SERV-005", status: "Active", notes: "Guaranteed results", createdAt: "2024-01-15" },
 ];
 
 export const useProductsStore = create<ProductsStore>()(

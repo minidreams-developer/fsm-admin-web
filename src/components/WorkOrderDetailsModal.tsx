@@ -81,7 +81,7 @@ export function WorkOrderDetailsModal({ open, workOrder, onClose }: Props) {
               <p className="text-sm text-card-foreground">{workOrder.paidAmount}</p>
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground mb-2 block">Assigned Tech</label>
+              <label className="text-xs font-medium text-muted-foreground mb-2 block">Work Order Incharge</label>
               <p className="text-sm text-card-foreground">{workOrder.assignedTech}</p>
             </div>
             <div>

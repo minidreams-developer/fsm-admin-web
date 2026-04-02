@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-export type LeadStatus = "New" | "Contacted" | "Quote Sent" | "Converted" | "Lost";
+export type LeadStatus = "New" | "Contacted" | "Quote Sent" | "Follow Up" | "Converted" | "Lost";
 
 export type UrgencyLevel = "Low" | "Medium" | "High";
 
@@ -29,6 +29,7 @@ export type Lead = {
   assignedOwner?: string;
   leadIncharge?: string;
   nextFollowUpDate?: string;
+  nextFollowUpTime?: string;
   reminders?: { id: string; date: string; text: string; createdAt: string }[];
 };
 
@@ -75,9 +76,9 @@ export const useLeadsStore = create<LeadsStore>()(
     }),
     {
       name: 'leads-store',
-      version: 2,
+      version: 3,
       migrate: (persistedState: unknown, version: number) => {
-        if (version === 0) {
+        if (version < 3) {
           return { leads: initialLeads };
         }
         if (typeof persistedState === "object" && persistedState !== null && "leads" in persistedState) {

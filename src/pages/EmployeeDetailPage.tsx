@@ -1,29 +1,47 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, AlertCircle, Package, Briefcase, CheckCircle, XCircle, Edit2 } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 import { useEmployeesStore } from "@/store/employeesStore";
 import { useProjectsStore } from "@/store/projectsStore";
 import { useInventoryStore } from "@/store/inventoryStore";
+import { useTasksStore } from "@/store/tasksStore";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EmployeeFormModal } from "@/components/EmployeeFormModal";
 
 export const EmployeeDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { getEmployee } = useEmployeesStore();
-  const { workOrders } = useProjectsStore();
+  const { getEmployee, updateEmployee, employees } = useEmployeesStore();
+  const { workOrders, updateWorkOrder } = useProjectsStore();
   const { inventory } = useInventoryStore();
-  const [isActive, setIsActive] = useState(true);
+  const { tasks, updateTask } = useTasksStore();
   const [activeTab, setActiveTab] = useState<"projects" | "inventory">("projects");
   const [showEdit, setShowEdit] = useState(false);
   const [projectFilter, setProjectFilter] = useState<"All" | "Open" | "Scheduled" | "Completed">("All");
   const [inventoryFilter, setInventoryFilter] = useState<"All" | "OK" | "Low" | "Critical">("All");
 
   const employee = id ? getEmployee(id) : null;
-  const assignedProjects = workOrders.filter(wo => wo.assignedTech === employee?.name);
-  const filteredProjects = projectFilter === "All" ? assignedProjects : assignedProjects.filter(wo => wo.status === projectFilter);
+  const isActive = employee?.isActive !== false;
+  const assignedProjects = workOrders.filter(wo => wo.assignedTech === employee?.name && wo.status !== "Completed");
+  const filteredProjects = projectFilter === "All" ? workOrders.filter(wo => wo.assignedTech === employee?.name) : workOrders.filter(wo => wo.assignedTech === employee?.name && wo.status === projectFilter);
   const employeeInventoryItems = inventory.slice(0, 3);
   const filteredInventory = inventoryFilter === "All" ? employeeInventoryItems : employeeInventoryItems.filter(i => i.status === inventoryFilter);
+
+  const assignedTasks = tasks.filter(t => t.assignedTo === employee?.name && t.status !== "Completed");
+  const otherEmployees = employees.filter(e => e.id !== employee?.id && e.isActive !== false);
+
+  const handleToggleActive = () => {
+    if (!employee) return;
+    if (isActive) {
+      if (assignedProjects.length > 0 || assignedTasks.length > 0) {
+        navigate(`/employees/${employee.id}/reassign`);
+        return;
+      }
+    }
+    updateEmployee(employee.id, { isActive: !isActive });
+    toast.success(`${employee.name} marked as ${isActive ? "Inactive" : "Active"}`);
+  };
 
   if (!employee) {
     return (
@@ -188,7 +206,7 @@ export const EmployeeDetailPage = () => {
               <p className="text-sm text-muted-foreground mt-1">Toggle employee active/inactive status</p>
             </div>
             <button
-              onClick={() => setIsActive(!isActive)}
+              onClick={handleToggleActive}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg font-semibold transition-all ${
                 isActive
                   ? "bg-success/10 text-success border border-success/20"

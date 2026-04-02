@@ -14,11 +14,11 @@ type Props = {
 };
 
 function formatLeadId(id: number) {
-  return `LEAD-${String(id).padStart(4, "0")}`;
+  return `ENQ-${String(id).padStart(4, "0")}`;
 }
 
 const urgencyLevels: UrgencyLevel[] = ["Low", "Medium", "High"];
-const statuses: LeadStatus[] = ["New", "Contacted", "Quote Sent", "Converted", "Lost"];
+const statuses: LeadStatus[] = ["New", "Contacted", "Quote Sent", "Follow Up", "Converted", "Lost"];
 const leadSources = ["Website", "Call", "Referral", "Walk-in", "Google", "Facebook/Instagram", "Other"];
 const branches = ["Kochi", "Calicut", "Thrissur", "Trivandrum", "Palakkad", "Munnar", "Other"];
 
@@ -70,7 +70,7 @@ export function LeadDetailsModal({ open, lead, onClose, initialEdit = false }: P
       return;
     }
     updateLead(lead.id, form);
-    toast.success("Lead updated");
+    toast.success("Enquiry updated");
     setIsEditing(false);
     onClose();
   };
@@ -82,7 +82,7 @@ export function LeadDetailsModal({ open, lead, onClose, initialEdit = false }: P
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-border bg-card flex-shrink-0">
           <div>
-            <h3 className="text-lg sm:text-xl font-bold text-card-foreground">{isEditing ? "Edit Lead" : "Lead Details"}</h3>
+            <h3 className="text-lg sm:text-xl font-bold text-card-foreground">{isEditing ? "Edit Enquiry" : "Enquiry Details"}</h3>
             <p className="text-xs text-muted-foreground mt-1">{lead.name}</p>
           </div>
           <button onClick={onClose} className="p-2 hover:bg-secondary rounded-lg transition-colors flex-shrink-0">
@@ -157,14 +157,14 @@ export function LeadDetailsModal({ open, lead, onClose, initialEdit = false }: P
           {!isEditing && activeTab === "details" && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {([
-                ["Lead ID", formatLeadId(lead.id)],
+                ["Enquiry ID", formatLeadId(lead.id)],
                 ["Customer Name", lead.name],
                 ["Phone", lead.phone],
                 ["Address", lead.address],
                 ["Status", lead.status],
                 ["Urgency Level", lead.urgencyLevel],
                 ["Amount", typeof lead.amount === "number" ? `₹ ${lead.amount.toLocaleString()}` : "—"],
-                ["Lead Source", lead.leadSource || "—"],
+                ["Enquiry Source", lead.leadSource || "—"],
                 ["Branch", lead.branch || "—"],
                 ["Lead Incharge", lead.leadIncharge || "—"],
                 ["Next Follow Up Date", lead.nextFollowUpDate || "—"],
@@ -233,7 +233,7 @@ export function LeadDetailsModal({ open, lead, onClose, initialEdit = false }: P
                 <input type="number" value={form.amount ?? ""} onChange={(e) => setField("amount", e.target.value ? Number(e.target.value) : null)} placeholder="e.g. 5000" className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20" />
               </div>
               <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1 block">Lead Source</label>
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">Enquiry Source</label>
                 <select value={form.leadSource ?? ""} onChange={(e) => setField("leadSource", e.target.value)} className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20">
                   <option value="">Select source</option>
                   {leadSources.map((s) => <option key={s} value={s}>{s}</option>)}
@@ -247,7 +247,7 @@ export function LeadDetailsModal({ open, lead, onClose, initialEdit = false }: P
                 </select>
               </div>
               <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1 block">Lead Incharge</label>
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">Enquiry Incharge</label>
                 <select value={form.leadIncharge ?? ""} onChange={(e) => setField("leadIncharge", e.target.value)} className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20">
                   <option value="">Unassigned</option>
                   {employees.map((emp) => <option key={emp.id} value={emp.name}>{emp.name} — {emp.role}</option>)}
@@ -256,6 +256,10 @@ export function LeadDetailsModal({ open, lead, onClose, initialEdit = false }: P
               <div>
                 <label className="text-xs font-medium text-muted-foreground mb-1 block">Next Follow Up Date</label>
                 <input type="date" value={form.nextFollowUpDate ?? ""} onChange={(e) => setField("nextFollowUpDate", e.target.value)} className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20" />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">Next Follow Up Time</label>
+                <input type="time" value={(form as any).nextFollowUpTime ?? ""} onChange={(e) => setField("nextFollowUpTime" as any, e.target.value)} className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20" />
               </div>
               <div className="md:col-span-2">
                 <label className="text-xs font-medium text-muted-foreground mb-1 block">Services (select from list)</label>

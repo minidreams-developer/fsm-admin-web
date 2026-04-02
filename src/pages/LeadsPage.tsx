@@ -7,25 +7,28 @@ import { toast } from "sonner";
 import { useLeadsStore, type LeadStatus, type Lead, type UrgencyLevel } from "@/store/leadsStore";
 import { LeadDetailsModal } from "@/components/LeadDetailsModal";
 import { ConvertLeadModal } from "@/components/ConvertLeadModal";
+import { useBranchesStore } from "@/store/branchesStore";
 
 const statusBadge: Record<LeadStatus, "info" | "warning" | "success" | "error" | "neutral"> = {
-  New: "info", Contacted: "warning", "Quote Sent": "warning", Converted: "success", Lost: "error",
+  New: "info", Contacted: "warning", "Quote Sent": "warning", "Follow Up": "info", Converted: "success", Lost: "error",
 };
 
-const statuses: LeadStatus[] = ["New", "Contacted", "Quote Sent", "Converted", "Lost"];
+const statuses: LeadStatus[] = ["New", "Contacted", "Quote Sent", "Follow Up", "Converted", "Lost"];
 
 const urgencyLevels: UrgencyLevel[] = ["Low", "Medium", "High"];
 const leadSources = ["Website", "Call", "Referral", "Walk-in", "Google", "Facebook/Instagram", "Other"] as const;
 const branches = ["Kochi", "Calicut", "Thrissur", "Trivandrum", "Palakkad", "Munnar", "Other"] as const;
 
 function formatLeadId(id: number) {
-  return `LEAD-${String(id).padStart(4, "0")}`;
+  return `ENQ-${String(id).padStart(4, "0")}`;
 }
 
 const LeadsPage = () => {
   const navigate = useNavigate();
   const { leads, updateLead, addLead } = useLeadsStore();
+  const { branches: branchList } = useBranchesStore();
   const [filter, setFilter] = useState<LeadStatus | "All">("All");
+  const [branchFilter, setBranchFilter] = useState("All");
   const [showForm, setShowForm] = useState(false);
   const [search, setSearch] = useState("");
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
@@ -40,6 +43,7 @@ const LeadsPage = () => {
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
   const [reminderLeadId, setReminderLeadId] = useState<number | null>(null);
   const [reminderDate, setReminderDate] = useState("");
+  const [reminderTime, setReminderTime] = useState("");
   const [reminderText, setReminderText] = useState("");
   
   // Form state for new lead
@@ -61,14 +65,16 @@ const LeadsPage = () => {
   const filtered = leads.filter((l) => {
     const matchStatus = filter === "All" || l.status === filter;
     const matchSearch = l.name.toLowerCase().includes(search.toLowerCase()) || l.phone.includes(search);
-    return matchStatus && matchSearch;
+    const matchBranch = branchFilter === "All" || l.branch === branchFilter;
+    return matchStatus && matchSearch && matchBranch;
   }).sort((a, b) => {
     const statusOrder: Record<LeadStatus, number> = {
       "New": 0,
       "Contacted": 1,
       "Quote Sent": 2,
-      "Converted": 3,
-      "Lost": 4,
+      "Follow Up": 3,
+      "Converted": 4,
+      "Lost": 5,
     };
     return statusOrder[a.status] - statusOrder[b.status];
   });
@@ -82,9 +88,10 @@ const LeadsPage = () => {
     }
     const lead = leads.find((l) => l.id === leadId);
     if (!lead) return;
-    const newReminder = { id: `REM-${Date.now()}`, date: reminderDate, text: reminderText.trim(), createdAt: new Date().toISOString() };
+    const newReminder = { id: `REM-${Date.now()}`, date: reminderDate, time: reminderTime, text: reminderText.trim(), createdAt: new Date().toISOString() };
     updateLead(leadId, { reminders: [...(lead.reminders ?? []), newReminder] });
     setReminderDate("");
+    setReminderTime("");
     setReminderText("");
     setReminderLeadId(null);
     toast.success("Reminder saved");
@@ -166,7 +173,7 @@ const LeadsPage = () => {
       quoteViewedAt: null
     });
 
-    toast.success("Lead created successfully!");
+    toast.success("Enquiry created successfully!");
     setFormData({
       name: "",
       phone: "",
@@ -188,11 +195,11 @@ const LeadsPage = () => {
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-lg sm:text-xl font-bold text-card-foreground">Leads</h2>
+          <h2 className="text-lg sm:text-xl font-bold text-card-foreground">Enquiries</h2>
           <p className="text-sm text-muted-foreground">Manage your sales pipeline</p>
         </div>
         <button onClick={() => navigate("/leads/new")} className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 transition-all text-white shadow-[0px_5px_12px_rgba(39,47,158,0.2)]" style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}>
-          <Plus className="w-4 h-4" /> Add New Lead
+          <Plus className="w-4 h-4" /> Add New Enquiry
         </button>
       </div>
 
@@ -204,7 +211,7 @@ const LeadsPage = () => {
               <Users className="w-5 h-5 text-primary" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-medium text-muted-foreground mb-1">Total Leads</p>
+              <p className="text-xs font-medium text-muted-foreground mb-1">Total Enquiries</p>
               <p className="text-2xl font-bold text-card-foreground">{leads.length}</p>
             </div>
           </div>
@@ -246,7 +253,7 @@ const LeadsPage = () => {
 
       {showForm && (
         <div className="bg-card rounded-xl p-6 card-shadow space-y-4">
-          <h3 className="text-sm font-semibold text-card-foreground">Quick Add Lead</h3>
+          <h3 className="text-sm font-semibold text-card-foreground">Quick Add Enquiry</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-1 block">Customer Info</label>
@@ -332,7 +339,7 @@ const LeadsPage = () => {
             onClick={() => setShowMoreFields((v) => !v)}
             className="w-full px-4 py-2 rounded-lg border border-border bg-secondary/30 hover:bg-secondary/50 transition-colors text-sm font-semibold text-card-foreground"
           >
-            {showMoreFields ? "Hide additional lead fields" : "Show additional lead fields"}
+            {showMoreFields ? "Hide additional enquiry fields" : "Show additional enquiry fields"}
           </button>
 
           {showMoreFields && (
@@ -348,13 +355,13 @@ const LeadsPage = () => {
                 />
               </div>
               <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1 block">Lead Source</label>
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">Enquiry Source</label>
                 <select
                   value={formData.leadSource}
                   onChange={(e) => setFormData(prev => ({ ...prev, leadSource: e.target.value }))}
                   className="w-full px-3 py-2 rounded-lg bg-secondary text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 border border-border"
                 >
-                  <option value="">Select lead source</option>
+                  <option value="">Select enquiry source</option>
                   {leadSources.map((s) => (
                     <option key={s} value={s}>{s}</option>
                   ))}
@@ -400,7 +407,7 @@ const LeadsPage = () => {
               className="h-10 px-6 text-sm font-semibold hover:opacity-90 text-white shadow-[0px_5px_12px_rgba(39,47,158,0.2)] transition-all rounded-lg" 
               style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}
             >
-              Save Lead
+              Save Enquiry
             </button>
             <button 
               onClick={() => {
@@ -418,10 +425,22 @@ const LeadsPage = () => {
       )}
 
       <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+
+         <select
+          value={branchFilter}
+          onChange={(e) => setBranchFilter(e.target.value)}
+          className="px-3 py-2 rounded-lg bg-card border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+        >
+          <option value="All">All Branches</option>
+          {branchList.filter(b => b.status === "Active").map(b => (
+            <option key={b.id} value={b.name}>{b.name}</option>
+          ))}
+        </select>
         <div className="relative w-full sm:flex-1 sm:max-w-xs">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search leads..." className="w-full pl-9 pr-4 py-2 rounded-lg bg-card text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20" />
+          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search enquiries..." className="w-full pl-9 pr-4 py-2 rounded-lg bg-card text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20" />
         </div>
+       
         <div className="flex flex-wrap gap-2">
           <button onClick={() => setFilter("All")} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap ${filter === "All" ? "text-white shadow-[0px_5px_12px_rgba(39,47,158,0.2)]" : "bg-card text-muted-foreground border border-border hover:bg-secondary"}`} style={filter === "All" ? { background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" } : {}}>All</button>
           {statuses.map((s) => (
@@ -434,7 +453,7 @@ const LeadsPage = () => {
         <div className="w-full">
           <table className="w-full text-sm">
             <thead><tr className="border-b border-border">
-              {["Lead ID", "Customer Name", "Services", "Urgency", "Lead incharge", "Status", "Actions"].map((h) => (
+              {["Enquiry ID", "Customer Name", "Services", "Urgency", "Enquiry Incharge", "Next Follow-Up-date", "Status", "Actions"].map((h) => (
                 <th key={h} className="text-left px-3 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">{h}</th>
               ))}
             </tr></thead>
@@ -444,7 +463,18 @@ const LeadsPage = () => {
                 return (
                   <tr key={l.id} onClick={() => navigate(`/leads/${l.id}`)} className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors cursor-pointer">
                     <td className="px-3 py-2.5 font-semibold text-primary text-xs">{formatLeadId(l.id)}</td>
-                  <td className="px-3 py-2.5 font-medium text-card-foreground text-xs">{l.name}</td>
+                  <td className="px-3 py-2.5">
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-medium text-card-foreground text-xs">{l.name}</span>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setSelectedLeadForDetails(l); setShowDetailsModal(true); }}
+                        className="inline-flex items-center justify-center w-5 h-5 rounded hover:bg-secondary transition-colors flex-shrink-0"
+                        title="View details"
+                      >
+                        <Eye className="w-3.5 h-3.5 text-muted-foreground hover:text-primary" />
+                      </button>
+                    </div>
+                  </td>
                   <td className="px-3 py-2.5">
                     <div className="flex items-center gap-2">
                       <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-primary/10 text-primary text-xs font-bold">{serviceCount}</span>
@@ -453,23 +483,24 @@ const LeadsPage = () => {
                   </td>
                   <td className="px-3 py-2.5 text-muted-foreground text-xs">{l.urgencyLevel}</td>
                   <td className="px-3 py-2.5 text-muted-foreground text-xs">{l.assignedOwner || "—"}</td>
+                  <td className="px-3 py-2.5 text-muted-foreground text-xs">{l.nextFollowUpDate || "—"}</td>
                   <td className="px-3 py-2.5"><StatusBadge label={l.status} variant={statusBadge[l.status]} /></td>
                   <td className="px-3 py-2.5">
                     <div className="flex items-center gap-1">
                       <button
                         onClick={(e) => { e.stopPropagation(); setEditingLead(l); setShowDetailsModal(true); }}
                         className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-border bg-card hover:bg-secondary transition-colors"
-                        title="Edit lead"
+                        title="Edit enquiry"
                       >
                         <Edit2 className="w-4 h-4 text-muted-foreground" />
                       </button>
                       <div className="relative">
                         <button
-                          onClick={(e) => { e.stopPropagation(); setReminderLeadId(reminderLeadId === l.id ? null : l.id); setReminderDate(""); setReminderText(""); }}
+                          onClick={(e) => { e.stopPropagation(); setReminderLeadId(reminderLeadId === l.id ? null : l.id); setReminderDate(""); setReminderTime(""); setReminderText(""); }}
                           className="relative inline-flex items-center justify-center w-8 h-8 rounded-lg border border-border bg-card hover:bg-secondary transition-colors"
                           title="Add reminder"
                         >
-                          <Bell className="w-4 h-4 text-muted-foreground" />
+                          <Plus className="w-4 h-4 text-muted-foreground" />
                           {(l.reminders?.length ?? 0) > 0 && (
                             <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-primary text-white text-[9px] flex items-center justify-center">{l.reminders?.length}</span>
                           )}
@@ -478,6 +509,7 @@ const LeadsPage = () => {
                           <div className="absolute right-0 top-10 z-50 w-72 bg-card border border-border rounded-xl shadow-2xl p-4 space-y-2">
                             <p className="text-xs font-semibold text-card-foreground">Add Reminder</p>
                             <input type="date" value={reminderDate} onChange={(e) => setReminderDate(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                            <input type="time" value={reminderTime} onChange={(e) => setReminderTime(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20" />
                             <input value={reminderText} onChange={(e) => setReminderText(e.target.value)} placeholder="Reminder text..." className="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20" />
                             <div className="flex gap-2">
                               <button onClick={() => saveReminder(l.id)} className="flex-1 h-8 text-xs font-semibold hover:opacity-90 text-white rounded-lg transition-all" style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}>Save</button>
@@ -526,10 +558,10 @@ const LeadsPage = () => {
 
               {/* Lead Information Card */}
               <div className="bg-secondary/30 rounded-xl p-5 border border-border">
-                <h4 className="text-sm font-semibold text-card-foreground mb-4">Lead Information</h4>
+                <h4 className="text-sm font-semibold text-card-foreground mb-4">Enquiry Information</h4>
                 <div className="space-y-3">
                   <div>
-                    <p className="text-xs text-muted-foreground mb-1">Lead ID ( Automated Generated )</p>
+                    <p className="text-xs text-muted-foreground mb-1">Enquiry ID ( Automated Generated )</p>
                     <p className="text-sm font-semibold text-primary">{formatLeadId(selectedLead.id)}</p>
                   </div>
                   <div>
@@ -554,7 +586,7 @@ const LeadsPage = () => {
                       <p className="text-sm font-semibold text-card-foreground">{selectedLead.expectedDateTime ? new Date(selectedLead.expectedDateTime).toLocaleString() : "—"}</p>
                     </div>
                     <div>
-                      <p className="text-xs text-muted-foreground mb-1">Lead Source</p>
+                      <p className="text-xs text-muted-foreground mb-1">Enquiry Source</p>
                       <p className="text-sm font-semibold text-card-foreground">{selectedLead.leadSource || "—"}</p>
                     </div>
                     <div>
@@ -691,112 +723,7 @@ const LeadsPage = () => {
         </div>
       )}
 
-      {/* Send Quote Form Modal */}
-      {showQuoteForm && selectedLeadForQuote && createPortal(
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4 overflow-hidden bg-black/75 rounded-[20px]">
-          <div className="bg-card rounded-[20px] shadow-lg w-full max-w-md max-h-[90vh] overflow-y-auto">
-            {/* Modal Header */}
-            <div className="flex items-center justify-between p-6 border-b border-border">
-              <div>
-                <h2 className="text-lg font-bold text-card-foreground">Send Quote</h2>
-                <p className="text-sm text-muted-foreground mt-1">{selectedLeadForQuote.name}</p>
-              </div>
-              <button
-                onClick={() => {
-                  setShowQuoteForm(false);
-                  setSelectedLeadForQuote(null);
-                  setQuoteFormData({ amount: "", contract: "", notes: "" });
-                }}
-                className="p-1 hover:bg-secondary rounded-lg transition-colors"
-              >
-                <X className="w-5 h-5 text-muted-foreground" />
-              </button>
-            </div>
-
-            {/* Modal Content */}
-            <div className="p-6 space-y-4">
-              {/* Services Summary */}
-              <div className="rounded-lg p-4 border border-border bg-secondary/30">
-                <p className="text-xs font-semibold text-muted-foreground mb-3 uppercase tracking-wider">Services to Quote</p>
-                <div className="space-y-2">
-                  {selectedLeadForQuote.services.map((service, idx) => (
-                    <div key={idx} className="flex items-center gap-3 p-2.5 bg-card rounded-lg border border-border/50">
-                      <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 flex-shrink-0">
-                        <span className="text-xs font-bold text-primary">{idx + 1}</span>
-                      </div>
-                      <span className="text-sm font-medium text-card-foreground">{service}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Quote Amount */}
-              <div>
-                <label className="text-xs font-medium text-muted-foreground mb-2 block">Quote Amount (₹) *</label>
-                <input
-                  type="number"
-                  placeholder="Enter quote amount"
-                  value={quoteFormData.amount}
-                  onChange={(e) => setQuoteFormData({ ...quoteFormData, amount: e.target.value })}
-                  className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
-                />
-              </div>
-
-              {/* Contract Duration */}
-              <div>
-                <label className="text-xs font-medium text-muted-foreground mb-2 block">Contract Duration</label>
-                <select
-                  value={quoteFormData.contract}
-                  onChange={(e) => setQuoteFormData({ ...quoteFormData, contract: e.target.value })}
-                  className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
-                >
-                  <option value="">Select contract duration</option>
-                  <option value="One-Time">One-Time</option>
-                  <option value="3 Months">3 Months</option>
-                  <option value="4 Months">4 Months</option>
-                  <option value="1 Year">1 Year</option>
-                </select>
-              </div>
-
-              {/* Quote Notes */}
-              <div>
-                <label className="text-xs font-medium text-muted-foreground mb-2 block">Quote Details</label>
-                <textarea
-                  placeholder="Add quote details, terms, or special notes..."
-                  value={quoteFormData.notes}
-                  onChange={(e) => setQuoteFormData({ ...quoteFormData, notes: e.target.value })}
-                  rows={3}
-                  className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground resize-none"
-                />
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex gap-3 pt-4 border-t border-border">
-                <button
-                  onClick={() => {
-                    setShowQuoteForm(false);
-                    setSelectedLeadForQuote(null);
-                    setQuoteFormData({ amount: "", contract: "", notes: "" });
-                  }}
-                  className="flex-1 h-10 border border-border text-card-foreground text-sm font-medium hover:text-primary transition-colors rounded-lg"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleSendQuote}
-                  disabled={!quoteFormData.amount}
-                  className="flex-1 h-10 text-white text-sm font-medium rounded-lg hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                  style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}
-                >
-                  Send Quote
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
-
+      
       {/* Lead Details Modal */}
       <LeadDetailsModal
         open={showDetailsModal}

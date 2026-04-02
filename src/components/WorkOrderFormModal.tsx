@@ -245,7 +245,7 @@ export function WorkOrderFormModal({ open, onClose, onSaved }: Props) {
               </select>
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground mb-2 block">Assigned Tech</label>
+              <label className="text-xs font-medium text-muted-foreground mb-2 block">Work Order Incharge</label>
               <input
                 type="text"
                 value={form.assignedTech || ""}

@@ -8,7 +8,7 @@ import { LeadDetailsModal } from "@/components/LeadDetailsModal";
 import { CommentsCard } from "@/components/CommentsCard";
 
 function formatLeadId(id: number) {
-  return `LEAD-${String(id).padStart(4, "0")}`;
+  return `ENQ-${String(id).padStart(4, "0")}`;
 }
 
 const statusBadge: Record<string, "info" | "warning" | "success" | "error" | "neutral"> = {
@@ -49,7 +49,7 @@ export const LeadDetailPage = () => {
           <button type="button" onClick={() => navigate("/leads")} className="inline-flex items-center gap-2 h-10 px-4 rounded-lg border border-border bg-card hover:bg-secondary transition-colors text-sm font-semibold text-card-foreground">
             <ArrowLeft className="w-4 h-4" /> Back
           </button>
-          <h2 className="text-lg font-bold text-card-foreground">Lead not found</h2>
+          <h2 className="text-lg font-bold text-card-foreground">Enquiry not found</h2>
         </div>
       </div>
     );
@@ -73,15 +73,15 @@ export const LeadDetailPage = () => {
   };
 
   const fields: [string, string][] = [
-    ["Lead ID", formatLeadId(lead.id)],
+    ["Enquiry ID", formatLeadId(lead.id)],
     ["Customer Name", lead.name],
     ["Phone", lead.phone],
     ["Address", lead.address],
     ["Urgency Level", lead.urgencyLevel],
     ["Amount", typeof lead.amount === "number" ? `₹ ${lead.amount.toLocaleString()}` : "—"],
-    ["Lead Source", lead.leadSource || "—"],
+    ["Enquiry Source", lead.leadSource || "—"],
     ["Branch", lead.branch || "—"],
-    ["Lead Incharge", lead.leadIncharge || "—"],
+    ["Enquiry Incharge", lead.leadIncharge || "—"],
     ["Next Follow Up Date", lead.nextFollowUpDate || "—"],
     ["Date", lead.date],
     ["Quote Amount", typeof lead.quoteAmount === "number" ? `₹ ${lead.quoteAmount.toLocaleString()}` : "—"],
@@ -136,6 +136,12 @@ export const LeadDetailPage = () => {
 
           <button onClick={() => setShowEdit(true)} className="h-10 px-4 inline-flex items-center gap-2 rounded-lg border border-border bg-card hover:bg-secondary transition-colors text-sm font-semibold text-card-foreground">
             <Edit2 className="w-4 h-4" /> Edit
+          </button>
+          <button
+            onClick={() => navigate("/create-work-order", { state: { leadData: lead, isQuotation: true } })}
+            className="h-10 px-4 inline-flex items-center gap-2 rounded-lg border border-border bg-card hover:bg-secondary transition-colors text-sm font-semibold text-card-foreground"
+          >
+            Convert to Quotation
           </button>
           {lead.status !== "Converted" && lead.status !== "Lost" && (
             <button

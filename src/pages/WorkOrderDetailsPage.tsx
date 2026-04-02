@@ -119,9 +119,9 @@ export const WorkOrderDetailsPage = () => {
             <p className="text-lg font-bold text-card-foreground">{workOrder.frequency}</p>
           </div>
 
-          {/* Assigned Tech */}
+          {/* Work Order Incharge */}
           <div className="space-y-2">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Assigned Tech</p>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Work Order Incharge</p>
             <p className="text-lg font-bold text-primary">{workOrder.assignedTech}</p>
           </div>
         </div>

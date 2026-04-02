@@ -61,7 +61,7 @@ export function ConvertLeadModal({ lead, isOpen, onClose, onSuccess }: ConvertLe
         end: new Date().toISOString().split("T")[0],
         status: "Open" as const,
         assignedTech: data.assignedTech || "Unassigned",
-        notes: data.notes || `Converted from lead: ${lead.name}`,
+        notes: data.notes || `Converted from enquiry: ${lead.name}`,
         siteAddress: lead.address,
         billingAddress: lead.address,
         nextService: "Unassigned",
@@ -70,12 +70,12 @@ export function ConvertLeadModal({ lead, isOpen, onClose, onSuccess }: ConvertLe
       addWorkOrder(newWorkOrder);
       updateLead(lead.id, { status: "Converted" });
 
-      toast.success(`Lead "${lead.name}" converted to Work Order ${newWorkOrder.id}!`);
+      toast.success(`Enquiry "${lead.name}" converted to Work Order ${newWorkOrder.id}!`);
       reset();
       onSuccess();
       onClose();
     } catch (error) {
-      toast.error("Failed to convert lead");
+      toast.error("Failed to convert enquiry");
     }
   };
 
@@ -86,7 +86,7 @@ export function ConvertLeadModal({ lead, isOpen, onClose, onSuccess }: ConvertLe
       <div className="bg-card rounded-[20px] shadow-lg w-full max-w-md max-h-[90vh] overflow-y-auto">
         {/* Modal Header */}
         <div className="flex items-center justify-between p-6 border-b border-border sticky top-0 bg-card">
-          <h2 className="text-lg font-bold text-card-foreground">Convert Lead to Work Order</h2>
+          <h2 className="text-lg font-bold text-card-foreground">Convert Enquiry to Work Order</h2>
           <button
             onClick={onClose}
             className="p-1 hover:bg-secondary rounded-lg transition-colors"
@@ -172,7 +172,7 @@ export function ConvertLeadModal({ lead, isOpen, onClose, onSuccess }: ConvertLe
               className="flex-1 h-10 text-white text-sm font-medium rounded-lg hover:opacity-90 transition-all"
               style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}
             >
-              Convert Lead
+              Convert Enquiry
             </button>
           </div>
         </form>

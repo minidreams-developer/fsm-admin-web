@@ -9,6 +9,7 @@ export type Task = {
   startDate: string;
   endDate: string;
   assignedTo: string;
+  assignedEmployees: string[];
   status: "Pending" | "In Progress" | "Completed";
 };
 
@@ -19,59 +20,15 @@ interface TasksStore {
   deleteTask: (id: string) => void;
   getTask: (id: string) => Task | undefined;
   getTasksByWorkOrder: (workOrderId: string) => Task[];
+  getNextTaskId: () => string;
 }
 
 const initialTasks: Task[] = [
-  {
-    id: "TASK-001",
-    workOrderId: "WO-1025",
-    title: "Initial Site Survey",
-    description: "Conduct initial survey of the apartment",
-    startDate: "2026-02-01",
-    endDate: "2026-02-02",
-    assignedTo: "Mani",
-    status: "Completed",
-  },
-  {
-    id: "TASK-002",
-    workOrderId: "WO-1025",
-    title: "Treatment Application",
-    description: "Apply cockroach control treatment",
-    startDate: "2026-02-03",
-    endDate: "2026-02-05",
-    assignedTo: "Mani",
-    status: "In Progress",
-  },
-  {
-    id: "TASK-003",
-    workOrderId: "WO-1025",
-    title: "Follow-up Inspection",
-    description: "Inspect treatment effectiveness",
-    startDate: "2026-02-10",
-    endDate: "2026-02-10",
-    assignedTo: "Mani",
-    status: "Pending",
-  },
-  {
-    id: "TASK-004",
-    workOrderId: "WO-1027",
-    title: "Kitchen Treatment",
-    description: "Treat kitchen area for bed bugs",
-    startDate: "2026-01-15",
-    endDate: "2026-01-16",
-    assignedTo: "Safeeq",
-    status: "Completed",
-  },
-  {
-    id: "TASK-005",
-    workOrderId: "WO-1027",
-    title: "Room Treatment",
-    description: "Treat all guest rooms",
-    startDate: "2026-01-17",
-    endDate: "2026-01-19",
-    assignedTo: "Safeeq",
-    status: "Completed",
-  },
+  { id: "TASK-001", workOrderId: "WO-1025", title: "Initial Site Survey", description: "Conduct initial survey of the apartment", startDate: "2026-02-01", endDate: "2026-02-02", assignedTo: "Mani", assignedEmployees: ["Mani"], status: "Completed" },
+  { id: "TASK-002", workOrderId: "WO-1025", title: "Treatment Application", description: "Apply cockroach control treatment", startDate: "2026-02-03", endDate: "2026-02-05", assignedTo: "Mani", assignedEmployees: ["Mani", "Safeeq"], status: "In Progress" },
+  { id: "TASK-003", workOrderId: "WO-1025", title: "Follow-up Inspection", description: "Inspect treatment effectiveness", startDate: "2026-02-10", endDate: "2026-02-10", assignedTo: "Mani", assignedEmployees: ["Mani"], status: "Pending" },
+  { id: "TASK-004", workOrderId: "WO-1027", title: "Kitchen Treatment", description: "Treat kitchen area for bed bugs", startDate: "2026-01-15", endDate: "2026-01-16", assignedTo: "Safeeq", assignedEmployees: ["Safeeq"], status: "Completed" },
+  { id: "TASK-005", workOrderId: "WO-1027", title: "Room Treatment", description: "Treat all guest rooms", startDate: "2026-01-17", endDate: "2026-01-19", assignedTo: "Safeeq", assignedEmployees: ["Safeeq", "Rajesh"], status: "Completed" },
 ];
 
 export const useTasksStore = create<TasksStore>()(
@@ -100,6 +57,12 @@ export const useTasksStore = create<TasksStore>()(
 
       getTasksByWorkOrder: (workOrderId) =>
         get().tasks.filter((task) => task.workOrderId === workOrderId),
+
+      getNextTaskId: () => {
+        const nums = get().tasks.map(t => parseInt(t.id.replace("TASK-", ""))).filter(n => !isNaN(n));
+        const next = nums.length ? Math.max(...nums) + 1 : 6;
+        return `TASK-${String(next).padStart(3, "0")}`;
+      },
     }),
     { name: "tasks-store", version: 0 }
   )

@@ -14,6 +14,7 @@ import ReportsPage from "./pages/ReportsPage";
 import InventoryPage from "./pages/InventoryPage";
 import EmployeesPage from "./pages/EmployeesPage";
 import { EmployeeDetailPage } from "./pages/EmployeeDetailPage";
+import EmployeeReassignPage from "./pages/EmployeeReassignPage";
 import CustomersPage, { CustomerDetailPage } from "./pages/CustomersPage";
 import LoginPage from "./pages/LoginPage";
 import NotFound from "./pages/NotFound";
@@ -25,6 +26,8 @@ import { WorkOrderDetailsPage } from "./pages/WorkOrderDetailsPage";
 import BranchesPage from "./pages/BranchesPage";
 import ProductsPage from "./pages/ProductsPage";
 import RolesPage from "./pages/RolesPage";
+import QuantCalendarPage from "./pages/QuantCalendarPage";
+import TaskManagementPage from "./pages/TaskManagementPage";
 
 const queryClient = new QueryClient();
 
@@ -53,11 +56,14 @@ const App = () => (
               <Route path="/inventory" element={<InventoryPage />} />
               <Route path="/employees" element={<EmployeesPage />} />
               <Route path="/employees/:id" element={<EmployeeDetailPage />} />
+              <Route path="/employees/:id/reassign" element={<EmployeeReassignPage />} />
               <Route path="/customers" element={<CustomersPage />} />
               <Route path="/customers/:id" element={<CustomerDetailPage />} />
               <Route path="/branches" element={<BranchesPage />} />
               <Route path="/products" element={<ProductsPage />} />
               <Route path="/roles" element={<RolesPage />} />
+              <Route path="/quant-calendar" element={<QuantCalendarPage />} />
+              <Route path="/task-management" element={<TaskManagementPage />} />
             </Route>
           </Route>
           <Route path="*" element={<NotFound />} />

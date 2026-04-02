@@ -73,7 +73,7 @@ const CreateLeadPage = () => {
       quoteIsViewed: false,
       quoteViewedAt: null,
     });
-    toast.success("Lead created successfully!");
+    toast.success("Enquiry created successfully!");
     navigate("/leads");
   };
 
@@ -85,8 +85,8 @@ const CreateLeadPage = () => {
           Back
         </button>
         <div>
-          <h2 className="text-lg sm:text-xl font-bold text-card-foreground">Add New Lead</h2>
-          <p className="text-sm text-muted-foreground">Fill in the details to create a new lead</p>
+          <h2 className="text-lg sm:text-xl font-bold text-card-foreground">Add New Enquiry</h2>
+          <p className="text-sm text-muted-foreground">Fill in the details to create a new enquiry</p>
         </div>
       </div>
 
@@ -121,7 +121,7 @@ const CreateLeadPage = () => {
           </div>
 
           <div>
-            <label className="text-xs font-medium text-muted-foreground mb-2 block">Lead Source</label>
+            <label className="text-xs font-medium text-muted-foreground mb-2 block">Enquiry Source</label>
             <select value={form.leadSource} onChange={(e) => setField("leadSource", e.target.value)} className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20">
               <option value="">Select source</option>
               {leadSources.map((s) => <option key={s} value={s}>{s}</option>)}
@@ -137,7 +137,7 @@ const CreateLeadPage = () => {
           </div>
 
           <div>
-            <label className="text-xs font-medium text-muted-foreground mb-2 block">Lead Incharge</label>
+            <label className="text-xs font-medium text-muted-foreground mb-2 block">Enquiry Incharge</label>
             <select value={form.leadIncharge} onChange={(e) => setField("leadIncharge", e.target.value)} className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20">
               <option value="">Unassigned</option>
               {employees.map((emp) => <option key={emp.id} value={emp.name}>{emp.name} — {emp.role}</option>)}
@@ -147,6 +147,11 @@ const CreateLeadPage = () => {
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-2 block">Next Follow Up Date</label>
             <input type="date" value={form.nextFollowUpDate} onChange={(e) => setField("nextFollowUpDate", e.target.value)} className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20" />
+          </div>
+
+          <div>
+            <label className="text-xs font-medium text-muted-foreground mb-2 block">Next Follow Up Time</label>
+            <input type="time" value={(form as any).nextFollowUpTime || ""} onChange={(e) => setForm(prev => ({ ...prev, nextFollowUpTime: e.target.value }))} className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20" />
           </div>
 
           <div className="md:col-span-2">
@@ -181,7 +186,7 @@ const CreateLeadPage = () => {
 
         <div className="flex gap-3 mt-8 pt-6 border-t border-border">
           <button onClick={() => navigate("/leads")} className="flex-1 h-10 border border-border text-card-foreground text-sm font-medium hover:text-primary transition-colors rounded-lg">Cancel</button>
-          <button onClick={handleSave} className="flex-1 h-10 text-sm font-semibold hover:opacity-90 text-white shadow-[0px_5px_12px_rgba(39,47,158,0.2)] transition-all rounded-lg" style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}>Save Lead</button>
+          <button onClick={handleSave} className="flex-1 h-10 text-sm font-semibold hover:opacity-90 text-white shadow-[0px_5px_12px_rgba(39,47,158,0.2)] transition-all rounded-lg" style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}>Save Enquiry</button>
         </div>
       </div>
     </div>
