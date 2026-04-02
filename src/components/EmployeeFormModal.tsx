@@ -1,9 +1,50 @@
 import { useEffect, useState, useRef } from "react";
 import { createPortal } from "react-dom";
-import { X, Camera } from "lucide-react";
+import { X, Camera, Upload, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { useEmployeesStore, type Employee } from "@/store/employeesStore";
 import { useRolesStore } from "@/store/rolesStore";
+import { useBranchesStore } from "@/store/branchesStore";
+
+function BranchMultiSelect({ options, selected, onChange }: { options: string[]; selected: string[]; onChange: (val: string[]) => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const handler = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+  const toggle = (name: string) => onChange(selected.includes(name) ? selected.filter(x => x !== name) : [...selected, name]);
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+      >
+        <span className={selected.length === 0 ? "text-muted-foreground" : ""}>
+          {selected.length === 0 ? "Select branches" : selected.join(", ")}
+        </span>
+        <ChevronDown className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+      </button>
+      {open && (
+        <div className="absolute top-full left-0 right-0 mt-1 bg-card border border-border rounded-lg shadow-lg z-20 max-h-48 overflow-y-auto">
+          {options.map(name => (
+            <label key={name} className="flex items-center gap-2.5 px-3 py-2 hover:bg-secondary cursor-pointer text-sm text-card-foreground">
+              <input
+                type="checkbox"
+                checked={selected.includes(name)}
+                onChange={() => toggle(name)}
+                className="accent-primary"
+              />
+              {name}
+            </label>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 type Mode = "create" | "edit";
 
@@ -26,7 +67,9 @@ const LABELS = {
 export function EmployeeFormModal({ open, mode, employee, onClose, onSaved }: Props) {
   const { addEmployee, updateEmployee, getNextEmployeeId } = useEmployeesStore();
   const { roles } = useRolesStore();
+  const { branches } = useBranchesStore();
   const activeRoles = roles.filter((r) => r.active);
+  const activeBranches = branches.filter((b) => b.status === "Active");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [form, setForm] = useState<Employee>({
@@ -34,6 +77,7 @@ export function EmployeeFormModal({ open, mode, employee, onClose, onSaved }: Pr
     name: "",
     phone: "",
     role: "",
+    branch: [],
     projects: 0,
     cashBalance: "₹ 0",
     performance: "0%",
@@ -59,6 +103,7 @@ export function EmployeeFormModal({ open, mode, employee, onClose, onSaved }: Pr
       name: "",
       phone: "",
       role: "",
+      branch: [],
       projects: 0,
       cashBalance: "₹ 0",
       performance: "0%",
@@ -206,6 +251,53 @@ export function EmployeeFormModal({ open, mode, employee, onClose, onSaved }: Pr
                   <option key={r.id} value={r.name}>{r.name}</option>
                 ))}
               </select>
+            </div>
+
+            <div className="md:col-span-2">
+              <label className="text-xs font-medium text-muted-foreground mb-2 block">Branch</label>
+              <BranchMultiSelect
+                options={activeBranches.map(b => b.name)}
+                selected={form.branch || []}
+                onChange={(val) => setField("branch", val)}
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-2 block">Aadhar Number</label>
+              <input
+                value={form.aadharNumber || ""}
+                onChange={(e) => setField("aadharNumber", e.target.value)}
+                placeholder="e.g. 1234 5678 9012"
+                maxLength={14}
+                className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-2 block">Aadhar Document (PDF)</label>
+              <label className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg bg-secondary border border-border cursor-pointer hover:bg-secondary/80 transition-colors">
+                <Upload className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                <span className="text-sm text-muted-foreground truncate">
+                  {form.aadharDocument ? "Document uploaded" : "Click to upload PDF"}
+                </span>
+                <input
+                  type="file"
+                  accept="application/pdf"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = () => setField("aadharDocument", reader.result as string);
+                    reader.readAsDataURL(file);
+                  }}
+                />
+              </label>
+              {form.aadharDocument && (
+                <button type="button" onClick={() => setField("aadharDocument", undefined)} className="mt-1 text-xs text-destructive hover:opacity-80 transition-opacity">
+                  Remove
+                </button>
+              )}
             </div>
           </div>
         </div>

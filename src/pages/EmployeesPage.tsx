@@ -1,19 +1,28 @@
-import { Search, Plus, Users, ChevronLeft, ChevronRight, TrendingUp } from "lucide-react";
+import { Search, Plus, Users, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, TrendingUp } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useEmployeesStore, type Employee } from "@/store/employeesStore";
+import { useBranchesStore } from "@/store/branchesStore";
 import { EmployeeFormModal } from "@/components/EmployeeFormModal";
 
 const PAGE_SIZE = 6;
 
 const EmployeesPage = () => {
   const { employees } = useEmployeesStore();
+  const { branches: branchList } = useBranchesStore();
   const [search, setSearch] = useState("");
+  const [branchFilter, setBranchFilter] = useState("All");
   const [showAddModal, setShowAddModal] = useState(false);
   const [page, setPage] = useState(1);
   const navigate = useNavigate();
 
-  const filtered = employees.filter((e) => e.name.toLowerCase().includes(search.toLowerCase()));
+  const branches = ["All", ...branchList.filter(b => b.status === "Active").map(b => b.name)];
+
+  const filtered = employees.filter((e) => {
+    const matchSearch = e.name.toLowerCase().includes(search.toLowerCase());
+    const matchBranch = branchFilter === "All" || (e.branch || []).includes(branchFilter);
+    return matchSearch && matchBranch;
+  });
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
@@ -34,14 +43,16 @@ const EmployeesPage = () => {
         </button>
       </div>
 
-      <div className="relative w-full sm:max-w-xs">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <input
-          value={search}
-          onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-          placeholder="Search employees..."
-          className="w-full pl-9 pr-4 py-2 rounded-lg bg-card text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20"
-        />
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+        <div className="relative w-full sm:max-w-xs">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <input
+            value={search}
+            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+            placeholder="Search employees..."
+            className="w-full pl-9 pr-4 py-2 rounded-lg bg-card text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20"
+          />
+        </div>
       </div>
 
       {/* Overview Cards */}
@@ -81,6 +92,7 @@ const EmployeesPage = () => {
             </div>
           </div>
         </div>
+
         <div className="bg-card rounded-xl p-5 card-shadow border border-border">
           <div className="flex items-start gap-3">
             <div className="p-2.5 bg-primary/10 rounded-lg flex-shrink-0">
@@ -95,7 +107,21 @@ const EmployeesPage = () => {
               </p>
             </div>
           </div>
-        </div>      </div>
+        </div>
+      </div>
+
+      {/* Branch Filter */}
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+        <select
+          value={branchFilter}
+          onChange={(e) => { setBranchFilter(e.target.value); setPage(1); }}
+          className="px-3 py-2 rounded-lg bg-card border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 w-full sm:w-48"
+        >
+          {branches.map(b => (
+            <option key={b} value={b}>{b === "All" ? "All Branches" : b}</option>
+          ))}
+        </select>
+      </div>
 
       {/* Employee Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -176,6 +202,13 @@ const EmployeesPage = () => {
           </p>
           <div className="flex items-center gap-1">
             <button
+              onClick={() => setPage(1)}
+              disabled={page === 1}
+              className="p-2 rounded-lg border border-border bg-card hover:bg-secondary transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <ChevronsLeft className="w-4 h-4 text-muted-foreground" />
+            </button>
+            <button
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={page === 1}
               className="p-2 rounded-lg border border-border bg-card hover:bg-secondary transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
@@ -202,6 +235,13 @@ const EmployeesPage = () => {
               className="p-2 rounded-lg border border-border bg-card hover:bg-secondary transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <ChevronRight className="w-4 h-4 text-muted-foreground" />
+            </button>
+            <button
+              onClick={() => setPage(totalPages)}
+              disabled={page === totalPages}
+              className="p-2 rounded-lg border border-border bg-card hover:bg-secondary transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <ChevronsRight className="w-4 h-4 text-muted-foreground" />
             </button>
           </div>
         </div>
