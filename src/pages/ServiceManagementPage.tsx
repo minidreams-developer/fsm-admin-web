@@ -14,6 +14,7 @@ const ServiceManagementPage = () => {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"All" | "Active" | "Inactive">("All");
   const [showForm, setShowForm] = useState(false);
+  const [editingService, setEditingService] = useState<ServiceAppointment | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [selectedService, setSelectedService] = useState<ServiceAppointment | null>(null);
 
@@ -140,7 +141,7 @@ const ServiceManagementPage = () => {
                   <td className="px-3 py-2.5">
                     <div className="flex items-center gap-2">
                       <button 
-                        onClick={(e) => e.stopPropagation()}
+                        onClick={(e) => { e.stopPropagation(); setEditingService(apt); setShowForm(true); }}
                         className="p-1.5 rounded-lg border border-border hover:bg-secondary transition-colors"
                         title="Edit"
                       >
@@ -163,7 +164,12 @@ const ServiceManagementPage = () => {
       </div>
 
       {/* Service Form Modal */}
-      <ServiceFormModal open={showForm} onClose={() => setShowForm(false)} />
+      <ServiceFormModal
+        open={showForm}
+        mode={editingService ? "edit" : "create"}
+        appointment={editingService || undefined}
+        onClose={() => { setShowForm(false); setEditingService(null); }}
+      />
 
       {/* Service Details Modal */}
       <ServiceDetailsModal 

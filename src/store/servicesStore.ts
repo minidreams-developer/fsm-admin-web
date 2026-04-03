@@ -35,6 +35,11 @@ export type ServiceAppointment = {
   salesExecutive?: string;
   refNo?: string;
   warrantyPeriod?: string;
+  unitPrice?: string;
+  state?: string;
+  gst?: string;
+  igst?: string;
+  cgst?: string;
   technicians?: string[];
   serviceDescription?: string;
   customerSignature?: DigitalSignature;

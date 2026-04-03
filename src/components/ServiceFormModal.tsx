@@ -8,12 +8,14 @@ type Props = {
   open: boolean;
   onClose: () => void;
   onSaved?: (service: ServiceAppointment) => void;
+  appointment?: ServiceAppointment;
+  mode?: "create" | "edit";
 };
 
 const employees = ["Safeeq", "Rajesh", "Arun"];
 
-export function ServiceFormModal({ open, onClose, onSaved }: Props) {
-  const { addAppointment, getNextAppointmentId } = useServicesStore();
+export function ServiceFormModal({ open, onClose, onSaved, appointment, mode = "create" }: Props) {
+  const { addAppointment, updateAppointment, getNextAppointmentId } = useServicesStore();
 
   const [form, setForm] = useState<Partial<ServiceAppointment>>({
     subject: "",
@@ -22,6 +24,11 @@ export function ServiceFormModal({ open, onClose, onSaved }: Props) {
     time: "",
     refNo: "",
     warrantyPeriod: "",
+    unitPrice: "",
+    state: "",
+    gst: "",
+    igst: "",
+    cgst: "",
     serviceDescription: "",
     workOrderId: "WO-NEW",
     instructions: "",
@@ -31,6 +38,10 @@ export function ServiceFormModal({ open, onClose, onSaved }: Props) {
 
   useEffect(() => {
     if (!open) return;
+    if (mode === "edit" && appointment) {
+      setForm({ ...appointment });
+      return;
+    }
     setForm({
       subject: "",
       employeeName: "",
@@ -38,13 +49,18 @@ export function ServiceFormModal({ open, onClose, onSaved }: Props) {
       time: "",
       refNo: "",
       warrantyPeriod: "",
+      unitPrice: "",
+      state: "",
+      gst: "",
+      igst: "",
+      cgst: "",
       serviceDescription: "",
       workOrderId: "WO-NEW",
       instructions: "",
       tasks: [],
       status: "Scheduled",
     });
-  }, [open]);
+  }, [open, mode, appointment]);
 
   const setField = <K extends keyof ServiceAppointment>(key: K, value: ServiceAppointment[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -65,6 +81,14 @@ export function ServiceFormModal({ open, onClose, onSaved }: Props) {
     }
     if (!form.time) {
       toast.error("Time is required");
+      return;
+    }
+
+    if (mode === "edit" && appointment) {
+      updateAppointment(appointment.id, { ...form });
+      toast.success("Service updated successfully!");
+      onSaved?.({ ...appointment, ...form } as ServiceAppointment);
+      onClose();
       return;
     }
 
@@ -93,13 +117,13 @@ export function ServiceFormModal({ open, onClose, onSaved }: Props) {
   if (!open) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4 overflow-hidden bg-black/75 rounded-[20px]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4 overflow-hidden bg-black/75">
       <div className="bg-card rounded-[20px] shadow-2xl w-full h-full sm:h-auto sm:max-w-2xl sm:max-h-[90vh] flex flex-col animate-in fade-in slide-in-from-bottom-4 duration-300">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-border bg-card flex-shrink-0">
           <div>
-            <h3 className="text-lg sm:text-xl font-bold text-card-foreground">Add New Service</h3>
-            <p className="text-xs text-muted-foreground mt-1">Create a new service appointment</p>
+            <h3 className="text-lg sm:text-xl font-bold text-card-foreground">{mode === "edit" ? "Edit Service" : "Add New Service"}</h3>
+            <p className="text-xs text-muted-foreground mt-1">{mode === "edit" ? "Update service appointment" : "Create a new service appointment"}</p>
           </div>
           <button onClick={onClose} className="p-2 hover:bg-secondary rounded-lg transition-colors flex-shrink-0">
             <X className="w-6 h-6 text-muted-foreground" />
@@ -132,7 +156,7 @@ export function ServiceFormModal({ open, onClose, onSaved }: Props) {
                 ))}
               </select>
             </div>
-            <div>
+            {/* <div>
               <label className="text-xs font-medium text-muted-foreground mb-2 block">Date *</label>
               <input
                 type="date"
@@ -149,7 +173,7 @@ export function ServiceFormModal({ open, onClose, onSaved }: Props) {
                 onChange={(e) => setField("time", e.target.value)}
                 className="w-full px-3 py-2 rounded-lg bg-secondary text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 border border-border"
               />
-            </div>
+            </div> */}
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-2 block">Reference No</label>
               <input
@@ -170,6 +194,72 @@ export function ServiceFormModal({ open, onClose, onSaved }: Props) {
                 className="w-full px-3 py-2 rounded-lg bg-secondary text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 border border-border"
               />
             </div>
+
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-2 block">Unit Price (₹)</label>
+              <input
+                type="number"
+                value={form.unitPrice || ""}
+                onChange={(e) => setField("unitPrice", e.target.value)}
+                placeholder="e.g. 1500"
+                className="w-full px-3 py-2 rounded-lg bg-secondary text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 border border-border"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-2 block">State</label>
+              <select
+                value={form.state || ""}
+                onChange={(e) => setField("state", e.target.value)}
+                className="w-full px-3 py-2 rounded-lg bg-secondary text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 border border-border"
+              >
+                <option value="">Select State</option>
+                <option value="Tamil Nadu">Tamil Nadu</option>
+                <option value="Kerala">Kerala</option>
+                <option value="Karnataka">Karnataka</option>
+                <option value="Andhra Pradesh">Andhra Pradesh</option>
+                <option value="Telangana">Telangana</option>
+                <option value="Maharashtra">Maharashtra</option>
+                <option value="Delhi">Delhi</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-2 block">GST (%)</label>
+              <input
+                type="number"
+                value={form.gst || ""}
+                onChange={(e) => setField("gst", e.target.value)}
+                placeholder="e.g. 18"
+                className="w-full px-3 py-2 rounded-lg bg-secondary text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 border border-border"
+              />
+            </div>
+
+            {form.state !== "Tamil Nadu" && (
+              <>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-2 block">IGST (%)</label>
+                  <input
+                    type="number"
+                    value={form.igst || ""}
+                    onChange={(e) => setField("igst", e.target.value)}
+                    placeholder="e.g. 18"
+                    className="w-full px-3 py-2 rounded-lg bg-secondary text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 border border-border"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-2 block">CGST (%)</label>
+                  <input
+                    type="number"
+                    value={form.cgst || ""}
+                    onChange={(e) => setField("cgst", e.target.value)}
+                    placeholder="e.g. 9"
+                    className="w-full px-3 py-2 rounded-lg bg-secondary text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 border border-border"
+                  />
+                </div>
+              </>
+            )}
             <div className="md:col-span-2">
               <label className="text-xs font-medium text-muted-foreground mb-2 block">Service Description</label>
               <textarea
