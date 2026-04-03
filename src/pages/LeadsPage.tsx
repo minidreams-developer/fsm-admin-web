@@ -684,7 +684,7 @@ const LeadsPage = () => {
                       className="flex-1 h-10 text-white rounded-lg hover:opacity-90 shadow-[0px_5px_12px_rgba(39,47,158,0.2)] transition-all font-semibold text-sm"
                       style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}
                     >
-                      Convert to Project
+                      Convert to Work Order
                     </button>
                   ) : (
                     <>

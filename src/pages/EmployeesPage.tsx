@@ -185,7 +185,7 @@ const EmployeesPage = () => {
                   <p className="text-sm font-bold text-card-foreground">{e.totalHours}h</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-xs text-muted-foreground mb-0.5">Projects</p>
+                  <p className="text-xs text-muted-foreground mb-0.5">Work Orders</p>
                   <p className="text-sm font-bold text-card-foreground">{e.projects}</p>
                 </div>
               </div>

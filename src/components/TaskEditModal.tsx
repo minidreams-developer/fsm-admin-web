@@ -54,11 +54,11 @@ export function TaskEditModal({ task, isOpen, onClose, onSave }: TaskEditModalPr
         assignedTo: data.assignedTo,
         status: data.status,
       });
-      toast.success("Task updated successfully!");
+      toast.success("Service updated successfully!");
       onSave();
       onClose();
     } catch (error) {
-      toast.error("Failed to update task");
+      toast.error("Failed to update service");
     }
   };
 
@@ -69,7 +69,7 @@ export function TaskEditModal({ task, isOpen, onClose, onSave }: TaskEditModalPr
       <div className="bg-card rounded-[20px] shadow-lg w-full max-w-md max-h-[90vh] overflow-y-auto">
         {/* Modal Header */}
         <div className="flex items-center justify-between p-6 border-b border-border sticky top-0 bg-card">
-          <h2 className="text-lg font-bold text-card-foreground">Edit Task</h2>
+          <h2 className="text-lg font-bold text-card-foreground">Edit Service</h2>
           <button
             onClick={onClose}
             className="p-1 hover:bg-secondary rounded-lg transition-colors"
@@ -81,7 +81,7 @@ export function TaskEditModal({ task, isOpen, onClose, onSave }: TaskEditModalPr
         {/* Modal Content */}
         <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-4">
           <div>
-            <label className="text-xs font-medium text-muted-foreground mb-2 block">Task Title *</label>
+            <label className="text-xs font-medium text-muted-foreground mb-2 block">Service Title *</label>
             <input
               type="text"
               {...register("title")}

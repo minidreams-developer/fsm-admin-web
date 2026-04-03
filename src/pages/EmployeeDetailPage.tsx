@@ -159,7 +159,7 @@ export const EmployeeDetailPage = () => {
             <p className="text-lg font-bold text-card-foreground">{employee.avgServiceTime}h</p>
           </div>
           <div className="space-y-2">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Projects</p>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Work Orders</p>
             <p className="text-lg font-bold text-card-foreground">{employee.projects}</p>
           </div>
 
@@ -237,7 +237,7 @@ export const EmployeeDetailPage = () => {
             className={`flex items-center gap-2 px-6 py-4 text-sm font-semibold transition-colors ${activeTab === "projects" ? "text-primary border-b-2 border-primary" : "text-muted-foreground hover:text-foreground"}`}
           >
             <Briefcase className="w-4 h-4" />
-            Assigned Projects ({assignedProjects.length})
+            Assigned Work Orders ({assignedProjects.length})
           </button>
           <button
             onClick={() => setActiveTab("inventory")}
@@ -273,7 +273,7 @@ export const EmployeeDetailPage = () => {
         <div className="p-6">
           {activeTab === "projects" && (
             filteredProjects.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-6">No projects found.</p>
+              <p className="text-sm text-muted-foreground text-center py-6">No work orders found.</p>
             ) : (
               <div className="space-y-3">
                 {filteredProjects.map((project) => (

@@ -92,7 +92,7 @@ const CreateWorkOrderPage = () => {
   const updateTask = (updated: Task) => {
     setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
     setEditingTask(null);
-    toast.success("Task updated");
+    toast.success("Service updated");
   };
 
   const removeTask = (id: string) => {
@@ -277,17 +277,17 @@ const CreateWorkOrderPage = () => {
         </div>
       </form>
 
-      {/* Tasks Section */}
+      {/* Services Section */}
       {tasks.length > 0 && (
         <div className="bg-card rounded-xl card-shadow border border-border overflow-hidden">
           <div className="px-6 py-4 border-b border-border">
-            <h2 className="text-base font-bold text-card-foreground">Tasks</h2>
-            <p className="text-xs text-muted-foreground mt-0.5">Services added as tasks — click Edit to configure</p>
+            <h2 className="text-base font-bold text-card-foreground">Services</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">Services added — click Edit to configure</p>
           </div>
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border">
-                {["Task", "From Date", "To Date", "Assigned To", "Status", "Action"].map((h) => (
+                {["Service", "From Date", "To Date", "Assigned To", "Status", "Action"].map((h) => (
                   <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">{h}</th>
                 ))}
               </tr>
@@ -304,10 +304,10 @@ const CreateWorkOrderPage = () => {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1">
-                      <button onClick={() => setEditingTask({ ...task })} className="p-1.5 rounded-md border border-border hover:bg-secondary transition-colors" title="Edit task">
+                      <button onClick={() => setEditingTask({ ...task })} className="p-1.5 rounded-md border border-border hover:bg-secondary transition-colors" title="Edit service">
                         <Edit2 className="w-3.5 h-3.5 text-muted-foreground" />
                       </button>
-                      <button onClick={() => removeTask(task.id)} className="p-1.5 rounded-md border border-border hover:bg-destructive/10 transition-colors" title="Remove task">
+                      <button onClick={() => removeTask(task.id)} className="p-1.5 rounded-md border border-border hover:bg-destructive/10 transition-colors" title="Remove service">
                         <X className="w-3.5 h-3.5 text-destructive" />
                       </button>
                     </div>

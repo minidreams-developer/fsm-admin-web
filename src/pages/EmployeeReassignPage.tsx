@@ -47,7 +47,7 @@ export const EmployeeReassignPage = () => {
     const allWoAssigned = assignedProjects.every(wo => woReassign[wo.id]);
     const allTaskAssigned = assignedTasks.every(t => taskReassign[t.id]);
     if (!allWoAssigned || !allTaskAssigned) {
-      toast.error("Please reassign all work orders and tasks before inactivating.");
+      toast.error("Please reassign all work orders and services before inactivating.");
       return;
     }
     assignedProjects.forEach(wo => updateWorkOrder(wo.id, { assignedTech: woReassign[wo.id] }));
@@ -108,7 +108,7 @@ export const EmployeeReassignPage = () => {
 
         {assignedTasks.length > 0 && (
           <div className="bg-card rounded-xl card-shadow border border-border p-6">
-            <h3 className="text-sm font-semibold text-card-foreground mb-4">Tasks ({assignedTasks.length})</h3>
+            <h3 className="text-sm font-semibold text-card-foreground mb-4">Services ({assignedTasks.length})</h3>
             <div className="space-y-3">
               {assignedTasks.map(t => (
                 <div key={t.id} className="p-4 rounded-lg bg-secondary/30 border border-border">

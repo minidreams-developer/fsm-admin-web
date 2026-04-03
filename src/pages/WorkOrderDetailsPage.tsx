@@ -21,9 +21,9 @@ export const WorkOrderDetailsPage = () => {
   const tasks = id ? getTasksByWorkOrder(id) : [];
 
   const handleDeleteTask = (taskId: string) => {
-    if (window.confirm("Are you sure you want to delete this task?")) {
+    if (window.confirm("Are you sure you want to delete this service?")) {
       deleteTask(taskId);
-      toast.success("Task deleted successfully!");
+      toast.success("Service deleted successfully!");
       setRefreshKey(prev => prev + 1);
     }
   };
@@ -237,17 +237,17 @@ export const WorkOrderDetailsPage = () => {
         )}
       </div>
 
-      {/* Tasks Section */}
+      {/* Services Section */}
       <div className="bg-card rounded-xl p-8 card-shadow border border-border">
         <div className="mb-6 pb-6 border-b border-border">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-2xl font-bold text-card-foreground flex items-center gap-2">
               <Briefcase className="w-6 h-6" />
-              Tasks ({tasks.length})
+              Services ({tasks.length})
             </h2>
           </div>
 
-          {/* Task Progress */}
+          {/* Service Progress */}
           {tasks.length > 0 && (
             <div className="space-y-3">
               <div className="flex items-center justify-between text-sm">
@@ -278,7 +278,7 @@ export const WorkOrderDetailsPage = () => {
           )}
         </div>
 
-        {/* Tasks Grid */}
+        {/* Services Grid */}
         {tasks.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {tasks.map((task) => (
@@ -292,14 +292,14 @@ export const WorkOrderDetailsPage = () => {
                     <button
                       onClick={() => setEditingTaskId(task.id)}
                       className="p-1.5 hover:bg-primary/10 rounded-lg transition-colors text-primary"
-                      title="Edit task"
+                      title="Edit service"
                     >
                       <Edit2 className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => handleDeleteTask(task.id)}
                       className="p-1.5 hover:bg-destructive/10 rounded-lg transition-colors text-destructive"
-                      title="Delete task"
+                      title="Delete service"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>

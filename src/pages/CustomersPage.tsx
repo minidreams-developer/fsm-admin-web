@@ -118,7 +118,7 @@ const CustomersPage = () => {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border">
-              {["Customer", "Phone", "Projects", "Total", "Active/Inactive", "Action"].map((h) => (
+              {["Customer", "Phone", "Work Orders", "Total", "Active/Inactive", "Action"].map((h) => (
                 <th key={h} className="text-left px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                   {h}
                 </th>
@@ -311,7 +311,7 @@ export const CustomerDetailPage = () => {
             <p className={`text-lg font-bold ${ledger.balance <= 0 ? "text-success" : "text-destructive"}`}>{formatRupee(ledger.balance)}</p>
           </div>
           <div className="space-y-2">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Projects</p>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Work Orders</p>
             <p className="text-lg font-bold text-card-foreground">{ledger.projects}</p>
           </div>
         </div>

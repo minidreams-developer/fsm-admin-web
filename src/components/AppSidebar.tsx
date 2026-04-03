@@ -13,7 +13,7 @@ const menuItems = [
   { label: "Customers", icon: UserCircle, path: "/customers" },
   { label: "Employees", icon: UserCog, path: "/employees" },
   { label: "Enquiries", icon: Users, path: "/leads" },
-  { label: "Service Management", icon: Wrench, path: "/service-management" },
+  { label: "Service list", icon: Wrench, path: "/service-management" },
   { label: "Quant Calendar", icon: CalendarDays, path: "/quant-calendar" },
   // { label: "Service Appointments", icon: Wrench, path: "/services" },
   

@@ -188,7 +188,7 @@ const PaymentsPage = () => {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <p className="text-xs text-muted-foreground mb-1">Project</p>
+                    <p className="text-xs text-muted-foreground mb-1">Work Order</p>
                     <p className="font-semibold text-card-foreground">{selectedWorkOrder.subject}</p>
                   </div>
                   <div>
@@ -196,7 +196,7 @@ const PaymentsPage = () => {
                     <p className="font-semibold text-card-foreground">{selectedWorkOrder.customer}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground mb-1">Project Value</p>
+                    <p className="text-xs text-muted-foreground mb-1">Work Order Value</p>
                     <p className="font-semibold text-primary">{selectedWorkOrder.totalValue}</p>
                   </div>
                   <div>
@@ -204,7 +204,7 @@ const PaymentsPage = () => {
                     <p className="font-semibold text-primary">₹{getBalancePayment(selectedWorkOrder).toLocaleString()}.00</p>
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground mb-1">Project ID</p>
+                    <p className="text-xs text-muted-foreground mb-1">Work Order ID</p>
                     <p className="font-semibold text-card-foreground">{selectedWorkOrder.id}</p>
                   </div>
                   <div>
