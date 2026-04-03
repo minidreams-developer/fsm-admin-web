@@ -44,6 +44,7 @@ export function WorkOrderEditModal({ workOrder, isOpen, onClose, onSave }: WorkO
   const [selectedServices, setSelectedServices] = useState<string[]>(
     workOrder.serviceTypes ?? (workOrder.serviceType ? [workOrder.serviceType] : [])
   );
+  const [serviceQuantities, setServiceQuantities] = useState<Record<string, number>>({});
 
   const serviceOptions = products.filter((p) => p.category === "Services" && p.status === "Active").map((p) => p.name);
 
@@ -67,9 +68,21 @@ export function WorkOrderEditModal({ workOrder, isOpen, onClose, onSave }: WorkO
             status: "Pending",
           });
         }
+        setServiceQuantities((q) => ({ ...q, [value]: 1 }));
+      } else {
+        setServiceQuantities((q) => {
+          const newQ = { ...q };
+          delete newQ[value];
+          return newQ;
+        });
       }
       return next;
     });
+  };
+
+  const updateServiceQuantity = (serviceName: string, quantity: number) => {
+    const qty = Math.max(1, quantity);
+    setServiceQuantities((q) => ({ ...q, [serviceName]: qty }));
   };
 
   const { register, handleSubmit, formState: { errors }, setValue } = useForm<WorkOrderFormData>({
@@ -183,8 +196,18 @@ export function WorkOrderEditModal({ workOrder, isOpen, onClose, onSave }: WorkO
                 {selectedServices.length > 0 && (
                   <div className="flex flex-wrap gap-2">
                     {selectedServices.map((s) => (
-                      <div key={s} className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 border border-primary/20 rounded-lg">
+                      <div key={s} className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 border border-primary/20 rounded-lg">
                         <span className="text-xs font-medium text-primary">{s}</span>
+                        <div className="flex items-center gap-1">
+                          <label className="text-xs text-primary/70">Qty:</label>
+                          <input
+                            type="number"
+                            min="1"
+                            value={serviceQuantities[s] || 1}
+                            onChange={(e) => updateServiceQuantity(s, parseInt(e.target.value) || 1)}
+                            className="w-14 px-2 py-0.5 text-xs rounded bg-white border border-primary/30 text-primary focus:outline-none focus:ring-1 focus:ring-primary/50"
+                          />
+                        </div>
                         <button type="button" onClick={() => toggleService(s)} className="text-primary hover:text-primary/70"><X className="w-3 h-3" /></button>
                       </div>
                     ))}

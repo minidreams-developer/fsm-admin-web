@@ -1,6 +1,7 @@
 import { useNavigate, useLocation } from "react-router-dom";
 import { X, Plus, Edit2 } from "lucide-react";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
+import { ChevronDown } from "lucide-react";
 import { createPortal } from "react-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -39,6 +40,7 @@ type Task = {
   endDate: string;
   assignedTo: string;
   status: TaskStatus;
+  quantity: number;
 };
 
 const CreateWorkOrderPage = () => {
@@ -54,6 +56,20 @@ const CreateWorkOrderPage = () => {
   const [selectedServices, setSelectedServices] = useState<string[]>(
     (location.state as any)?.leadData?.services ?? []
   );
+  const [serviceQuantities, setServiceQuantities] = useState<Record<string, number>>({});
+  const [selectedEmployees, setSelectedEmployees] = useState<string[]>([]);
+  const [empDropdownOpen, setEmpDropdownOpen] = useState(false);
+  const empDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (empDropdownRef.current && !empDropdownRef.current.contains(e.target as Node)) {
+        setEmpDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
 
   const serviceOptions = products.filter((p) => p.category === "Services" && p.status === "Active").map((p) => p.name);
 
@@ -78,19 +94,32 @@ const CreateWorkOrderPage = () => {
       setValue("serviceType", next[0] ?? "");
       // add as task if not already there
       if (!prev.includes(value) && !tasks.find((t) => t.title === value)) {
-        setTasks((t) => [...t, { id: Date.now().toString(), title: value, startDate: "", endDate: "", assignedTo: "", status: "Pending" }]);
+        setTasks((t) => [...t, { id: Date.now().toString(), title: value, startDate: "", endDate: "", assignedTo: "", status: "Pending", quantity: 1 }]);
+        setServiceQuantities((q) => ({ ...q, [value]: 1 }));
       }
       if (prev.includes(value)) {
         setTasks((t) => t.filter((task) => task.title !== value));
+        setServiceQuantities((q) => {
+          const newQ = { ...q };
+          delete newQ[value];
+          return newQ;
+        });
       }
       return next;
     });
+  };
+
+  const updateServiceQuantity = (serviceName: string, quantity: number) => {
+    const qty = Math.max(1, quantity);
+    setServiceQuantities((q) => ({ ...q, [serviceName]: qty }));
+    setTasks((prev) => prev.map((t) => (t.title === serviceName ? { ...t, quantity: qty } : t)));
   };
 
   const removeService = (value: string) => toggleService(value);
 
   const updateTask = (updated: Task) => {
     setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
+    setServiceQuantities((q) => ({ ...q, [updated.title]: updated.quantity }));
     setEditingTask(null);
     toast.success("Service updated");
   };
@@ -118,7 +147,7 @@ const CreateWorkOrderPage = () => {
         start: data.start,
         end: data.end || data.start,
         status: data.status as "Open" | "Scheduled" | "Completed",
-        assignedTech: data.assignedTech || "Unassigned",
+        assignedTech: selectedEmployees.length > 0 ? selectedEmployees.join(", ") : "Unassigned",
         notes: data.notes || "",
         siteAddress: data.address,
         billingAddress: data.address,
@@ -209,8 +238,18 @@ const CreateWorkOrderPage = () => {
             {selectedServices.length > 0 && (
               <div className="flex flex-wrap gap-2">
                 {selectedServices.map((s) => (
-                  <div key={s} className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 border border-primary/20 rounded-lg">
+                  <div key={s} className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 border border-primary/20 rounded-lg">
                     <span className="text-xs font-medium text-primary">{s}</span>
+                    <div className="flex items-center gap-1">
+                      <label className="text-xs text-primary/70">Qty:</label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={serviceQuantities[s] || 1}
+                        onChange={(e) => updateServiceQuantity(s, parseInt(e.target.value) || 1)}
+                        className="w-14 px-2 py-0.5 text-xs rounded bg-white border border-primary/30 text-primary focus:outline-none focus:ring-1 focus:ring-primary/50"
+                      />
+                    </div>
                     <button type="button" onClick={() => removeService(s)} className="text-primary hover:text-primary/70"><X className="w-3 h-3" /></button>
                   </div>
                 ))}
@@ -257,10 +296,36 @@ const CreateWorkOrderPage = () => {
 
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-2 block">Assign Employee</label>
-            <select {...register("assignedTech")} className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground">
-              <option value="">Unassigned</option>
-              {employees.map((e) => <option key={e.id} value={e.name}>{e.name} — {e.role}</option>)}
-            </select>
+            <div className="relative" ref={empDropdownRef}>
+              <button
+                type="button"
+                onClick={() => setEmpDropdownOpen(o => !o)}
+                className="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+              >
+                <span className={selectedEmployees.length === 0 ? "text-muted-foreground" : ""}>
+                  {selectedEmployees.length === 0 ? "Select employees" : selectedEmployees.join(", ")}
+                </span>
+                <ChevronDown className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+              </button>
+              {empDropdownOpen && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-card border border-border rounded-lg shadow-lg z-20 max-h-48 overflow-y-auto">
+                  {employees.map(emp => (
+                    <label key={emp.id} className="flex items-center gap-2.5 px-3 py-2 hover:bg-secondary cursor-pointer text-sm text-card-foreground">
+                      <input
+                        type="checkbox"
+                        checked={selectedEmployees.includes(emp.name)}
+                        onChange={() => setSelectedEmployees(prev =>
+                          prev.includes(emp.name) ? prev.filter(x => x !== emp.name) : [...prev, emp.name]
+                        )}
+                        className="accent-primary"
+                      />
+                      {emp.name} — {emp.role}
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+            <input type="hidden" {...register("assignedTech")} value={selectedEmployees.join(", ")} />
           </div>
 
           <div className="md:col-span-2">
@@ -287,7 +352,7 @@ const CreateWorkOrderPage = () => {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border">
-                {["Service", "From Date", "To Date", "Assigned To", "Status", "Action"].map((h) => (
+                {["Service", "Quantity", "From Date", "To Date", "Assigned To", "Status", "Action"].map((h) => (
                   <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">{h}</th>
                 ))}
               </tr>
@@ -296,6 +361,15 @@ const CreateWorkOrderPage = () => {
               {tasks.map((task) => (
                 <tr key={task.id} className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors">
                   <td className="px-4 py-3 font-medium text-card-foreground text-xs">{task.title}</td>
+                  <td className="px-4 py-3">
+                    <input
+                      type="number"
+                      min="1"
+                      value={task.quantity || 1}
+                      onChange={(e) => updateServiceQuantity(task.title, parseInt(e.target.value) || 1)}
+                      className="w-20 px-2 py-1 text-xs rounded-lg bg-secondary border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
+                    />
+                  </td>
                   <td className="px-4 py-3 text-muted-foreground text-xs">{task.startDate || "—"}</td>
                   <td className="px-4 py-3 text-muted-foreground text-xs">{task.endDate || "—"}</td>
                   <td className="px-4 py-3 text-muted-foreground text-xs">{task.assignedTo || "—"}</td>
@@ -333,6 +407,10 @@ const CreateWorkOrderPage = () => {
               <div>
                 <label className="text-xs font-medium text-muted-foreground mb-2 block">Task</label>
                 <input value={editingTask.title} readOnly className="w-full px-3 py-2 rounded-lg bg-secondary/50 text-sm border border-border text-card-foreground" />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-2 block">Quantity</label>
+                <input type="number" min="1" value={editingTask.quantity || 1} onChange={(e) => setEditingTask({ ...editingTask, quantity: Math.max(1, parseInt(e.target.value) || 1) })} className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground" />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
