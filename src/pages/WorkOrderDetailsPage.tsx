@@ -282,7 +282,11 @@ export const WorkOrderDetailsPage = () => {
         {tasks.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {tasks.map((task) => (
-              <div key={task.id} className="bg-secondary/30 rounded-lg p-4 border border-border hover:border-primary/30 transition-all">
+              <div 
+                key={task.id} 
+                className="bg-secondary/30 rounded-lg p-4 border border-border hover:border-primary/30 transition-all cursor-pointer"
+                onClick={() => navigate(`/service/${task.id}`)}
+              >
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex-1">
                     <h4 className="font-semibold text-card-foreground">{task.title}</h4>
@@ -290,14 +294,20 @@ export const WorkOrderDetailsPage = () => {
                   </div>
                   <div className="flex items-center gap-2 ml-2">
                     <button
-                      onClick={() => setEditingTaskId(task.id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEditingTaskId(task.id);
+                      }}
                       className="p-1.5 hover:bg-primary/10 rounded-lg transition-colors text-primary"
                       title="Edit service"
                     >
                       <Edit2 className="w-4 h-4" />
                     </button>
                     <button
-                      onClick={() => handleDeleteTask(task.id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteTask(task.id);
+                      }}
                       className="p-1.5 hover:bg-destructive/10 rounded-lg transition-colors text-destructive"
                       title="Delete service"
                     >
@@ -309,7 +319,20 @@ export const WorkOrderDetailsPage = () => {
                 <div className="grid grid-cols-2 gap-3 mb-3 pb-3 border-b border-border">
                   <div>
                     <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Assigned To</p>
-                    <p className="text-sm font-semibold text-card-foreground mt-1">{task.assignedTo}</p>
+                    {task.assignedEmployees && task.assignedEmployees.length > 0 ? (
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {task.assignedEmployees.map((employee, index) => (
+                          <span
+                            key={index}
+                            className="inline-flex items-center px-2 py-0.5 bg-primary/10 text-primary text-xs font-semibold rounded border border-primary/20"
+                          >
+                            {employee}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm font-semibold text-card-foreground mt-1">{task.assignedTo}</p>
+                    )}
                   </div>
                   <div>
                     <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</p>
