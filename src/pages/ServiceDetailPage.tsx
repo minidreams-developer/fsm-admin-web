@@ -17,27 +17,13 @@ const dummyOdometerReadings = [
     fromImage: "/placeholder.svg",
     toImage: "/placeholder.svg"
   },
-  { 
-    id: 2, 
-    date: "2026-02-03", 
-    fromKm: 12485, 
-    toKm: 12520, 
-    distance: 35, 
-    vehicle: "Van-01",
-    fromImage: "/placeholder.svg",
-    toImage: "/placeholder.svg"
-  },
-  { 
-    id: 3, 
-    date: "2026-02-05", 
-    fromKm: 12520, 
-    toKm: 12558, 
-    distance: 38, 
-    vehicle: "Van-01",
-    fromImage: "/placeholder.svg",
-    toImage: "/placeholder.svg"
-  },
 ];
+
+// Dummy workplace images
+const workplaceImages = {
+  before: "/placeholder.svg",
+  after: "/placeholder.svg"
+};
 
 export const ServiceDetailPage = () => {
   const { id } = useParams();
@@ -299,6 +285,53 @@ export const ServiceDetailPage = () => {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+
+        {/* Before & After Working Place Images Section */}
+        <div>
+          <h3 className="text-lg font-bold text-card-foreground mb-4 flex items-center gap-2">
+            <ImageIcon className="w-5 h-5" />
+            Before & After Working Place
+          </h3>
+          <div className="bg-secondary/30 rounded-lg p-4 border border-border">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Before Image */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Before Work</p>
+                </div>
+                <div className="relative aspect-video bg-secondary rounded-lg overflow-hidden border border-border group">
+                  <img 
+                    src={workplaceImages.before} 
+                    alt="Before work"
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <p className="text-white text-sm font-semibold">Before Work</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* After Image */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">After Work</p>
+                </div>
+                <div className="relative aspect-video bg-secondary rounded-lg overflow-hidden border border-border group">
+                  <img 
+                    src={workplaceImages.after} 
+                    alt="After work"
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <p className="text-white text-sm font-semibold">After Work</p>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
