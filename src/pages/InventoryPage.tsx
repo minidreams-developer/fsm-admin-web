@@ -1,5 +1,5 @@
 import { StatusBadge } from "@/components/StatusBadge";
-import { Plus, AlertTriangle, Edit2, Trash2, Eye, Package, AlertCircle, CheckCircle } from "lucide-react";
+import { Plus, AlertTriangle, Edit2, Trash2, Eye, Package, AlertCircle, CheckCircle, UserCheck } from "lucide-react";
 import { useState } from "react";
 import { useBranchesStore } from "@/store/branchesStore";
 import { useProductsStore } from "@/store/productsStore";
@@ -7,10 +7,12 @@ import { useInventoryStore } from "@/store/inventoryStore";
 import { InventoryFormModal } from "@/components/InventoryFormModal";
 import { InventoryDetailsModal } from "@/components/InventoryDetailsModal";
 import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
 
 const statusMap = { OK: "success", Low: "warning", Critical: "error" } as const;
 
 const InventoryPage = () => {
+  const navigate = useNavigate();
   const { branches } = useBranchesStore();
   const { products } = useProductsStore();
   const { inventory: inventoryItems, updateItem, deleteItem } = useInventoryStore();
@@ -54,9 +56,14 @@ const InventoryPage = () => {
           <h2 className="text-lg sm:text-xl font-bold text-card-foreground">Inventory</h2>
           <p className="text-sm text-muted-foreground">Branch-wise chemical stock management</p>
         </div>
-        <button onClick={handleAddNew} className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 text-white shadow-[0px_5px_12px_rgba(39,47,158,0.2)] transition-all" style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}>
-          <Plus className="w-4 h-4" /> Add Inventory
-        </button>
+        <div className="flex gap-2">
+          <button onClick={() => navigate("/inventory/allocate")} className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 border border-primary text-primary bg-primary/5 transition-all">
+            <UserCheck className="w-4 h-4" /> Allocate Stock
+          </button>
+          <button onClick={handleAddNew} className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 text-white shadow-[0px_5px_12px_rgba(39,47,158,0.2)] transition-all" style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}>
+            <Plus className="w-4 h-4" /> Add Inventory
+          </button>
+        </div>
       </div>
 
       {/* Overview Cards */}

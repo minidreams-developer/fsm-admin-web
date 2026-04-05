@@ -1,190 +1,462 @@
-import { useState } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useState, useMemo } from "react";
+import { 
+  Search, 
+  ChevronLeft,
+  ChevronRight,
+  Plus, 
+  Zap,
+  Clock,
+  MapPin,
+  Users
+} from "lucide-react";
 import { useProjectsStore } from "@/store/projectsStore";
-import { useLeadsStore } from "@/store/leadsStore";
-import { useServicesStore } from "@/store/servicesStore";
 import { useEmployeesStore } from "@/store/employeesStore";
 
-const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+// Types
+type Priority = "LOW" | "MEDIUM" | "HIGH" | "URGENT";
 
-type CalEvent = {
-  label: string;
-  color: string;
-  type: "work-order" | "enquiry" | "service" | "employee";
+type ScheduledJob = {
+  workOrderId: string;
+  employeeId: string;
+  startTime: number;
+  duration: number;
 };
 
-type TabFilter = "All" | "Work Order" | "Employee";
+const timeSlots = Array.from({ length: 13 }, (_, i) => i + 7); // 7 AM to 7 PM
+
+const getPriority = (wo: any): Priority => {
+  if (wo.status === "Open") return "URGENT";
+  if (wo.frequency === "Monthly") return "HIGH";
+  if (wo.frequency === "Quarterly" || wo.frequency === "Bi-Monthly") return "MEDIUM";
+  return "LOW";
+};
+
+const priorityBgColors: Record<Priority, string> = {
+  LOW: "bg-green-100 border-green-300 text-green-900",
+  MEDIUM: "bg-yellow-100 border-yellow-300 text-yellow-900",
+  HIGH: "bg-orange-100 border-orange-300 text-orange-900",
+  URGENT: "bg-red-100 border-red-300 text-red-900",
+};
 
 const QuantCalendarPage = () => {
-  const today = new Date();
-  const [current, setCurrent] = useState({ year: today.getFullYear(), month: today.getMonth() });
-  const [selected, setSelected] = useState<number | null>(null);
-  const [tab, setTab] = useState<TabFilter>("All");
-
   const { workOrders } = useProjectsStore();
-  const { leads } = useLeadsStore();
-  const { appointments } = useServicesStore();
   const { employees } = useEmployeesStore();
+  const [schedule, setSchedule] = useState<ScheduledJob[]>([]);
+  const [searchText, setSearchText] = useState("");
+  const [draggedWorkOrder, setDraggedWorkOrder] = useState<any | null>(null);
+  const [selectedDate] = useState(new Date());
+  const [viewMode, setViewMode] = useState<"branch" | "employee">("branch");
+  const [searchEmployee, setSearchEmployee] = useState("");
 
-  const prev = () => { setSelected(null); setCurrent(c => c.month === 0 ? { year: c.year - 1, month: 11 } : { ...c, month: c.month - 1 }); };
-  const next = () => { setSelected(null); setCurrent(c => c.month === 11 ? { year: c.year + 1, month: 0 } : { ...c, month: c.month + 1 }); };
+  // Group employees by branch
+  const employeesByBranch = useMemo(() => {
+    const grouped: Record<string, typeof employees> = {};
+    employees.forEach(emp => {
+      emp.branch.forEach(b => {
+        if (!grouped[b]) grouped[b] = [];
+        if (!grouped[b].find(e => e.id === emp.id)) {
+          grouped[b].push(emp);
+        }
+      });
+    });
+    return grouped;
+  }, [employees]);
 
-  const firstDay = new Date(current.year, current.month, 1).getDay();
-  const daysInMonth = new Date(current.year, current.month + 1, 0).getDate();
+  // Filter work orders
+  const filteredWorkOrders = useMemo(() => {
+    return workOrders.filter(wo => {
+      const matchesSearch = wo.customer.toLowerCase().includes(searchText.toLowerCase()) ||
+                           wo.id.toLowerCase().includes(searchText.toLowerCase());
+      const isNotScheduled = !schedule.some(s => s.workOrderId === wo.id);
+      return matchesSearch && isNotScheduled;
+    });
+  }, [workOrders, searchText, schedule]);
 
-  const eventMap: Record<number, CalEvent[]> = {};
-
-  const addEvent = (dateStr: string, event: CalEvent) => {
-    if (!dateStr) return;
-    const d = new Date(dateStr);
-    if (d.getFullYear() === current.year && d.getMonth() === current.month) {
-      const day = d.getDate();
-      if (!eventMap[day]) eventMap[day] = [];
-      eventMap[day].push(event);
-    }
+  const getEmployeeJobs = (employeeId: string) => {
+    return schedule.filter(s => s.employeeId === employeeId);
   };
 
-  if (tab === "All" || tab === "Work Order") {
-    workOrders.forEach(wo => {
-      addEvent(wo.start, { label: `WO: ${wo.customer}`, color: "bg-primary/80", type: "work-order" });
-    });
-    leads.forEach(l => {
-      if (l.nextFollowUpDate) {
-        addEvent(l.nextFollowUpDate, { label: `Follow Up: ${l.name}`, color: "bg-warning/80", type: "enquiry" });
-      }
-    });
-    appointments.forEach(apt => {
-      addEvent(apt.date, { label: `Service: ${apt.workOrderId}`, color: "bg-success/80", type: "service" });
-    });
-  }
+  const handleDragStart = (wo: any) => {
+    setDraggedWorkOrder(wo);
+  };
 
-  if (tab === "All" || tab === "Employee") {
-    employees.forEach(emp => {
-      // Show employee clock-in as a daily marker — use today's date as placeholder for demo
-      const d = new Date(current.year, current.month, 1);
-      for (let day = 1; day <= daysInMonth; day++) {
-        d.setDate(day);
-        if (d.getDay() !== 0 && d.getDay() !== 6) { // weekdays only
-          addEvent(`${current.year}-${String(current.month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`,
-            { label: `${emp.name} (${emp.clockIn})`, color: "bg-purple-500/70", type: "employee" });
+  const handleDrop = (employeeId: string, timeSlot: number) => {
+    if (!draggedWorkOrder) return;
+
+    const employeeJobs = getEmployeeJobs(employeeId);
+    const duration = 2;
+
+    const hasConflict = employeeJobs.some(job => {
+      const jobEnd = job.startTime + job.duration;
+      const newEnd = timeSlot + duration;
+      return (timeSlot >= job.startTime && timeSlot < jobEnd) ||
+             (newEnd > job.startTime && newEnd <= jobEnd) ||
+             (timeSlot <= job.startTime && newEnd >= jobEnd);
+    });
+
+    if (hasConflict) {
+      alert("Time slot conflict!");
+      setDraggedWorkOrder(null);
+      return;
+    }
+
+    setSchedule([...schedule, {
+      workOrderId: draggedWorkOrder.id,
+      employeeId,
+      startTime: timeSlot,
+      duration,
+    }]);
+
+    setDraggedWorkOrder(null);
+  };
+
+  const handleAutoAssign = () => {
+    const unassigned = workOrders.filter(wo => !schedule.some(s => s.workOrderId === wo.id));
+    const newSchedule = [...schedule];
+
+    unassigned.forEach(wo => {
+      const duration = 2;
+      let bestEmployee: any = null;
+      let bestTime = -1;
+
+      for (const emp of employees) {
+        const empJobs = newSchedule.filter(s => s.employeeId === emp.id);
+
+        for (let time = 7; time <= 19 - duration; time++) {
+          const hasConflict = empJobs.some(job => {
+            const jobEnd = job.startTime + job.duration;
+            const newEnd = time + duration;
+            return (time >= job.startTime && time < jobEnd) ||
+                   (newEnd > job.startTime && newEnd <= jobEnd) ||
+                   (time <= job.startTime && newEnd >= jobEnd);
+          });
+
+          if (!hasConflict) {
+            bestEmployee = emp;
+            bestTime = time;
+            break;
+          }
         }
+
+        if (bestEmployee) break;
+      }
+
+      if (bestEmployee && bestTime !== -1) {
+        newSchedule.push({
+          workOrderId: wo.id,
+          employeeId: bestEmployee.id,
+          startTime: bestTime,
+          duration,
+        });
       }
     });
-  }
 
-  const cells = Array(firstDay).fill(null).concat(Array.from({ length: daysInMonth }, (_, i) => i + 1));
-  const selectedEvents = selected ? (eventMap[selected] || []) : [];
+    setSchedule(newSchedule);
+  };
+
+  const stats = useMemo(() => {
+    const total = workOrders.length;
+    const assigned = schedule.length;
+    const unassigned = total - assigned;
+    const assignedPercent = total > 0 ? Math.round((assigned / total) * 100) : 0;
+    const busyEmployees = employees.filter(emp => getEmployeeJobs(emp.id).length > 0).length;
+    const busyPercent = employees.length > 0 ? Math.round((busyEmployees / employees.length) * 100) : 0;
+    
+    return {
+      total,
+      assigned,
+      unassigned,
+      assignedPercent,
+      busyPercent,
+      completionRate: 85,
+    };
+  }, [workOrders, schedule, employees]);
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div>
-          <h2 className="text-lg sm:text-xl font-bold text-card-foreground">Quant Calendar</h2>
-          <p className="text-sm text-muted-foreground">Work orders, follow-ups and service appointments</p>
+    <div className="space-y-4 animate-fade-in">
+      {/* Top Navigation */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <button className="p-2 hover:bg-secondary rounded-lg">
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+          <span className="text-lg font-semibold">Today</span>
+          <button className="p-2 hover:bg-secondary rounded-lg">
+            <ChevronRight className="w-5 h-5" />
+          </button>
         </div>
-        <div className="flex items-center gap-1 bg-secondary rounded-lg p-1">
-          {(["All", "Work Order", "Employee"] as TabFilter[]).map(t => (
-            <button
-              key={t}
-              onClick={() => { setTab(t); setSelected(null); }}
-              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors whitespace-nowrap ${tab === t ? "text-white" : "text-muted-foreground hover:text-foreground"}`}
-              style={tab === t ? { background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" } : {}}
-            >
-              {t}
-            </button>
-          ))}
+        <div className="text-lg font-semibold">
+          {selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleAutoAssign}
+            className="px-4 py-2 rounded-lg text-white text-sm font-semibold flex items-center gap-2 hover:opacity-90"
+            style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}
+          >
+            <Zap className="w-4 h-4" />
+            Auto Assign
+          </button>
+          <button className="px-4 py-2 rounded-lg bg-primary text-white text-sm font-semibold flex items-center gap-2">
+            <Plus className="w-4 h-4" />
+            Work Order
+          </button>
         </div>
       </div>
 
-      {/* Legend */}
-      <div className="flex flex-wrap gap-4 text-xs">
-        {(tab === "All" || tab === "Work Order") && <>
-          <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-primary/80" />Work Orders</span>
-          <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-warning/80" />Enquiry Follow-ups</span>
-          <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-success/80" />Service Appointments</span>
-        </>}
-        {(tab === "All" || tab === "Employee") && (
-          <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-purple-500/70" />Employee Schedule</span>
-        )}
-      </div>
-
-      <div className="bg-card rounded-xl card-shadow border border-border p-6">
-        <div className="flex items-center justify-between mb-6">
-          <button onClick={prev} className="p-2 rounded-lg border border-border hover:bg-secondary transition-colors">
-            <ChevronLeft className="w-4 h-4 text-muted-foreground" />
-          </button>
-          <h3 className="text-base font-bold text-card-foreground">{MONTHS[current.month]} {current.year}</h3>
-          <button onClick={next} className="p-2 rounded-lg border border-border hover:bg-secondary transition-colors">
-            <ChevronRight className="w-4 h-4 text-muted-foreground" />
-          </button>
+      {/* Main Content */}
+      <div className="grid grid-cols-12 gap-4">
+        {/* Left Panel - Work Orders */}
+        <div className="col-span-3 bg-card rounded-xl border border-border">
+          <div className="p-4 border-b border-border">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-bold">Work Orders</h3>
+              <span className="text-xs font-semibold text-primary">{filteredWorkOrders.length} Unassigned</span>
+            </div>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <input
+                type="text"
+                placeholder="Search work orders..."
+                value={searchText}
+                onChange={(e) => setSearchText(e.target.value)}
+                className="w-full pl-9 pr-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
+          </div>
+          <div className="p-3 space-y-2 max-h-[600px] overflow-y-auto">
+            {workOrders.length === 0 && (
+              <div className="text-center py-8">
+                <p className="text-sm text-muted-foreground">No work orders available</p>
+              </div>
+            )}
+            {filteredWorkOrders.length === 0 && workOrders.length > 0 && (
+              <div className="text-center py-8">
+                <p className="text-sm text-muted-foreground mb-2">No work orders match your search</p>
+                <button 
+                  onClick={() => setSearchText("")}
+                  className="text-xs text-primary hover:underline"
+                >
+                  Clear search
+                </button>
+              </div>
+            )}
+            {filteredWorkOrders.map(wo => {
+              const priority = getPriority(wo);
+              return (
+                <div
+                  key={wo.id}
+                  draggable
+                  onDragStart={() => handleDragStart(wo)}
+                  className={`p-3 rounded-lg border cursor-move hover:shadow-md transition-all ${priorityBgColors[priority]}`}
+                >
+                  <div className="flex items-start justify-between mb-1">
+                    <p className="text-xs font-bold">{wo.id}</p>
+                    <span className="text-[10px]">
+                      {wo.workOrderDateTime ? new Date(wo.workOrderDateTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : "9:00 AM"}
+                    </span>
+                  </div>
+                  <p className="text-sm font-semibold mb-1">{wo.customer}</p>
+                  <div className="flex items-start gap-1 text-[11px] text-muted-foreground mb-1">
+                    <MapPin className="w-3 h-3 flex-shrink-0 mt-0.5" />
+                    <span className="line-clamp-1">{wo.address}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-[10px]">
+                    <span className="truncate">{wo.serviceType.split('(')[0].trim()}</span>
+                    <div className="flex items-center gap-1">
+                      <Users className="w-3 h-3" />
+                      <span>2</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
 
-        <div className="grid grid-cols-7 mb-1">
-          {DAYS.map(d => (
-            <div key={d} className="text-center text-xs font-semibold text-muted-foreground py-2">{d}</div>
-          ))}
-        </div>
-
-        <div className="grid grid-cols-7 gap-1">
-          {cells.map((day, i) => {
-            const isToday = day === today.getDate() && current.month === today.getMonth() && current.year === today.getFullYear();
-            const isSelected = day === selected;
-            const events = day ? (eventMap[day] || []) : [];
-            return (
-              <div
-                key={i}
-                onClick={() => day && setSelected(isSelected ? null : day)}
-                className={`min-h-[72px] p-1.5 rounded-lg border transition-colors ${
-                  !day ? "border-transparent" :
-                  isSelected ? "border-primary bg-primary/5 cursor-pointer" :
-                  "border-border hover:bg-secondary/50 cursor-pointer"
+        {/* Right Panel - Calendar */}
+        <div className="col-span-9 bg-card rounded-xl border border-border">
+          {/* View Tabs */}
+          <div className="border-b border-border">
+            <div className="flex items-center gap-4 px-4">
+              <button
+                onClick={() => setViewMode("branch")}
+                className={`px-4 py-3 text-sm font-semibold border-b-2 transition-colors ${
+                  viewMode === "branch"
+                    ? "border-primary text-primary"
+                    : "border-transparent text-muted-foreground hover:text-card-foreground"
                 }`}
               >
-                {day && (
-                  <>
-                    <div className={`w-6 h-6 flex items-center justify-center rounded-full text-xs font-semibold mb-1 ${isToday ? "text-white" : "text-card-foreground"}`}
-                      style={isToday ? { background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" } : {}}>
-                      {day}
-                    </div>
-                    <div className="space-y-0.5">
-                      {events.slice(0, 2).map((ev, idx) => (
-                        <div key={idx} className={`${ev.color} text-white text-[10px] font-medium px-1 py-0.5 rounded truncate`}>
-                          {ev.label}
-                        </div>
-                      ))}
-                      {events.length > 2 && (
-                        <div className="text-[10px] text-muted-foreground px-1">+{events.length - 2} more</div>
-                      )}
-                    </div>
-                  </>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
+                BRANCH VIEW
+              </button>
+              <button
+                onClick={() => setViewMode("employee")}
+                className={`px-4 py-3 text-sm font-semibold border-b-2 transition-colors ${
+                  viewMode === "employee"
+                    ? "border-primary text-primary"
+                    : "border-transparent text-muted-foreground hover:text-card-foreground"
+                }`}
+              >
+                EMPLOYEE VIEW
+              </button>
+            </div>
+          </div>
 
-      {selected && (
-        <div className="bg-card rounded-xl card-shadow border border-border p-5">
-          <h4 className="text-sm font-semibold text-card-foreground mb-3">
-            {MONTHS[current.month]} {selected}, {current.year}
-          </h4>
-          {selectedEvents.length === 0 ? (
-            <p className="text-xs text-muted-foreground">No events on this day.</p>
-          ) : (
-            <div className="space-y-2">
-              {selectedEvents.map((ev, i) => (
-                <div key={i} className="flex items-center gap-3 p-3 rounded-lg bg-secondary/30 border border-border">
-                  <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${ev.color}`} />
-                  <span className="text-sm text-card-foreground">{ev.label}</span>
-                  <span className="ml-auto text-xs text-muted-foreground capitalize">{ev.type.replace("-", " ")}</span>
+          {/* Employee Search */}
+          <div className="p-4 border-b border-border bg-secondary/20">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-semibold">Employees</span>
+                <input
+                  type="text"
+                  placeholder="Filter employees..."
+                  value={searchEmployee}
+                  onChange={(e) => setSearchEmployee(e.target.value)}
+                  className="px-3 py-1 rounded-lg bg-card text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Timeline */}
+          <div className="overflow-auto" style={{ maxHeight: '600px' }}>
+            <div className="min-w-[1200px]">
+              {/* Time Header */}
+              <div className="sticky top-0 bg-card z-10 border-b border-border">
+                <div className="grid" style={{ gridTemplateColumns: "200px repeat(13, 1fr)" }}>
+                  <div className="p-2"></div>
+                  {timeSlots.map(hour => (
+                    <div key={hour} className="p-2 text-center border-l border-border">
+                      <p className="text-xs font-semibold">
+                        {hour === 12 ? "12 PM" : hour > 12 ? `${hour - 12} PM` : `${hour} AM`}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Employee Rows by Branch */}
+              {viewMode === "branch" && Object.entries(employeesByBranch).map(([branch, branchEmployees]) => (
+                <div key={branch}>
+                  {/* Branch Header */}
+                  <div className="bg-blue-50 dark:bg-blue-500/10 border-b border-border">
+                    <div className="grid" style={{ gridTemplateColumns: "200px repeat(13, 1fr)" }}>
+                      <div className="p-3 flex items-center gap-2">
+                        <Users className="w-4 h-4 text-blue-600" />
+                        <span className="text-sm font-bold text-blue-900 dark:text-blue-400">{branch}</span>
+                        <span className="text-xs text-muted-foreground">• {branchEmployees.length} Employees</span>
+                      </div>
+                      <div className="col-span-13"></div>
+                    </div>
+                  </div>
+
+                  {/* Branch Employees */}
+                  {branchEmployees
+                    .filter(emp => emp.name.toLowerCase().includes(searchEmployee.toLowerCase()))
+                    .map(emp => {
+                      const empJobs = getEmployeeJobs(emp.id);
+                      return (
+                        <div key={emp.id} className="grid border-b border-border hover:bg-secondary/10" style={{ gridTemplateColumns: "200px repeat(13, 1fr)" }}>
+                          {/* Employee Info */}
+                          <div className="p-3 border-r border-border flex items-center gap-3">
+                            <img 
+                              src={emp.profilePhoto || "/placeholder.svg"} 
+                              alt={emp.name}
+                              className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-purple-600"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-semibold truncate">{emp.name}</p>
+                              <p className="text-xs text-muted-foreground">{emp.role}</p>
+                              <p className="text-xs font-semibold text-primary">{empJobs.length}/3</p>
+                            </div>
+                          </div>
+
+                          {/* Time Slots */}
+                          {timeSlots.map(hour => {
+                            const job = schedule.find(s => s.employeeId === emp.id && s.startTime === hour);
+                            const wo = job ? workOrders.find(w => w.id === job.workOrderId) : null;
+
+                            return (
+                              <div
+                                key={hour}
+                                onDragOver={(e) => e.preventDefault()}
+                                onDrop={() => handleDrop(emp.id, hour)}
+                                className="relative border-l border-border min-h-[70px] hover:bg-primary/5 transition-colors"
+                              >
+                                {wo && job && (
+                                  <div
+                                    className={`absolute rounded-lg p-2 border-2 shadow-md ${priorityBgColors[getPriority(wo)]}`}
+                                    style={{ 
+                                      width: `calc(${job.duration * 100}% - 4px)`,
+                                      left: '2px',
+                                      top: '4px',
+                                      bottom: '4px',
+                                      zIndex: 10
+                                    }}
+                                  >
+                                    <p className="text-xs font-bold truncate">{wo.id}</p>
+                                    <p className="text-[10px] truncate">{wo.customer}</p>
+                                    <p className="text-[10px] flex items-center gap-1 mt-1">
+                                      <Clock className="w-3 h-3" />
+                                      {hour}:00 - {hour + job.duration}:00
+                                    </p>
+                                    <div className="flex items-center gap-1 mt-1">
+                                      <Users className="w-3 h-3" />
+                                      <span className="text-[10px]">2</span>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })}
                 </div>
               ))}
             </div>
-          )}
+          </div>
         </div>
-      )}
+      </div>
+
+      {/* Summary Cards */}
+      <div className="grid grid-cols-5 gap-3">
+        <div className="bg-card rounded-lg border border-border p-3 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center text-2xl">📋</div>
+          <div>
+            <p className="text-xs text-muted-foreground">Total Work Orders</p>
+            <p className="text-2xl font-bold">{stats.total}</p>
+          </div>
+        </div>
+        <div className="bg-card rounded-lg border border-border p-3 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-lg bg-green-500/10 flex items-center justify-center text-2xl">✅</div>
+          <div>
+            <p className="text-xs text-muted-foreground">Assigned</p>
+            <p className="text-2xl font-bold text-success">{stats.assigned} <span className="text-sm">({stats.assignedPercent}%)</span></p>
+          </div>
+        </div>
+        <div className="bg-card rounded-lg border border-border p-3 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-lg bg-orange-500/10 flex items-center justify-center text-2xl">⚠️</div>
+          <div>
+            <p className="text-xs text-muted-foreground">Unassigned</p>
+            <p className="text-2xl font-bold text-warning">{stats.unassigned} <span className="text-sm">({100 - stats.assignedPercent}%)</span></p>
+          </div>
+        </div>
+        <div className="bg-card rounded-lg border border-border p-3 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center text-2xl">👥</div>
+          <div>
+            <p className="text-xs text-muted-foreground">Employees Busy</p>
+            <p className="text-2xl font-bold text-primary">{stats.busyPercent}%</p>
+          </div>
+        </div>
+        <div className="bg-card rounded-lg border border-border p-3 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-lg bg-green-500/10 flex items-center justify-center text-2xl">📊</div>
+          <div>
+            <p className="text-xs text-muted-foreground">Completion Rate</p>
+            <p className="text-2xl font-bold">{stats.completionRate}%</p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
