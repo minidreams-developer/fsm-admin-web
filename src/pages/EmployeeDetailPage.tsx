@@ -25,21 +25,7 @@ export const EmployeeDetailPage = () => {
   const isActive = employee?.isActive !== false;
   const assignedProjects = workOrders.filter(wo => wo.assignedTech === employee?.name && wo.status !== "Completed");
   const filteredProjects = projectFilter === "All" ? workOrders.filter(wo => wo.assignedTech === employee?.name) : workOrders.filter(wo => wo.assignedTech === employee?.name && wo.status === projectFilter);
-  
-  // Get actual allocated inventory for this employee
-  const employeeInventoryItems = employee?.id 
-    ? inventory.filter(item => 
-        item.allocations?.some(alloc => alloc.employeeId === employee.id)
-      ).map(item => {
-        const allocation = item.allocations?.find(alloc => alloc.employeeId === employee.id);
-        return {
-          ...item,
-          allocatedQuantity: allocation?.quantity || 0,
-          allocatedAt: allocation?.allocatedAt
-        };
-      })
-    : [];
-    
+  const employeeInventoryItems = inventory.slice(0, 3);
   const filteredInventory = inventoryFilter === "All" ? employeeInventoryItems : employeeInventoryItems.filter(i => i.status === inventoryFilter);
 
   const assignedTasks = tasks.filter(t => t.assignedTo === employee?.name && t.status !== "Completed");
@@ -316,7 +302,7 @@ export const EmployeeDetailPage = () => {
 
           {activeTab === "inventory" && (
             filteredInventory.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-6">No inventory items allocated.</p>
+              <p className="text-sm text-muted-foreground text-center py-6">No inventory items found.</p>
             ) : (
               <div className="space-y-3">
                 {filteredInventory.map((item) => (
@@ -328,16 +314,10 @@ export const EmployeeDetailPage = () => {
                       </div>
                       <StatusBadge label={item.status} variant={item.status === "OK" ? "success" : item.status === "Low" ? "warning" : "destructive"} />
                     </div>
-                    <div className="grid grid-cols-3 gap-2 text-xs">
-                      <div><p className="text-muted-foreground">Allocated</p><p className="font-semibold text-primary">{item.allocatedQuantity} {item.unit}</p></div>
-                      <div><p className="text-muted-foreground">Available Stock</p><p className="font-semibold text-card-foreground">{item.stock} {item.unit}</p></div>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div><p className="text-muted-foreground">Stock</p><p className="font-semibold text-card-foreground">{item.stock} {item.unit}</p></div>
                       <div><p className="text-muted-foreground">Unit</p><p className="font-semibold text-card-foreground">{item.unit}</p></div>
                     </div>
-                    {item.allocatedAt && (
-                      <p className="text-xs text-muted-foreground mt-2">
-                        Allocated on: {new Date(item.allocatedAt).toLocaleDateString()}
-                      </p>
-                    )}
                   </div>
                 ))}
               </div>

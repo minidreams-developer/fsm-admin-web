@@ -223,7 +223,7 @@ const quickActions = [
 const statusBadgeMap: Record<LeadStatus, "info" | "warning" | "success" | "error" | "neutral"> = {
   New: "info", Contacted: "warning", "Quote Sent": "warning", "Follow Up": "info", Converted: "success", Lost: "error",
 };
-const leadStatuses: (LeadStatus | "All")[] = ["All", "New", "Contacted", "Follow Up", "Converted", "Lost"];
+const leadStatuses: (LeadStatus | "All")[] = ["All", "New", "Contacted", "Quote Sent", "Follow Up", "Converted", "Lost"];
 
 function formatLeadId(id: number) {
   return `ENQ-${String(id).padStart(4, "0")}`;
@@ -300,14 +300,14 @@ function DashboardLeadsSection() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border">
-              {["Enquiry ID", "Customer Name", "Services", "Urgency", "Enquiry Incharge", "Next Follow-Up Date", "Status", "Actions"].map(h => (
+              {["Enquiry ID", "Customer Name", "Services", "Urgency", "Enquiry Incharge", "Status", "Actions"].map(h => (
                 <th key={h} className="text-left px-3 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 ? (
-              <tr><td colSpan={8} className="px-3 py-6 text-center text-xs text-muted-foreground">No enquiries found.</td></tr>
+              <tr><td colSpan={7} className="px-3 py-6 text-center text-xs text-muted-foreground">No enquiries found.</td></tr>
             ) : filtered.map(l => (
               <tr
                 key={l.id}
@@ -324,7 +324,6 @@ function DashboardLeadsSection() {
                 </td>
                 <td className="px-3 py-2.5 text-muted-foreground text-xs">{l.urgencyLevel}</td>
                 <td className="px-3 py-2.5 text-muted-foreground text-xs">{l.assignedOwner || "—"}</td>
-                <td className="px-3 py-2.5 text-muted-foreground text-xs">{l.nextFollowUpDate || "—"}</td>
                 <td className="px-3 py-2.5"><StatusBadge label={l.status} variant={statusBadgeMap[l.status]} /></td>
                 <td className="px-3 py-2.5">
                   <div className="flex items-center gap-1">

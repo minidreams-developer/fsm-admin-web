@@ -26,7 +26,6 @@ const menuItems = [
 
 const inventoryMenuItems = [
   { label: "Inventory", path: "/inventory" },
-  { label: "Allocate Stock", path: "/inventory/allocate" },
   { label: "Branches", path: "/branches" },
   { label: "Products", path: "/products" },
 ];
@@ -42,7 +41,7 @@ export const AppSidebar: FC<AppSidebarProps> = ({ className, onNavigate, collaps
   const navigate = useNavigate();
   const [expandedMenu, setExpandedMenu] = useState<string | null>(null);
 
-  const isInventoryActive = ["/inventory", "/inventory/allocate", "/branches", "/products"].includes(location.pathname);
+  const isInventoryActive = ["/inventory", "/branches", "/products"].includes(location.pathname);
 
   return (
     <aside className={`${collapsed ? "w-20" : "w-64"} h-svh bg-card border-r border-border flex flex-col shrink-0 transition-all duration-300 ${className || ""}`}>

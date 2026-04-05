@@ -12,7 +12,6 @@ import ServiceManagementPage from "./pages/ServiceManagementPage";
 import PaymentsPage from "./pages/PaymentsPage";
 import ReportsPage from "./pages/ReportsPage";
 import InventoryPage from "./pages/InventoryPage";
-import StockAllocationPage from "./pages/StockAllocationPage";
 import EmployeesPage from "./pages/EmployeesPage";
 import { EmployeeDetailPage } from "./pages/EmployeeDetailPage";
 import EmployeeReassignPage from "./pages/EmployeeReassignPage";
@@ -24,7 +23,6 @@ import CreateWorkOrderPage from "./pages/CreateWorkOrderPage";
 import CreateLeadPage from "./pages/CreateLeadPage";
 import { LeadDetailPage } from "./pages/LeadDetailPage";
 import { WorkOrderDetailsPage } from "./pages/WorkOrderDetailsPage";
-import { ServiceDetailPage } from "./pages/ServiceDetailPage";
 import BranchesPage from "./pages/BranchesPage";
 import ProductsPage from "./pages/ProductsPage";
 import RolesPage from "./pages/RolesPage";
@@ -51,13 +49,11 @@ const App = () => (
               <Route path="/projects" element={<ProjectsPage />} />
               <Route path="/create-work-order" element={<CreateWorkOrderPage />} />
               <Route path="/work-order/:id" element={<WorkOrderDetailsPage />} />
-              <Route path="/service/:id" element={<ServiceDetailPage />} />
               <Route path="/services" element={<ServicesPage />} />
               <Route path="/service-management" element={<ServiceManagementPage />} />
               <Route path="/payments" element={<PaymentsPage />} />
               <Route path="/reports" element={<ReportsPage />} />
               <Route path="/inventory" element={<InventoryPage />} />
-              <Route path="/inventory/allocate" element={<StockAllocationPage />} />
               <Route path="/employees" element={<EmployeesPage />} />
               <Route path="/employees/:id" element={<EmployeeDetailPage />} />
               <Route path="/employees/:id/reassign" element={<EmployeeReassignPage />} />

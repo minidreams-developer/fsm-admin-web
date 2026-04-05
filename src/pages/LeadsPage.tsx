@@ -13,7 +13,7 @@ const statusBadge: Record<LeadStatus, "info" | "warning" | "success" | "error" |
   New: "info", Contacted: "warning", "Quote Sent": "warning", "Follow Up": "info", Converted: "success", Lost: "error",
 };
 
-const statuses: LeadStatus[] = ["New", "Contacted", "Follow Up", "Converted", "Lost"];
+const statuses: LeadStatus[] = ["New", "Contacted", "Quote Sent", "Follow Up", "Converted", "Lost"];
 
 const urgencyLevels: UrgencyLevel[] = ["Low", "Medium", "High"];
 const leadSources = ["Website", "Call", "Referral", "Walk-in", "Google", "Facebook/Instagram", "Other"] as const;
