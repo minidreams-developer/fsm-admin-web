@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { 
   Search, 
   ChevronLeft,
@@ -7,10 +7,19 @@ import {
   Zap,
   Clock,
   MapPin,
-  Users
+  Users,
+  RefreshCw,
+  Filter
 } from "lucide-react";
 import { useProjectsStore } from "@/store/projectsStore";
 import { useEmployeesStore } from "@/store/employeesStore";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 // Types
 type Priority = "LOW" | "MEDIUM" | "HIGH" | "URGENT";
@@ -41,17 +50,95 @@ const priorityBgColors: Record<Priority, string> = {
 const QuantCalendarPage = () => {
   const { workOrders } = useProjectsStore();
   const { employees } = useEmployeesStore();
-  const [schedule, setSchedule] = useState<ScheduledJob[]>([]);
-  const [searchText, setSearchText] = useState("");
-  const [draggedWorkOrder, setDraggedWorkOrder] = useState<any | null>(null);
-  const [selectedDate] = useState(new Date());
+  
+  // Filter states
+  const [selectedBranch, setSelectedBranch] = useState<string>("all");
+  const [selectedDate, setSelectedDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<"branch" | "employee">("branch");
+  const [selectedEmployee, setSelectedEmployee] = useState<string>("all");
+  const [selectedService, setSelectedService] = useState<string>("all");
+  const [searchText, setSearchText] = useState("");
   const [searchEmployee, setSearchEmployee] = useState("");
+  
+  // Schedule state
+  const [schedule, setSchedule] = useState<ScheduledJob[]>([]);
+  const [draggedWorkOrder, setDraggedWorkOrder] = useState<any | null>(null);
+  
+  // Generate dummy schedule data
+  const generateDummySchedule = (): ScheduledJob[] => {
+    const dummySchedule: ScheduledJob[] = [];
+    
+    // Only generate if we have work orders and employees
+    if (workOrders.length === 0 || employees.length === 0) return [];
+    
+    // Assign some work orders to random employees at different times
+    const numToSchedule = Math.min(workOrders.length, Math.floor(workOrders.length * 0.6)); // Schedule 60% of work orders
+    
+    for (let i = 0; i < numToSchedule; i++) {
+      const wo = workOrders[i];
+      const randomEmployee = employees[i % employees.length];
+      const randomStartTime = 7 + (i % 10); // Distribute between 7 AM and 4 PM
+      const duration = Math.random() > 0.5 ? 2 : 3; // Random duration of 2 or 3 hours
+      
+      dummySchedule.push({
+        workOrderId: wo.id,
+        employeeId: randomEmployee.id,
+        startTime: randomStartTime,
+        duration,
+      });
+    }
+    
+    return dummySchedule;
+  };
+  
+  // Initialize schedule on mount
+  useEffect(() => {
+    setSchedule(generateDummySchedule());
+  }, []);
+  
+  // Get unique branches
+  const branches = useMemo(() => {
+    const branchSet = new Set<string>();
+    employees.forEach(emp => emp.branch.forEach(b => branchSet.add(b)));
+    return Array.from(branchSet).sort();
+  }, [employees]);
+  
+  // Get unique service types
+  const serviceTypes = useMemo(() => {
+    const serviceSet = new Set<string>();
+    workOrders.forEach(wo => {
+      const service = wo.serviceType.split('(')[0].trim();
+      serviceSet.add(service);
+    });
+    return Array.from(serviceSet).sort();
+  }, [workOrders]);
+  
+  // Handle refresh
+  const handleRefresh = () => {
+    setSchedule(generateDummySchedule());
+    setSearchText("");
+    setSearchEmployee("");
+  };
 
-  // Group employees by branch
+  // Group employees by branch with filters
   const employeesByBranch = useMemo(() => {
     const grouped: Record<string, typeof employees> = {};
-    employees.forEach(emp => {
+    
+    // Filter employees first
+    let filteredEmployees = employees;
+    
+    // Filter by branch
+    if (selectedBranch !== "all") {
+      filteredEmployees = filteredEmployees.filter(emp => emp.branch.includes(selectedBranch));
+    }
+    
+    // Filter by specific employee
+    if (selectedEmployee !== "all") {
+      filteredEmployees = filteredEmployees.filter(emp => emp.id === selectedEmployee);
+    }
+    
+    // Group by branch
+    filteredEmployees.forEach(emp => {
       emp.branch.forEach(b => {
         if (!grouped[b]) grouped[b] = [];
         if (!grouped[b].find(e => e.id === emp.id)) {
@@ -59,21 +146,47 @@ const QuantCalendarPage = () => {
         }
       });
     });
+    
     return grouped;
-  }, [employees]);
+  }, [employees, selectedBranch, selectedEmployee]);
 
   // Filter work orders
   const filteredWorkOrders = useMemo(() => {
     return workOrders.filter(wo => {
+      // Search filter
       const matchesSearch = wo.customer.toLowerCase().includes(searchText.toLowerCase()) ||
                            wo.id.toLowerCase().includes(searchText.toLowerCase());
+      
+      // Not scheduled filter
       const isNotScheduled = !schedule.some(s => s.workOrderId === wo.id);
-      return matchesSearch && isNotScheduled;
+      
+      // Service type filter
+      const matchesService = selectedService === "all" || 
+                            wo.serviceType.split('(')[0].trim() === selectedService;
+      
+      return matchesSearch && isNotScheduled && matchesService;
     });
-  }, [workOrders, searchText, schedule]);
+  }, [workOrders, searchText, schedule, selectedService]);
 
   const getEmployeeJobs = (employeeId: string) => {
     return schedule.filter(s => s.employeeId === employeeId);
+  };
+  
+  // Handle date navigation
+  const handlePreviousDay = () => {
+    const newDate = new Date(selectedDate);
+    newDate.setDate(newDate.getDate() - 1);
+    setSelectedDate(newDate);
+  };
+  
+  const handleNextDay = () => {
+    const newDate = new Date(selectedDate);
+    newDate.setDate(newDate.getDate() + 1);
+    setSelectedDate(newDate);
+  };
+  
+  const handleToday = () => {
+    setSelectedDate(new Date());
   };
 
   const handleDragStart = (wo: any) => {
@@ -174,19 +287,94 @@ const QuantCalendarPage = () => {
 
   return (
     <div className="space-y-4 animate-fade-in">
+      {/* Top Filters Bar */}
+      <div className="bg-card rounded-xl border border-border p-4">
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex items-center gap-2">
+            <Filter className="w-4 h-4 text-muted-foreground" />
+            <span className="text-sm font-semibold">Filters:</span>
+          </div>
+          
+          {/* Branch Filter */}
+          <Select value={selectedBranch} onValueChange={setSelectedBranch}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Select Branch" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Branches</SelectItem>
+              {branches.map(branch => (
+                <SelectItem key={branch} value={branch}>{branch}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          
+          {/* Date Picker */}
+          <div className="flex items-center gap-2 border border-border rounded-lg px-3 py-2">
+            <button onClick={handlePreviousDay} className="hover:bg-secondary rounded p-1">
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <button onClick={handleToday} className="text-sm font-medium hover:text-primary min-w-[100px]">
+              {selectedDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+            </button>
+            <button onClick={handleNextDay} className="hover:bg-secondary rounded p-1">
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+          
+          {/* View Mode Filter */}
+          <Select value={viewMode} onValueChange={(value: "branch" | "employee") => setViewMode(value)}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Select View" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="branch">Branch View</SelectItem>
+              <SelectItem value="employee">Employee View</SelectItem>
+            </SelectContent>
+          </Select>
+          
+          {/* Employee Filter */}
+          <Select value={selectedEmployee} onValueChange={setSelectedEmployee}>
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="Select Employee" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Employees</SelectItem>
+              {employees.map(emp => (
+                <SelectItem key={emp.id} value={emp.id}>{emp.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          
+          {/* Service Type Filter */}
+          <Select value={selectedService} onValueChange={setSelectedService}>
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="Select Service" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Services</SelectItem>
+              {serviceTypes.map(service => (
+                <SelectItem key={service} value={service}>{service}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          
+          {/* Refresh Button */}
+          <button
+            onClick={handleRefresh}
+            className="ml-auto px-4 py-2 rounded-lg border border-border hover:bg-secondary flex items-center gap-2 text-sm font-medium"
+          >
+            <RefreshCw className="w-4 h-4" />
+            Refresh
+          </button>
+        </div>
+      </div>
+
       {/* Top Navigation */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <button className="p-2 hover:bg-secondary rounded-lg">
-            <ChevronLeft className="w-5 h-5" />
-          </button>
-          <span className="text-lg font-semibold">Today</span>
-          <button className="p-2 hover:bg-secondary rounded-lg">
-            <ChevronRight className="w-5 h-5" />
-          </button>
-        </div>
-        <div className="text-lg font-semibold">
-          {selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+          <span className="text-lg font-semibold">
+            {selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+          </span>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -396,13 +584,15 @@ const QuantCalendarPage = () => {
                                   >
                                     <p className="text-xs font-bold truncate">{wo.id}</p>
                                     <p className="text-[10px] truncate">{wo.customer}</p>
-                                    <p className="text-[10px] flex items-center gap-1 mt-1">
-                                      <Clock className="w-3 h-3" />
-                                      {hour}:00 - {hour + job.duration}:00
-                                    </p>
-                                    <div className="flex items-center gap-1 mt-1">
-                                      <Users className="w-3 h-3" />
-                                      <span className="text-[10px]">2</span>
+                                    <div className="flex items-center justify-between mt-1">
+                                      <p className="text-[10px] flex items-center gap-1">
+                                        <Clock className="w-3 h-3" />
+                                        {hour}:00 - {hour + job.duration}:00
+                                      </p>
+                                      <div className="flex items-center gap-1">
+                                        <Users className="w-3 h-3" />
+                                        <span className="text-[10px]">2</span>
+                                      </div>
                                     </div>
                                   </div>
                                 )}
@@ -414,6 +604,94 @@ const QuantCalendarPage = () => {
                     })}
                 </div>
               ))}
+
+              {/* Employee View - All Employees in a Flat List */}
+              {viewMode === "employee" && (() => {
+                // Get all filtered employees
+                let filteredEmployeesList = employees;
+                
+                if (selectedBranch !== "all") {
+                  filteredEmployeesList = filteredEmployeesList.filter(emp => emp.branch.includes(selectedBranch));
+                }
+                
+                if (selectedEmployee !== "all") {
+                  filteredEmployeesList = filteredEmployeesList.filter(emp => emp.id === selectedEmployee);
+                }
+                
+                // Filter by search
+                filteredEmployeesList = filteredEmployeesList.filter(emp => 
+                  emp.name.toLowerCase().includes(searchEmployee.toLowerCase())
+                );
+
+                return filteredEmployeesList.map(emp => {
+                  const empJobs = getEmployeeJobs(emp.id);
+                  return (
+                    <div key={emp.id} className="grid border-b border-border hover:bg-secondary/10" style={{ gridTemplateColumns: "200px repeat(13, 1fr)" }}>
+                      {/* Employee Info */}
+                      <div className="p-3 border-r border-border flex items-center gap-3">
+                        <img 
+                          src={emp.profilePhoto || "/placeholder.svg"} 
+                          alt={emp.name}
+                          className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-purple-600"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold truncate">{emp.name}</p>
+                          <p className="text-xs text-muted-foreground">{emp.role}</p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <p className="text-xs font-semibold text-primary">{empJobs.length}/3 Jobs</p>
+                            {emp.branch.length > 0 && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400">
+                                {emp.branch[0]}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Time Slots */}
+                      {timeSlots.map(hour => {
+                        const job = schedule.find(s => s.employeeId === emp.id && s.startTime === hour);
+                        const wo = job ? workOrders.find(w => w.id === job.workOrderId) : null;
+
+                        return (
+                          <div
+                            key={hour}
+                            onDragOver={(e) => e.preventDefault()}
+                            onDrop={() => handleDrop(emp.id, hour)}
+                            className="relative border-l border-border min-h-[70px] hover:bg-primary/5 transition-colors"
+                          >
+                            {wo && job && (
+                              <div
+                                className={`absolute rounded-lg p-2 border-2 shadow-md ${priorityBgColors[getPriority(wo)]}`}
+                                style={{ 
+                                  width: `calc(${job.duration * 100}% - 4px)`,
+                                  left: '2px',
+                                  top: '4px',
+                                  bottom: '4px',
+                                  zIndex: 10
+                                }}
+                              >
+                                <p className="text-xs font-bold truncate">{wo.id}</p>
+                                <p className="text-[10px] truncate">{wo.customer}</p>
+                                <div className="flex items-center justify-between mt-1">
+                                  <p className="text-[10px] flex items-center gap-1">
+                                    <Clock className="w-3 h-3" />
+                                    {hour}:00 - {hour + job.duration}:00
+                                  </p>
+                                  <div className="flex items-center gap-1">
+                                    <Users className="w-3 h-3" />
+                                    <span className="text-[10px]">2</span>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                });
+              })()}
             </div>
           </div>
         </div>
