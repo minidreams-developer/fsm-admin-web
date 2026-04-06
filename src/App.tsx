@@ -30,6 +30,7 @@ import ProductsPage from "./pages/ProductsPage";
 import RolesPage from "./pages/RolesPage";
 import QuantCalendarPage from "./pages/QuantCalendarPage";
 import TaskManagementPage from "./pages/TaskManagementPage";
+import WorkOrderSignaturePage from "./pages/WorkOrderSignaturePage";
 
 const queryClient = new QueryClient();
 
@@ -42,6 +43,7 @@ const App = () => (
         <Routes>
           <Route path="/" element={<LoginPage />} />
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/work-order-signature/:id" element={<WorkOrderSignaturePage />} />
           <Route element={<ProtectedRoute />}>
             <Route element={<DashboardLayout />}>
               <Route path="/dashboard" element={<Dashboard />} />

@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Briefcase, CheckCircle, Clock, AlertCircle, MapPin, Phone, Mail, DollarSign, Calendar, Edit2, Trash2 } from "lucide-react";
+import { ArrowLeft, Briefcase, CheckCircle, Clock, AlertCircle, MapPin, Phone, Mail, DollarSign, Calendar, Edit2, Trash2, Share2, Copy } from "lucide-react";
 import { useState } from "react";
 import { useProjectsStore } from "@/store/projectsStore";
 import { useTasksStore } from "@/store/tasksStore";
@@ -26,6 +26,12 @@ export const WorkOrderDetailsPage = () => {
       toast.success("Service deleted successfully!");
       setRefreshKey(prev => prev + 1);
     }
+  };
+
+  const handleCopySignatureLink = () => {
+    const signatureUrl = `${window.location.origin}/work-order-signature/${workOrder?.id}`;
+    navigator.clipboard.writeText(signatureUrl);
+    toast.success("Signature link copied to clipboard!");
   };
 
   if (!workOrder) {
@@ -74,13 +80,25 @@ export const WorkOrderDetailsPage = () => {
             <p className="text-sm text-muted-foreground">{workOrder.customer}</p>
           </div>
         </div>
-        <button
-          onClick={() => setIsEditingWorkOrder(true)}
-          className="inline-flex items-center gap-2 h-10 px-4 rounded-lg border border-border bg-card hover:bg-secondary transition-colors text-sm font-semibold text-card-foreground"
-        >
-          <Edit2 className="w-4 h-4" />
-          Edit
-        </button>
+        <div className="flex items-center gap-2">
+          {workOrder.status === "Authorization Pending" && (
+            <button
+              onClick={handleCopySignatureLink}
+              className="inline-flex items-center gap-2 h-10 px-4 rounded-lg text-white text-sm font-semibold hover:opacity-90 transition-all"
+              style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}
+            >
+              <Share2 className="w-4 h-4" />
+              Share for Signature
+            </button>
+          )}
+          <button
+            onClick={() => setIsEditingWorkOrder(true)}
+            className="inline-flex items-center gap-2 h-10 px-4 rounded-lg border border-border bg-card hover:bg-secondary transition-colors text-sm font-semibold text-card-foreground"
+          >
+            <Edit2 className="w-4 h-4" />
+            Edit
+          </button>
+        </div>
       </div>
 
       {/* Work Order Details Card */}
@@ -224,6 +242,16 @@ export const WorkOrderDetailsPage = () => {
             <h3 className="text-lg font-bold text-card-foreground mb-3">Notes</h3>
             <div className="bg-secondary/30 rounded-lg p-4 border border-border">
               <p className="text-sm text-card-foreground">{workOrder.notes}</p>
+            </div>
+          </div>
+        )}
+
+        {/* Customer Signature */}
+        {workOrder.customerSignature && (
+          <div className="mb-8 pb-8 border-b border-border">
+            <h3 className="text-lg font-bold text-card-foreground mb-3">Customer Signature</h3>
+            <div className="bg-secondary/30 rounded-lg p-4 border border-border inline-block">
+              <img src={workOrder.customerSignature} alt="Customer Signature" className="max-w-md h-32" />
             </div>
           </div>
         )}

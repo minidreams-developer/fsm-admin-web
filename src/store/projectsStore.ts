@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-export type WorkOrderStatus = "Open" | "Scheduled" | "Completed" | "Converted";
+export type WorkOrderStatus = "Authorization Pending" | "Open" | "Scheduled" | "Completed" | "Converted";
 
 export type ExecutiveSignature = {
   name: string;
@@ -32,6 +32,7 @@ export type WorkOrder = {
   termsAndConditions?: string;
   executiveSignature?: ExecutiveSignature;
   customerConfirmation?: CustomerConfirmation;
+  customerSignature?: string;
   start: string;
   end: string;
   status: WorkOrderStatus;
@@ -59,6 +60,112 @@ interface ProjectsStore {
 }
 
 const initialWorkOrders: WorkOrder[] = [
+  // Authorization Pending Work Orders
+  {
+    id: "WO-2001",
+    customer: "Rajesh Menon",
+    address: "45 Park Avenue, Trivandrum",
+    siteAddress: "45 Park Avenue, Trivandrum",
+    billingAddress: "45 Park Avenue, Trivandrum",
+    workOrderDateTime: "2026-04-10T10:00:00.000Z",
+    salesExecutive: "Anand",
+    subject: "Comprehensive Pest Control (AMC)",
+    reference: "REF-WO-2001",
+    period: "Apr 10, 2026 - Apr 9, 2027",
+    preferredServiceDateTimes: "Weekdays • Morning",
+    termsAndConditions: "Standard terms apply. Payment terms: 50% advance, 50% on completion.",
+    start: "Apr 10, 2026",
+    end: "Apr 9, 2027",
+    status: "Authorization Pending",
+    phone: "9876543250",
+    email: "rajesh.menon@email.com",
+    serviceType: "Comprehensive Pest Control (AMC - Monthly)",
+    frequency: "Monthly",
+    totalValue: "₹ 36,000",
+    paidAmount: "₹ 0",
+    nextService: "Unassigned",
+    assignedTech: "Unassigned",
+    notes: "New customer. Requires authorization signature before proceeding."
+  },
+  {
+    id: "WO-2002",
+    customer: "Green Valley Resort",
+    address: "Munnar Hills, Idukki",
+    siteAddress: "Munnar Hills, Idukki",
+    billingAddress: "Munnar Hills, Idukki",
+    workOrderDateTime: "2026-04-12T09:00:00.000Z",
+    salesExecutive: "Priya",
+    subject: "Resort Pest Management Package",
+    reference: "REF-WO-2002",
+    period: "Apr 12, 2026 - Apr 11, 2027",
+    preferredServiceDateTimes: "Early Morning • Before Guest Hours",
+    termsAndConditions: "Premium service package. Includes all pest control services.",
+    start: "Apr 12, 2026",
+    end: "Apr 11, 2027",
+    status: "Authorization Pending",
+    phone: "9876543260",
+    email: "manager@greenvalleyresort.com",
+    serviceType: "Resort Pest Management (AMC - Bi-Weekly)",
+    frequency: "Bi-Weekly",
+    totalValue: "₹ 1,20,000",
+    paidAmount: "₹ 0",
+    nextService: "Unassigned",
+    assignedTech: "Unassigned",
+    notes: "Large resort property. Awaiting management signature for contract approval."
+  },
+  {
+    id: "WO-2003",
+    customer: "Tech Park Solutions",
+    address: "InfoPark, Kochi",
+    siteAddress: "InfoPark, Kochi",
+    billingAddress: "InfoPark, Kochi",
+    workOrderDateTime: "2026-04-15T14:00:00.000Z",
+    salesExecutive: "Ravi",
+    subject: "Office Complex Pest Control",
+    reference: "REF-WO-2003",
+    period: "Apr 15, 2026 - Apr 14, 2027",
+    preferredServiceDateTimes: "Weekends • After Office Hours",
+    termsAndConditions: "Corporate package with quarterly inspections.",
+    start: "Apr 15, 2026",
+    end: "Apr 14, 2027",
+    status: "Authorization Pending",
+    phone: "9876543270",
+    email: "admin@techparksolutions.com",
+    serviceType: "Office Pest Control (AMC - Quarterly)",
+    frequency: "Quarterly",
+    totalValue: "₹ 48,000",
+    paidAmount: "₹ 0",
+    nextService: "Unassigned",
+    assignedTech: "Unassigned",
+    notes: "Corporate client. Pending signature from facility manager."
+  },
+  {
+    id: "WO-2004",
+    customer: "Sunrise Apartments",
+    address: "Marine Drive, Ernakulam",
+    siteAddress: "Marine Drive, Ernakulam",
+    billingAddress: "Marine Drive, Ernakulam",
+    workOrderDateTime: "2026-04-08T11:00:00.000Z",
+    salesExecutive: "Anand",
+    subject: "Residential Complex Pest Control",
+    reference: "REF-WO-2004",
+    period: "Apr 8, 2026",
+    preferredServiceDateTimes: "Morning",
+    termsAndConditions: "One-time service with 3-month warranty.",
+    start: "Apr 8, 2026",
+    end: "Apr 8, 2026",
+    status: "Authorization Pending",
+    phone: "9876543280",
+    email: "secretary@sunriseapts.com",
+    serviceType: "Termite Control (One-Time)",
+    frequency: "One-Time",
+    totalValue: "₹ 15,000",
+    paidAmount: "₹ 0",
+    nextService: "Unassigned",
+    assignedTech: "Unassigned",
+    notes: "Apartment association. Awaiting secretary's authorization."
+  },
+
   // Praveen Kumar (CUST-1001) - 4 work orders
   {
     id: "WO-1001",
@@ -407,7 +514,7 @@ export const useProjectsStore = create<ProjectsStore>()(
     }),
     {
       name: 'projects-store',
-      version: 2,
+      version: 3,
       migrate: (persistedState: unknown) => {
         if (
           typeof persistedState === "object" &&
@@ -433,7 +540,7 @@ export const useProjectsStore = create<ProjectsStore>()(
             customerConfirmation: wo.customerConfirmation as CustomerConfirmation | undefined,
             start: typeof wo.start === "string" ? wo.start : "",
             end: typeof wo.end === "string" ? wo.end : "",
-            status: wo.status === "Open" || wo.status === "Scheduled" || wo.status === "Completed" ? wo.status : "Open",
+            status: wo.status === "Authorization Pending" || wo.status === "Open" || wo.status === "Scheduled" || wo.status === "Completed" ? wo.status : "Authorization Pending",
             phone: typeof wo.phone === "string" ? wo.phone : "",
             email: typeof wo.email === "string" ? wo.email : "",
             serviceType: typeof wo.serviceType === "string" ? wo.serviceType : "",

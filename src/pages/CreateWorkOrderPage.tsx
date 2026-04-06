@@ -23,7 +23,7 @@ const workOrderSchema = z.object({
   paidAmount: z.string().optional(),
   start: z.string().min(1, "Start date is required"),
   end: z.string().optional(),
-  status: z.enum(["Open", "Scheduled", "Completed"]),
+  status: z.enum(["Authorization Pending", "Open", "Scheduled", "Completed"]),
   assignedTech: z.string().optional(),
   notes: z.string().optional(),
 });
@@ -67,7 +67,7 @@ const CreateWorkOrderPage = () => {
       address: leadData?.address || "",
       subject: leadData?.services?.join(", ") || "",
       serviceType: leadData?.services?.[0] || "",
-      status: "Open",
+      status: "Authorization Pending",
       start: new Date().toISOString().split("T")[0],
     },
   });
@@ -117,7 +117,7 @@ const CreateWorkOrderPage = () => {
         paidAmount: data.paidAmount ? `₹ ${parseInt(data.paidAmount).toLocaleString()}` : "₹ 0",
         start: data.start,
         end: data.end || data.start,
-        status: data.status as "Open" | "Scheduled" | "Completed",
+        status: data.status as "Authorization Pending" | "Open" | "Scheduled" | "Completed",
         assignedTech: data.assignedTech || "Unassigned",
         notes: data.notes || "",
         siteAddress: data.address,
@@ -133,6 +133,7 @@ const CreateWorkOrderPage = () => {
           startDate: t.startDate,
           endDate: t.endDate,
           assignedTo: t.assignedTo,
+          assignedEmployees: t.assignedTo ? [t.assignedTo] : [],
           status: t.status,
         });
       });
@@ -249,6 +250,7 @@ const CreateWorkOrderPage = () => {
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-2 block">Status</label>
             <select {...register("status")} className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground">
+              <option value="Authorization Pending">Authorization Pending</option>
               <option value="Open">Open</option>
               <option value="Scheduled">Scheduled</option>
               <option value="Completed">Completed</option>
