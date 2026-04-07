@@ -10,9 +10,7 @@ import {
   Users,
   RefreshCw,
   Filter,
-  Calendar as CalendarIcon,
-  ChevronDown,
-  ChevronRight as ChevronRightIcon
+  Calendar as CalendarIcon
 } from "lucide-react";
 import { useProjectsStore } from "@/store/projectsStore";
 import { useEmployeesStore } from "@/store/employeesStore";
@@ -31,21 +29,297 @@ import {
 } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
+import {
+  DndContext,
+  DragOverlay,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragStartEvent,
+  DragEndEvent,
+  DragOverEvent,
+} from '@dnd-kit/core';
+import { useDraggable, useDroppable } from '@dnd-kit/core';
 
 // Types
 type Priority = "LOW" | "MEDIUM" | "HIGH" | "URGENT";
 type ViewMode = "day" | "week" | "month";
 
 type ScheduledJob = {
+  id: string; // Unique ID for the scheduled job
   workOrderId: string;
   serviceId?: string; // Add service/task ID
   employeeId: string;
   startTime: number;
   duration: number;
   date: string; // Add date to track which day the job is scheduled
+  selectedTimeSlot: string; // e.g., "7AM"
+};
+
+type DragData = {
+  type: 'workOrder' | 'service' | 'scheduledJob';
+  workOrder: any;
+  service?: any;
+  scheduledJob?: ScheduledJob;
+};
+
+// Droppable Day Cell for Week/Month View
+const DroppableDayCell = ({ employeeId, date, dayJobs, workOrders, getTasksByWorkOrder, getPriority, priorityBgColors, activeDropZone }: any) => {
+  const dropId = `drop-day-${employeeId}-${date}`;
+  
+  const { setNodeRef, isOver } = useDroppable({
+    id: dropId,
+    data: {
+      employeeId,
+      timeSlot: 9, // Default time for week/month view
+      date,
+    },
+  });
+
+  const showHighlight = isOver || (activeDropZone?.employeeId === employeeId && activeDropZone?.date === date);
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={`relative border-l border-border min-h-[70px] transition-colors p-1 cursor-pointer ${
+        showHighlight ? 'bg-primary/20 ring-2 ring-primary ring-inset' : 'hover:bg-primary/5'
+      }`}
+    >
+      <div className="text-xs font-semibold text-primary">{dayJobs.length} jobs</div>
+      {dayJobs.slice(0, 2).map((job: any, idx: number) => {
+        const wo = workOrders.find((w: any) => w.id === job.workOrderId);
+        const service = job.serviceId ? getTasksByWorkOrder(job.workOrderId).find((s: any) => s.id === job.serviceId) : null;
+        if (!wo) return null;
+
+        const dragData: DragData = {
+          type: 'scheduledJob',
+          workOrder: wo,
+          service: service || undefined,
+          scheduledJob: job,
+        };
+
+        const { attributes, listeners, setNodeRef: setDragRef, isDragging } = useDraggable({
+          id: `scheduled-day-${job.id}`,
+          data: dragData,
+        });
+
+        return (
+          <div
+            key={idx}
+            ref={setDragRef}
+            {...listeners}
+            {...attributes}
+            onClick={(e) => e.stopPropagation()}
+            className={`mt-1 rounded p-1 border text-[10px] cursor-move hover:shadow-md transition-all ${priorityBgColors[getPriority(wo)]} ${isDragging ? 'opacity-50' : ''}`}
+          >
+            <p className="font-bold truncate">{wo.id}</p>
+            {service ? (
+              <p className="truncate font-semibold">{service.title}</p>
+            ) : (
+              <p className="truncate">{formatTimeSlot(job.startTime)}</p>
+            )}
+          </div>
+        );
+      })}
+      {dayJobs.length > 2 && (
+        <div className="mt-1 text-[10px] text-muted-foreground">+{dayJobs.length - 2} more</div>
+      )}
+      {dayJobs.length === 0 && (
+        <div className="flex items-center justify-center h-full text-[10px] text-muted-foreground">
+          {showHighlight ? 'Drop here' : 'Empty'}
+        </div>
+      )}
+    </div>
+  );
 };
 
 const timeSlots = Array.from({ length: 15 }, (_, i) => i + 6); // 6 AM to 8 PM
+
+// Helper function to format time slot
+const formatTimeSlot = (hour: number): string => {
+  if (hour === 12) return "12PM";
+  if (hour > 12) return `${hour - 12}PM`;
+  if (hour === 0) return "12AM";
+  return `${hour}AM`;
+};
+
+// Draggable Work Order Card Component
+const DraggableWorkOrderCard = ({ wo, service, priority, hasServices, isSelected, onWorkOrderClick }: any) => {
+  const dragData: DragData = {
+    type: service ? 'service' : 'workOrder',
+    workOrder: wo,
+    service: service || undefined,
+  };
+
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: service ? `service-${service.id}` : `wo-${wo.id}`,
+    data: dragData,
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      {...listeners}
+      {...attributes}
+      className={`p-3 rounded-lg border hover:shadow-md transition-all ${priorityBgColors[priority]} ${!hasServices ? 'cursor-move' : 'cursor-pointer'} ${isSelected ? 'ring-2 ring-primary' : ''} ${isDragging ? 'opacity-50' : ''}`}
+      onClick={() => hasServices && !service && onWorkOrderClick(wo)}
+    >
+      <div className="flex items-start justify-between mb-1">
+        <div className="flex items-center gap-2 flex-1">
+          <p className="text-xs font-bold">{wo.id}</p>
+        </div>
+        <span className="text-[10px]">
+          {wo.workOrderDateTime ? new Date(wo.workOrderDateTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : "9:00 AM"}
+        </span>
+      </div>
+      <p className="text-sm font-semibold mb-1">{wo.customer}</p>
+      <div className="flex items-start gap-1 text-[11px] text-muted-foreground mb-1">
+        <MapPin className="w-3 h-3 flex-shrink-0 mt-0.5" />
+        <span className="line-clamp-1">{wo.address}</span>
+      </div>
+      <div className="flex items-center justify-between text-[10px]">
+        <span className="truncate">{wo.serviceType.split('(')[0].trim()}</span>
+        {hasServices && !service && (
+          <span className="text-[10px] font-semibold">{hasServices} services</span>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// Draggable Service Card Component
+const DraggableServiceCard = ({ service, workOrder }: any) => {
+  const dragData: DragData = {
+    type: 'service',
+    workOrder,
+    service,
+  };
+
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: `service-${service.id}`,
+    data: dragData,
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      {...listeners}
+      {...attributes}
+      className={`p-2 rounded-lg border border-border bg-secondary/50 cursor-move hover:shadow-md transition-all ${isDragging ? 'opacity-50' : ''}`}
+    >
+      <div className="flex items-center justify-between mb-1">
+        <p className="text-xs font-semibold text-card-foreground">{service.title}</p>
+        <span className={`text-[9px] px-1.5 py-0.5 rounded ${
+          service.status === "Completed" 
+            ? "bg-green-100 text-green-800" 
+            : service.status === "In Progress"
+            ? "bg-blue-100 text-blue-800"
+            : "bg-yellow-100 text-yellow-800"
+        }`}>
+          {service.status}
+        </span>
+      </div>
+      {service.assignedTo && (
+        <p className="text-[10px] text-muted-foreground">Assigned: {service.assignedTo}</p>
+      )}
+    </div>
+  );
+};
+
+// Droppable Time Slot Component
+const DroppableTimeSlot = ({ 
+  employeeId, 
+  timeSlot, 
+  date, 
+  job, 
+  workOrder, 
+  service, 
+  priority,
+  isOver,
+  onScheduledJobDragStart 
+}: any) => {
+  const dropId = `drop-${employeeId}-${timeSlot}-${date}`;
+  
+  const { setNodeRef, isOver: isOverCurrent } = useDroppable({
+    id: dropId,
+    data: {
+      employeeId,
+      timeSlot,
+      date,
+    },
+  });
+
+  const dragData: DragData | undefined = job ? {
+    type: 'scheduledJob',
+    workOrder,
+    service: service || undefined,
+    scheduledJob: job,
+  } : undefined;
+
+  const { attributes, listeners, setNodeRef: setDragRef, isDragging } = useDraggable({
+    id: job ? `scheduled-${job.id}` : `empty-${dropId}`,
+    data: dragData,
+    disabled: !job,
+  });
+
+  const showHighlight = isOverCurrent || isOver;
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={`relative border-l border-border min-h-[70px] transition-all ${
+        showHighlight ? 'bg-primary/20 ring-2 ring-primary ring-inset' : 'hover:bg-primary/5'
+      } cursor-pointer`}
+    >
+      {/* Drop zone placeholder */}
+      {showHighlight && !job && (
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div className="bg-primary/10 border-2 border-dashed border-primary rounded-lg p-2 m-1 w-[calc(100%-8px)]">
+            <p className="text-xs font-semibold text-primary text-center">
+              {formatTimeSlot(timeSlot)}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Scheduled job card */}
+      {workOrder && job && (
+        <div
+          ref={setDragRef}
+          {...listeners}
+          {...attributes}
+          onClick={(e) => e.stopPropagation()}
+          className={`absolute rounded-lg p-2 border-2 shadow-md cursor-move hover:shadow-lg transition-all ${priorityBgColors[priority]} ${isDragging ? 'opacity-50' : ''}`}
+          style={{ 
+            width: `calc(${job.duration * 100}% - 4px)`,
+            left: '2px',
+            top: '4px',
+            bottom: '4px',
+            zIndex: isDragging ? 50 : 10
+          }}
+        >
+          <p className="text-xs font-bold truncate">{workOrder.id}</p>
+          {service ? (
+            <p className="text-[10px] truncate font-semibold text-primary">{service.title}</p>
+          ) : (
+            <p className="text-[10px] truncate">{workOrder.customer}</p>
+          )}
+          <div className="flex items-center justify-between mt-1">
+            <p className="text-[10px] flex items-center gap-1">
+              <Clock className="w-3 h-3" />
+              {formatTimeSlot(timeSlot)}
+            </p>
+            <div className="flex items-center gap-1">
+              <Users className="w-3 h-3" />
+              <span className="text-[10px]">2</span>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
 const getPriority = (wo: any): Priority => {
   if (wo.status === "Open") return "URGENT";
@@ -74,12 +348,23 @@ const QuantCalendarPage = () => {
   const [selectedService, setSelectedService] = useState<string>("all");
   const [searchText, setSearchText] = useState("");
   const [searchEmployee, setSearchEmployee] = useState("");
-  const [expandedWorkOrders, setExpandedWorkOrders] = useState<Set<string>>(new Set());
+  const [selectedWorkOrder, setSelectedWorkOrder] = useState<any | null>(null);
   
   // Schedule state
   const [schedule, setSchedule] = useState<ScheduledJob[]>([]);
-  const [draggedWorkOrder, setDraggedWorkOrder] = useState<any | null>(null);
-  const [draggedService, setDraggedService] = useState<any | null>(null);
+  
+  // Drag state
+  const [activeDragData, setActiveDragData] = useState<DragData | null>(null);
+  const [activeDropZone, setActiveDropZone] = useState<{ employeeId: string; timeSlot: number; date: string } | null>(null);
+  
+  // DnD sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    })
+  );
   
   // Generate dummy schedule data
   const generateDummySchedule = (): ScheduledJob[] => {
@@ -103,11 +388,13 @@ const QuantCalendarPage = () => {
       baseDate.setDate(baseDate.getDate() + daysOffset);
       
       dummySchedule.push({
+        id: `job-${wo.id}-${randomEmployee.id}-${i}`,
         workOrderId: wo.id,
         employeeId: randomEmployee.id,
         startTime: randomStartTime,
         duration,
         date: baseDate.toISOString().split('T')[0],
+        selectedTimeSlot: formatTimeSlot(randomStartTime),
       });
     }
     
@@ -258,42 +545,49 @@ const QuantCalendarPage = () => {
     setSelectedDate(new Date());
   };
 
-  const handleDragStart = (wo: any, service?: any) => {
-    if (service) {
-      setDraggedService(service);
-      setDraggedWorkOrder(wo);
-    } else {
-      setDraggedWorkOrder(wo);
-      setDraggedService(null);
-    }
-  };
-
-  const handleScheduledJobDragStart = (e: React.DragEvent, job: ScheduledJob) => {
-    e.stopPropagation();
-    const wo = workOrders.find(w => w.id === job.workOrderId);
-    const service = job.serviceId ? getTasksByWorkOrder(job.workOrderId).find(s => s.id === job.serviceId) : null;
+  const handleDragStart = (event: DragStartEvent) => {
+    const dragData = event.active.data.current as DragData;
+    setActiveDragData(dragData);
     
-    if (wo) {
-      setDraggedWorkOrder(wo);
-      setDraggedService(service || null);
-      
-      // Remove the job from schedule when starting to drag it
-      setSchedule(prev => prev.filter(s => 
-        !(s.workOrderId === job.workOrderId && 
-          s.employeeId === job.employeeId && 
-          s.startTime === job.startTime && 
-          s.date === job.date &&
-          s.serviceId === job.serviceId)
-      ));
+    // If dragging a scheduled job, remove it from schedule
+    if (dragData?.type === 'scheduledJob' && dragData.scheduledJob) {
+      setSchedule(prev => prev.filter(s => s.id !== dragData.scheduledJob!.id));
     }
   };
 
-  const handleDrop = (employeeId: string, timeSlot: number, date?: string) => {
-    const itemToDrag = draggedService || draggedWorkOrder;
-    if (!itemToDrag) return;
+  const handleDragOver = (event: DragOverEvent) => {
+    const { over } = event;
+    
+    if (over && over.data.current) {
+      const dropData = over.data.current as { employeeId: string; timeSlot: number; date: string };
+      setActiveDropZone(dropData);
+    } else {
+      setActiveDropZone(null);
+    }
+  };
 
-    const scheduleDate = date || selectedDate.toISOString().split('T')[0];
-    const employeeJobs = getEmployeeJobs(employeeId, scheduleDate);
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { over } = event;
+    
+    if (!over || !activeDragData) {
+      // If drag was cancelled, restore the scheduled job if it was one
+      if (activeDragData?.type === 'scheduledJob' && activeDragData.scheduledJob) {
+        setSchedule(prev => [...prev, activeDragData.scheduledJob!]);
+      }
+      setActiveDragData(null);
+      setActiveDropZone(null);
+      return;
+    }
+
+    const dropData = over.data.current as { employeeId: string; timeSlot: number; date: string };
+    const { employeeId, timeSlot, date } = dropData;
+
+    // Get the work order and service from drag data
+    const workOrder = activeDragData.workOrder;
+    const service = activeDragData.service;
+    
+    // Check for conflicts
+    const employeeJobs = schedule.filter(s => s.employeeId === employeeId && s.date === date);
     const duration = 2;
 
     const hasConflict = employeeJobs.some(job => {
@@ -305,35 +599,47 @@ const QuantCalendarPage = () => {
     });
 
     if (hasConflict) {
-      alert("Time slot conflict!");
-      setDraggedWorkOrder(null);
-      setDraggedService(null);
+      alert("Time slot conflict! This employee already has a job scheduled at this time.");
+      // Restore scheduled job if it was being moved
+      if (activeDragData.type === 'scheduledJob' && activeDragData.scheduledJob) {
+        setSchedule(prev => [...prev, activeDragData.scheduledJob!]);
+      }
+      setActiveDragData(null);
+      setActiveDropZone(null);
       return;
     }
 
-    setSchedule([...schedule, {
-      workOrderId: draggedWorkOrder.id,
-      serviceId: draggedService?.id,
+    // Create new scheduled job
+    const newJob: ScheduledJob = {
+      id: `job-${workOrder.id}-${service?.id || 'wo'}-${employeeId}-${timeSlot}-${Date.now()}`,
+      workOrderId: workOrder.id,
+      serviceId: service?.id,
       employeeId,
       startTime: timeSlot,
       duration,
-      date: scheduleDate,
-    }]);
+      date,
+      selectedTimeSlot: formatTimeSlot(timeSlot),
+    };
 
-    setDraggedWorkOrder(null);
-    setDraggedService(null);
+    setSchedule(prev => [...prev, newJob]);
+    setActiveDragData(null);
+    setActiveDropZone(null);
   };
 
-  const toggleWorkOrder = (woId: string) => {
-    setExpandedWorkOrders(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(woId)) {
-        newSet.delete(woId);
-      } else {
-        newSet.add(woId);
-      }
-      return newSet;
-    });
+  const handleDragCancel = () => {
+    // Restore scheduled job if it was being moved
+    if (activeDragData?.type === 'scheduledJob' && activeDragData.scheduledJob) {
+      setSchedule(prev => [...prev, activeDragData.scheduledJob!]);
+    }
+    setActiveDragData(null);
+    setActiveDropZone(null);
+  };
+
+  const handleWorkOrderClick = (wo: any) => {
+    const services = getTasksByWorkOrder(wo.id);
+    if (services.length > 0) {
+      setSelectedWorkOrder(selectedWorkOrder?.id === wo.id ? null : wo);
+    }
   };
 
   const handleAutoAssign = () => {
@@ -370,11 +676,13 @@ const QuantCalendarPage = () => {
 
       if (bestEmployee && bestTime !== -1) {
         newSchedule.push({
+          id: `job-${wo.id}-${bestEmployee.id}-${bestTime}-${Date.now()}`,
           workOrderId: wo.id,
           employeeId: bestEmployee.id,
           startTime: bestTime,
           duration,
           date: bestDate,
+          selectedTimeSlot: formatTimeSlot(bestTime),
         });
       }
     });
@@ -401,7 +709,15 @@ const QuantCalendarPage = () => {
   }, [workOrders, filteredSchedule, employees]);
 
   return (
-    <div className="space-y-4 animate-fade-in">
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragStart={handleDragStart}
+      onDragOver={handleDragOver}
+      onDragEnd={handleDragEnd}
+      onDragCancel={handleDragCancel}
+    >
+      <div className="space-y-4 animate-fade-in">
       {/* Top Filters Bar */}
       <div className="bg-card rounded-xl border border-border p-4">
         <div className="flex items-center gap-3 flex-wrap">
@@ -512,26 +828,13 @@ const QuantCalendarPage = () => {
             {viewMode === "month" && selectedDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
           </span>
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handleAutoAssign}
-            className="px-4 py-2 rounded-lg text-white text-sm font-semibold flex items-center gap-2 hover:opacity-90"
-            style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}
-          >
-            <Zap className="w-4 h-4" />
-            Auto Assign
-          </button>
-          <button className="px-4 py-2 rounded-lg bg-primary text-white text-sm font-semibold flex items-center gap-2">
-            <Plus className="w-4 h-4" />
-            Work Order
-          </button>
-        </div>
+        
       </div>
 
       {/* Main Content */}
       <div className="grid grid-cols-12 gap-4">
         {/* Left Panel - Work Orders */}
-        <div className="col-span-3 bg-card rounded-xl border border-border">
+        <div className={`${selectedWorkOrder ? 'col-span-2' : 'col-span-3'} bg-card rounded-xl border border-border transition-all`}>
           <div className="p-4 border-b border-border">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-sm font-bold">Work Orders</h3>
@@ -568,72 +871,42 @@ const QuantCalendarPage = () => {
             {filteredWorkOrders.map(wo => {
               const priority = getPriority(wo);
               const services = getTasksByWorkOrder(wo.id);
-              const isExpanded = expandedWorkOrders.has(wo.id);
               const hasServices = services.length > 0;
+              const isSelected = selectedWorkOrder?.id === wo.id;
               
               return (
-                <div key={wo.id} className="space-y-1">
-                  <div
-                    className={`p-3 rounded-lg border hover:shadow-md transition-all ${priorityBgColors[priority]} ${!hasServices ? 'cursor-move' : ''}`}
-                    draggable={!hasServices}
-                    onDragStart={() => !hasServices && handleDragStart(wo)}
-                  >
-                    <div className="flex items-start justify-between mb-1">
-                      <div className="flex items-center gap-2 flex-1">
-                        {hasServices && (
-                          <button
-                            onClick={() => toggleWorkOrder(wo.id)}
-                            className="hover:bg-black/10 rounded p-0.5"
-                          >
-                            {isExpanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRightIcon className="w-3 h-3" />}
-                          </button>
-                        )}
-                        <p className="text-xs font-bold">{wo.id}</p>
-                      </div>
-                      <span className="text-[10px]">
-                        {wo.workOrderDateTime ? new Date(wo.workOrderDateTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : "9:00 AM"}
-                      </span>
-                    </div>
-                    <p className="text-sm font-semibold mb-1">{wo.customer}</p>
-                    <div className="flex items-start gap-1 text-[11px] text-muted-foreground mb-1">
-                      <MapPin className="w-3 h-3 flex-shrink-0 mt-0.5" />
-                      <span className="line-clamp-1">{wo.address}</span>
-                    </div>
-                    <div className="flex items-center justify-between text-[10px]">
-                      <span className="truncate">{wo.serviceType.split('(')[0].trim()}</span>
-                      {hasServices && (
-                        <span className="text-[10px] font-semibold">{services.length} services</span>
-                      )}
-                    </div>
-                  </div>
-                  
-                  {/* Services List */}
-                  {isExpanded && hasServices && (
-                    <div className="ml-4 space-y-1">
-                      {services.map(service => (
-                        <div
-                          key={service.id}
-                          draggable
-                          onDragStart={() => handleDragStart(wo, service)}
-                          className="p-2 rounded-lg border border-border bg-secondary/50 cursor-move hover:shadow-md transition-all"
-                        >
-                          <div className="flex items-center justify-between mb-1">
-                            <p className="text-xs font-semibold text-card-foreground">{service.title}</p>
-                            <span className={`text-[9px] px-1.5 py-0.5 rounded ${
-                              service.status === "Completed" 
-                                ? "bg-green-100 text-green-800" 
-                                : service.status === "In Progress"
-                                ? "bg-blue-100 text-blue-800"
-                                : "bg-yellow-100 text-yellow-800"
-                            }`}>
-                              {service.status}
-                            </span>
-                          </div>
-                          {service.assignedTo && (
-                            <p className="text-[10px] text-muted-foreground">Assigned: {service.assignedTo}</p>
-                          )}
+                <div key={wo.id}>
+                  {!hasServices ? (
+                    <DraggableWorkOrderCard
+                      wo={wo}
+                      service={null}
+                      priority={priority}
+                      hasServices={false}
+                      isSelected={isSelected}
+                      onWorkOrderClick={handleWorkOrderClick}
+                    />
+                  ) : (
+                    <div
+                      className={`p-3 rounded-lg border hover:shadow-md transition-all ${priorityBgColors[priority]} cursor-pointer ${isSelected ? 'ring-2 ring-primary' : ''}`}
+                      onClick={() => handleWorkOrderClick(wo)}
+                    >
+                      <div className="flex items-start justify-between mb-1">
+                        <div className="flex items-center gap-2 flex-1">
+                          <p className="text-xs font-bold">{wo.id}</p>
                         </div>
-                      ))}
+                        <span className="text-[10px]">
+                          {wo.workOrderDateTime ? new Date(wo.workOrderDateTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : "9:00 AM"}
+                        </span>
+                      </div>
+                      <p className="text-sm font-semibold mb-1">{wo.customer}</p>
+                      <div className="flex items-start gap-1 text-[11px] text-muted-foreground mb-1">
+                        <MapPin className="w-3 h-3 flex-shrink-0 mt-0.5" />
+                        <span className="line-clamp-1">{wo.address}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-[10px]">
+                        <span className="truncate">{wo.serviceType.split('(')[0].trim()}</span>
+                        <span className="text-[10px] font-semibold">{services.length} services</span>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -642,8 +915,36 @@ const QuantCalendarPage = () => {
           </div>
         </div>
 
+        {/* Middle Panel - Services (shown when work order is selected) */}
+        {selectedWorkOrder && (
+          <div className="col-span-2 bg-card rounded-xl border border-border animate-fade-in">
+            <div className="p-4 border-b border-border">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-bold">Services</h3>
+                <button
+                  onClick={() => setSelectedWorkOrder(null)}
+                  className="text-xs text-muted-foreground hover:text-foreground"
+                >
+                  ✕
+                </button>
+              </div>
+              <p className="text-xs text-muted-foreground">{selectedWorkOrder.id}</p>
+              <p className="text-xs font-semibold">{selectedWorkOrder.customer}</p>
+            </div>
+            <div className="p-3 space-y-2 max-h-[600px] overflow-y-auto">
+              {getTasksByWorkOrder(selectedWorkOrder.id).map(service => (
+                <DraggableServiceCard
+                  key={service.id}
+                  service={service}
+                  workOrder={selectedWorkOrder}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Right Panel - Calendar */}
-        <div className="col-span-9 bg-card rounded-xl border border-border">
+        <div className={`${selectedWorkOrder ? 'col-span-8' : 'col-span-9'} bg-card rounded-xl border border-border transition-all`}>
           {/* View Tabs */}
           <div className="border-b border-border">
             <div className="flex items-center gap-4 px-4">
@@ -731,47 +1032,23 @@ const QuantCalendarPage = () => {
                                 const job = filteredSchedule.find(s => s.employeeId === emp.id && s.startTime === hour && s.date === selectedDate.toISOString().split('T')[0]);
                                 const wo = job ? workOrders.find(w => w.id === job.workOrderId) : null;
                                 const service = job?.serviceId ? getTasksByWorkOrder(job.workOrderId).find(s => s.id === job.serviceId) : null;
+                                const isOver = activeDropZone?.employeeId === emp.id && 
+                                              activeDropZone?.timeSlot === hour && 
+                                              activeDropZone?.date === selectedDate.toISOString().split('T')[0];
 
                                 return (
-                                  <div
+                                  <DroppableTimeSlot
                                     key={hour}
-                                    onDragOver={(e) => e.preventDefault()}
-                                    onDrop={() => handleDrop(emp.id, hour)}
-                                    className="relative border-l border-border min-h-[70px] hover:bg-primary/5 transition-colors cursor-pointer"
-                                  >
-                                    {wo && job && (
-                                      <div
-                                        draggable
-                                        onDragStart={(e) => handleScheduledJobDragStart(e, job)}
-                                        onClick={(e) => e.stopPropagation()}
-                                        className={`absolute rounded-lg p-2 border-2 shadow-md cursor-move hover:shadow-lg transition-all ${priorityBgColors[getPriority(wo)]}`}
-                                        style={{ 
-                                          width: `calc(${job.duration * 100}% - 4px)`,
-                                          left: '2px',
-                                          top: '4px',
-                                          bottom: '4px',
-                                          zIndex: 10
-                                        }}
-                                      >
-                                        <p className="text-xs font-bold truncate">{wo.id}</p>
-                                        {service ? (
-                                          <p className="text-[10px] truncate font-semibold text-primary">{service.title}</p>
-                                        ) : (
-                                          <p className="text-[10px] truncate">{wo.customer}</p>
-                                        )}
-                                        <div className="flex items-center justify-between mt-1">
-                                          <p className="text-[10px] flex items-center gap-1">
-                                            <Clock className="w-3 h-3" />
-                                            {hour}:00 - {hour + job.duration}:00
-                                          </p>
-                                          <div className="flex items-center gap-1">
-                                            <Users className="w-3 h-3" />
-                                            <span className="text-[10px]">2</span>
-                                          </div>
-                                        </div>
-                                      </div>
-                                    )}
-                                  </div>
+                                    employeeId={emp.id}
+                                    timeSlot={hour}
+                                    date={selectedDate.toISOString().split('T')[0]}
+                                    job={job}
+                                    workOrder={wo}
+                                    service={service}
+                                    priority={wo ? getPriority(wo) : null}
+                                    isOver={isOver}
+                                    onScheduledJobDragStart={() => {}}
+                                  />
                                 );
                               })}
                             </div>
@@ -832,43 +1109,17 @@ const QuantCalendarPage = () => {
                               const dayJobs = getEmployeeJobs(emp.id, dateStr);
                               
                               return (
-                                <div
+                                <DroppableDayCell
                                   key={dateStr}
-                                  onDragOver={(e) => e.preventDefault()}
-                                  onDrop={() => handleDrop(emp.id, 9, dateStr)}
-                                  className="relative border-l border-border min-h-[70px] hover:bg-primary/5 transition-colors p-1 cursor-pointer"
-                                >
-                                  <div className="text-xs font-semibold text-primary">{dayJobs.length} jobs</div>
-                                  {dayJobs.slice(0, 2).map((job, idx) => {
-                                    const wo = workOrders.find(w => w.id === job.workOrderId);
-                                    const service = job.serviceId ? getTasksByWorkOrder(job.workOrderId).find(s => s.id === job.serviceId) : null;
-                                    if (!wo) return null;
-                                    return (
-                                      <div
-                                        key={idx}
-                                        draggable
-                                        onDragStart={(e) => handleScheduledJobDragStart(e, job)}
-                                        onClick={(e) => e.stopPropagation()}
-                                        className={`mt-1 rounded p-1 border text-[10px] cursor-move hover:shadow-md transition-all ${priorityBgColors[getPriority(wo)]}`}
-                                      >
-                                        <p className="font-bold truncate">{wo.id}</p>
-                                        {service ? (
-                                          <p className="truncate font-semibold">{service.title}</p>
-                                        ) : (
-                                          <p className="truncate">{job.startTime}:00</p>
-                                        )}
-                                      </div>
-                                    );
-                                  })}
-                                  {dayJobs.length > 2 && (
-                                    <div className="mt-1 text-[10px] text-muted-foreground">+{dayJobs.length - 2} more</div>
-                                  )}
-                                  {dayJobs.length === 0 && (
-                                    <div className="flex items-center justify-center h-full text-[10px] text-muted-foreground">
-                                      Drop here
-                                    </div>
-                                  )}
-                                </div>
+                                  employeeId={emp.id}
+                                  date={dateStr}
+                                  dayJobs={dayJobs}
+                                  workOrders={workOrders}
+                                  getTasksByWorkOrder={getTasksByWorkOrder}
+                                  getPriority={getPriority}
+                                  priorityBgColors={priorityBgColors}
+                                  activeDropZone={activeDropZone}
+                                />
                               );
                             })}
                           </div>
@@ -921,6 +1172,27 @@ const QuantCalendarPage = () => {
         </div>
       </div>
     </div>
+
+    {/* Drag Overlay */}
+    <DragOverlay>
+      {activeDragData && (
+        <div className="opacity-90 rotate-3 scale-105">
+          {activeDragData.type === 'service' && activeDragData.service ? (
+            <div className="p-2 rounded-lg border-2 border-primary bg-secondary shadow-2xl w-48">
+              <p className="text-xs font-semibold">{activeDragData.service.title}</p>
+              <p className="text-[10px] text-muted-foreground">{activeDragData.workOrder.id}</p>
+            </div>
+          ) : (
+            <div className={`p-3 rounded-lg border-2 border-primary shadow-2xl w-56 ${priorityBgColors[getPriority(activeDragData.workOrder)]}`}>
+              <p className="text-xs font-bold">{activeDragData.workOrder.id}</p>
+              <p className="text-sm font-semibold">{activeDragData.workOrder.customer}</p>
+              <p className="text-[10px] truncate">{activeDragData.workOrder.serviceType.split('(')[0].trim()}</p>
+            </div>
+          )}
+        </div>
+      )}
+    </DragOverlay>
+  </DndContext>
   );
 };
 
