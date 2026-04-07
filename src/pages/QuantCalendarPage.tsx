@@ -64,6 +64,38 @@ type DragData = {
   scheduledJob?: ScheduledJob;
 };
 
+// Draggable Scheduled Job for Week/Month View
+const DraggableScheduledJobCard = ({ job, workOrder, service, getPriority, priorityBgColors }: any) => {
+  const dragData: DragData = {
+    type: 'scheduledJob',
+    workOrder,
+    service: service || undefined,
+    scheduledJob: job,
+  };
+
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: `scheduled-day-${job.id}`,
+    data: dragData,
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      {...listeners}
+      {...attributes}
+      onClick={(e) => e.stopPropagation()}
+      className={`mt-1 rounded p-1 border text-[10px] cursor-move hover:shadow-md transition-all ${priorityBgColors[getPriority(workOrder)]} ${isDragging ? 'opacity-50' : ''}`}
+    >
+      <p className="font-bold truncate">{workOrder.id}</p>
+      {service ? (
+        <p className="truncate font-semibold">{service.title}</p>
+      ) : (
+        <p className="truncate">{formatTimeSlot(job.startTime)}</p>
+      )}
+    </div>
+  );
+};
+
 // Droppable Day Cell for Week/Month View
 const DroppableDayCell = ({ employeeId, date, dayJobs, workOrders, getTasksByWorkOrder, getPriority, priorityBgColors, activeDropZone }: any) => {
   const dropId = `drop-day-${employeeId}-${date}`;
@@ -92,34 +124,15 @@ const DroppableDayCell = ({ employeeId, date, dayJobs, workOrders, getTasksByWor
         const service = job.serviceId ? getTasksByWorkOrder(job.workOrderId).find((s: any) => s.id === job.serviceId) : null;
         if (!wo) return null;
 
-        const dragData: DragData = {
-          type: 'scheduledJob',
-          workOrder: wo,
-          service: service || undefined,
-          scheduledJob: job,
-        };
-
-        const { attributes, listeners, setNodeRef: setDragRef, isDragging } = useDraggable({
-          id: `scheduled-day-${job.id}`,
-          data: dragData,
-        });
-
         return (
-          <div
-            key={idx}
-            ref={setDragRef}
-            {...listeners}
-            {...attributes}
-            onClick={(e) => e.stopPropagation()}
-            className={`mt-1 rounded p-1 border text-[10px] cursor-move hover:shadow-md transition-all ${priorityBgColors[getPriority(wo)]} ${isDragging ? 'opacity-50' : ''}`}
-          >
-            <p className="font-bold truncate">{wo.id}</p>
-            {service ? (
-              <p className="truncate font-semibold">{service.title}</p>
-            ) : (
-              <p className="truncate">{formatTimeSlot(job.startTime)}</p>
-            )}
-          </div>
+          <DraggableScheduledJobCard
+            key={job.id}
+            job={job}
+            workOrder={wo}
+            service={service}
+            getPriority={getPriority}
+            priorityBgColors={priorityBgColors}
+          />
         );
       })}
       {dayJobs.length > 2 && (
@@ -146,28 +159,39 @@ const formatTimeSlot = (hour: number): string => {
 
 // Draggable Work Order Card Component
 const DraggableWorkOrderCard = ({ wo, service, priority, hasServices, isSelected, onWorkOrderClick }: any) => {
-  const dragData: DragData = {
-    type: service ? 'service' : 'workOrder',
+  // Only make it draggable if it's a service, not a work order
+  const isDraggable = !!service;
+  
+  const dragData: DragData = service ? {
+    type: 'service',
     workOrder: wo,
-    service: service || undefined,
+    service: service,
+  } : {
+    type: 'workOrder',
+    workOrder: wo,
+    service: undefined,
   };
 
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: service ? `service-${service.id}` : `wo-${wo.id}`,
     data: dragData,
+    disabled: !isDraggable, // Disable dragging for work orders without services
   });
 
   return (
     <div
-      ref={setNodeRef}
-      {...listeners}
-      {...attributes}
-      className={`p-3 rounded-lg border hover:shadow-md transition-all ${priorityBgColors[priority]} ${!hasServices ? 'cursor-move' : 'cursor-pointer'} ${isSelected ? 'ring-2 ring-primary' : ''} ${isDragging ? 'opacity-50' : ''}`}
+      ref={isDraggable ? setNodeRef : undefined}
+      {...(isDraggable ? listeners : {})}
+      {...(isDraggable ? attributes : {})}
+      className={`p-3 rounded-lg border hover:shadow-md transition-all ${priorityBgColors[priority]} ${isDraggable ? 'cursor-move' : hasServices ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'} ${isSelected ? 'ring-2 ring-primary' : ''} ${isDragging ? 'opacity-50' : ''}`}
       onClick={() => hasServices && !service && onWorkOrderClick(wo)}
     >
       <div className="flex items-start justify-between mb-1">
         <div className="flex items-center gap-2 flex-1">
           <p className="text-xs font-bold">{wo.id}</p>
+          {!hasServices && !service && (
+            <span className="text-[9px] px-1.5 py-0.5 rounded bg-gray-200 text-gray-600">No Services</span>
+          )}
         </div>
         <span className="text-[10px]">
           {wo.workOrderDateTime ? new Date(wo.workOrderDateTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : "9:00 AM"}
@@ -373,13 +397,25 @@ const QuantCalendarPage = () => {
     // Only generate if we have work orders and employees
     if (workOrders.length === 0 || employees.length === 0) return [];
     
-    // Assign some work orders to random employees at different times
-    const numToSchedule = Math.min(workOrders.length, Math.floor(workOrders.length * 0.6)); // Schedule 60% of work orders
+    // Filter work orders that have services
+    const workOrdersWithServices = workOrders.filter(wo => {
+      const services = getTasksByWorkOrder(wo.id);
+      return services.length > 0;
+    });
+    
+    if (workOrdersWithServices.length === 0) return [];
+    
+    // Assign some services to random employees at different times
+    const numToSchedule = Math.min(workOrdersWithServices.length, Math.floor(workOrdersWithServices.length * 0.6)); // Schedule 60% of work orders
     
     for (let i = 0; i < numToSchedule; i++) {
-      const wo = workOrders[i];
-      const randomEmployee = employees[i % employees.length];
-      const randomStartTime = 6 + (i % 12); // Distribute between 6 AM and 5 PM
+      const wo = workOrdersWithServices[i];
+      const services = getTasksByWorkOrder(wo.id);
+      
+      // Pick a random service from this work order
+      const randomService = services[Math.floor(Math.random() * services.length)];
+      const randomEmployee = employees[Math.floor(Math.random() * employees.length)];
+      const randomStartTime = 6 + Math.floor(Math.random() * 12); // Random time between 6 AM and 5 PM
       const duration = Math.random() > 0.5 ? 2 : 3; // Random duration of 2 or 3 hours
       
       // Generate random date within current week/month
@@ -388,8 +424,9 @@ const QuantCalendarPage = () => {
       baseDate.setDate(baseDate.getDate() + daysOffset);
       
       dummySchedule.push({
-        id: `job-${wo.id}-${randomEmployee.id}-${i}`,
+        id: `job-${wo.id}-${randomService.id}-${randomEmployee.id}-${Date.now()}-${i}-${Math.random()}`,
         workOrderId: wo.id,
+        serviceId: randomService.id, // Always include service ID
         employeeId: randomEmployee.id,
         startTime: randomStartTime,
         duration,
@@ -468,7 +505,12 @@ const QuantCalendarPage = () => {
   
   // Handle refresh
   const handleRefresh = () => {
-    setSchedule(generateDummySchedule());
+    // Clear existing schedule first
+    setSchedule([]);
+    // Generate new schedule with a slight delay to ensure state update
+    setTimeout(() => {
+      setSchedule(generateDummySchedule());
+    }, 10);
     setSearchText("");
     setSearchEmployee("");
   };
@@ -547,6 +589,12 @@ const QuantCalendarPage = () => {
 
   const handleDragStart = (event: DragStartEvent) => {
     const dragData = event.active.data.current as DragData;
+    
+    // Only allow services to be dragged, not work orders
+    if (dragData?.type === 'workOrder' && !dragData.service) {
+      return; // Reject work orders without services
+    }
+    
     setActiveDragData(dragData);
     
     // If dragging a scheduled job, remove it from schedule
@@ -579,12 +627,31 @@ const QuantCalendarPage = () => {
       return;
     }
 
+    // Reject if trying to drop a work order without a service
+    if (activeDragData.type === 'workOrder' && !activeDragData.service) {
+      alert("Only services can be scheduled! Please select a work order with services and drag individual services.");
+      setActiveDragData(null);
+      setActiveDropZone(null);
+      return;
+    }
+
     const dropData = over.data.current as { employeeId: string; timeSlot: number; date: string };
     const { employeeId, timeSlot, date } = dropData;
 
     // Get the work order and service from drag data
     const workOrder = activeDragData.workOrder;
     const service = activeDragData.service;
+    
+    // Ensure we have a service
+    if (!service) {
+      alert("Only services can be scheduled! Please drag individual services from the work order.");
+      if (activeDragData.type === 'scheduledJob' && activeDragData.scheduledJob) {
+        setSchedule(prev => [...prev, activeDragData.scheduledJob!]);
+      }
+      setActiveDragData(null);
+      setActiveDropZone(null);
+      return;
+    }
     
     // Check for conflicts
     const employeeJobs = schedule.filter(s => s.employeeId === employeeId && s.date === date);
@@ -611,9 +678,9 @@ const QuantCalendarPage = () => {
 
     // Create new scheduled job
     const newJob: ScheduledJob = {
-      id: `job-${workOrder.id}-${service?.id || 'wo'}-${employeeId}-${timeSlot}-${Date.now()}`,
+      id: `job-${workOrder.id}-${service.id}-${employeeId}-${timeSlot}-${Date.now()}`,
       workOrderId: workOrder.id,
-      serviceId: service?.id,
+      serviceId: service.id,
       employeeId,
       startTime: timeSlot,
       duration,
@@ -643,10 +710,23 @@ const QuantCalendarPage = () => {
   };
 
   const handleAutoAssign = () => {
-    const unassigned = workOrders.filter(wo => !schedule.some(s => s.workOrderId === wo.id));
+    // Get all unassigned services from work orders
+    const unassignedServices: Array<{ wo: any; service: any }> = [];
+    
+    workOrders.forEach(wo => {
+      const services = getTasksByWorkOrder(wo.id);
+      services.forEach(service => {
+        // Check if this service is already scheduled
+        const isScheduled = schedule.some(s => s.workOrderId === wo.id && s.serviceId === service.id);
+        if (!isScheduled) {
+          unassignedServices.push({ wo, service });
+        }
+      });
+    });
+
     const newSchedule = [...schedule];
 
-    unassigned.forEach(wo => {
+    unassignedServices.forEach(({ wo, service }) => {
       const duration = 2;
       let bestEmployee: any = null;
       let bestTime = -1;
@@ -676,8 +756,9 @@ const QuantCalendarPage = () => {
 
       if (bestEmployee && bestTime !== -1) {
         newSchedule.push({
-          id: `job-${wo.id}-${bestEmployee.id}-${bestTime}-${Date.now()}`,
+          id: `job-${wo.id}-${service.id}-${bestEmployee.id}-${bestTime}-${Date.now()}`,
           workOrderId: wo.id,
+          serviceId: service.id, // Always include service ID
           employeeId: bestEmployee.id,
           startTime: bestTime,
           duration,
@@ -876,39 +957,36 @@ const QuantCalendarPage = () => {
               
               return (
                 <div key={wo.id}>
-                  {!hasServices ? (
-                    <DraggableWorkOrderCard
-                      wo={wo}
-                      service={null}
-                      priority={priority}
-                      hasServices={false}
-                      isSelected={isSelected}
-                      onWorkOrderClick={handleWorkOrderClick}
-                    />
-                  ) : (
-                    <div
-                      className={`p-3 rounded-lg border hover:shadow-md transition-all ${priorityBgColors[priority]} cursor-pointer ${isSelected ? 'ring-2 ring-primary' : ''}`}
-                      onClick={() => handleWorkOrderClick(wo)}
-                    >
-                      <div className="flex items-start justify-between mb-1">
-                        <div className="flex items-center gap-2 flex-1">
-                          <p className="text-xs font-bold">{wo.id}</p>
-                        </div>
-                        <span className="text-[10px]">
-                          {wo.workOrderDateTime ? new Date(wo.workOrderDateTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : "9:00 AM"}
-                        </span>
+                  <div
+                    className={`p-3 rounded-lg border hover:shadow-md transition-all ${priorityBgColors[priority]} ${hasServices ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'} ${isSelected ? 'ring-2 ring-primary' : ''}`}
+                    onClick={() => hasServices && handleWorkOrderClick(wo)}
+                  >
+                    <div className="flex items-start justify-between mb-1">
+                      <div className="flex items-center gap-2 flex-1">
+                        <p className="text-xs font-bold">{wo.id}</p>
+                        {!hasServices && (
+                          <span className="text-[9px] px-1.5 py-0.5 rounded bg-gray-200 text-gray-600">No Services</span>
+                        )}
+                        {hasServices && (
+                          <span className="text-[9px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-700">Click to expand</span>
+                        )}
                       </div>
-                      <p className="text-sm font-semibold mb-1">{wo.customer}</p>
-                      <div className="flex items-start gap-1 text-[11px] text-muted-foreground mb-1">
-                        <MapPin className="w-3 h-3 flex-shrink-0 mt-0.5" />
-                        <span className="line-clamp-1">{wo.address}</span>
-                      </div>
-                      <div className="flex items-center justify-between text-[10px]">
-                        <span className="truncate">{wo.serviceType.split('(')[0].trim()}</span>
-                        <span className="text-[10px] font-semibold">{services.length} services</span>
-                      </div>
+                      <span className="text-[10px]">
+                        {wo.workOrderDateTime ? new Date(wo.workOrderDateTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : "9:00 AM"}
+                      </span>
                     </div>
-                  )}
+                    <p className="text-sm font-semibold mb-1">{wo.customer}</p>
+                    <div className="flex items-start gap-1 text-[11px] text-muted-foreground mb-1">
+                      <MapPin className="w-3 h-3 flex-shrink-0 mt-0.5" />
+                      <span className="line-clamp-1">{wo.address}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-[10px]">
+                      <span className="truncate">{wo.serviceType.split('(')[0].trim()}</span>
+                      {hasServices && (
+                        <span className="text-[10px] font-semibold text-primary">{services.length} services →</span>
+                      )}
+                    </div>
+                  </div>
                 </div>
               );
             })}

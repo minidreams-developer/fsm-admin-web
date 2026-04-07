@@ -1,7 +1,15 @@
 # Drag-and-Drop Implementation for Quant Calendar
 
 ## Overview
-Implemented precise grid-based drag-and-drop functionality for scheduling work order services into a time-based calendar grid using `@dnd-kit`.
+Implemented precise grid-based drag-and-drop functionality for scheduling work order **services** (not work orders) into a time-based calendar grid using `@dnd-kit`.
+
+## Important: Services Only
+**Only individual services can be dragged into the timeslot table, not entire work orders.**
+
+- Work orders without services are displayed but cannot be dragged (shown with "No Services" badge)
+- Work orders with services must be clicked to expand and show individual services
+- Only the individual services from the expanded panel can be dragged into time slots
+- This ensures granular scheduling at the service level rather than work order level
 
 ## Key Features
 
@@ -62,10 +70,15 @@ Each dropped service stores:
 - Displays hover effects and drop previews
 - Handles both dragging and dropping
 
-#### 4. DroppableDayCell
+#### 4. DraggableScheduledJobCard
+- Renders draggable scheduled jobs in week/month views
+- Supports re-dragging between days
+- Shows work order and service information in compact format
+
+#### 5. DroppableDayCell
 - Simplified drop zone for week/month views
 - Shows multiple jobs in compact format
-- Supports re-dragging of scheduled jobs
+- Uses DraggableScheduledJobCard for each job to enable re-dragging
 
 ### Drag Handlers
 
@@ -92,10 +105,13 @@ Each dropped service stores:
 ## Usage
 
 ### Dragging Work Orders
-1. Drag a work order card from the left panel
-2. Hover over a time slot column (highlights in blue)
-3. Drop to schedule the work order
-4. Card snaps precisely to the column
+1. ~~Drag a work order card from the left panel~~ **Work orders cannot be dragged directly**
+2. Click a work order card that has services (shows "Click to expand" badge)
+3. The services panel appears in the middle showing all services for that work order
+4. Drag individual service cards from the services panel
+5. Hover over a time slot column (highlights in blue)
+6. Drop to schedule the service
+7. Card snaps precisely to the column
 
 ### Dragging Services
 1. Click a work order with multiple services
