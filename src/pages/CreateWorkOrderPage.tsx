@@ -1,5 +1,5 @@
 import { useNavigate, useLocation } from "react-router-dom";
-import { X, Plus, Edit2 } from "lucide-react";
+import { X, Edit2, Check } from "lucide-react";
 import { useState } from "react";
 import { createPortal } from "react-dom";
 import { useForm } from "react-hook-form";
@@ -38,6 +38,7 @@ type Task = {
   startDate: string;
   endDate: string;
   assignedTo: string;
+  assignedEmployees: string[]; // Add support for multiple employees
   status: TaskStatus;
 };
 
@@ -54,6 +55,8 @@ const CreateWorkOrderPage = () => {
   const [selectedServices, setSelectedServices] = useState<string[]>(
     (location.state as any)?.leadData?.services ?? []
   );
+  const [selectedEmployees, setSelectedEmployees] = useState<string[]>([]);
+  const [showEmployeeDropdown, setShowEmployeeDropdown] = useState(false);
 
   const serviceOptions = products.filter((p) => p.category === "Services" && p.status === "Active").map((p) => p.name);
 
@@ -78,13 +81,29 @@ const CreateWorkOrderPage = () => {
       setValue("serviceType", next[0] ?? "");
       // add as task if not already there
       if (!prev.includes(value) && !tasks.find((t) => t.title === value)) {
-        setTasks((t) => [...t, { id: Date.now().toString(), title: value, startDate: "", endDate: "", assignedTo: "", status: "Pending" }]);
+        setTasks((t) => [...t, { 
+          id: Date.now().toString(), 
+          title: value, 
+          startDate: "", 
+          endDate: "", 
+          assignedTo: "", 
+          assignedEmployees: [],
+          status: "Pending" 
+        }]);
       }
       if (prev.includes(value)) {
         setTasks((t) => t.filter((task) => task.title !== value));
       }
       return next;
     });
+  };
+
+  const toggleEmployee = (employeeName: string) => {
+    setSelectedEmployees((prev) => 
+      prev.includes(employeeName) 
+        ? prev.filter((e) => e !== employeeName) 
+        : [...prev, employeeName]
+    );
   };
 
   const removeService = (value: string) => toggleService(value);
@@ -118,7 +137,7 @@ const CreateWorkOrderPage = () => {
         start: data.start,
         end: data.end || data.start,
         status: data.status as "Authorization Pending" | "Open" | "Scheduled" | "Completed",
-        assignedTech: data.assignedTech || "Unassigned",
+        assignedTech: selectedEmployees.length > 0 ? selectedEmployees.join(", ") : "Unassigned",
         notes: data.notes || "",
         siteAddress: data.address,
         billingAddress: data.address,
@@ -132,8 +151,8 @@ const CreateWorkOrderPage = () => {
           description: "",
           startDate: t.startDate,
           endDate: t.endDate,
-          assignedTo: t.assignedTo,
-          assignedEmployees: t.assignedTo ? [t.assignedTo] : [],
+          assignedTo: t.assignedEmployees.length > 0 ? t.assignedEmployees.join(", ") : t.assignedTo,
+          assignedEmployees: t.assignedEmployees.length > 0 ? t.assignedEmployees : (t.assignedTo ? [t.assignedTo] : []),
           status: t.status,
         });
       });
@@ -258,11 +277,79 @@ const CreateWorkOrderPage = () => {
           </div>
 
           <div>
-            <label className="text-xs font-medium text-muted-foreground mb-2 block">Assign Employee</label>
-            <select {...register("assignedTech")} className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground">
-              <option value="">Unassigned</option>
-              {employees.map((e) => <option key={e.id} value={e.name}>{e.name} — {e.role}</option>)}
-            </select>
+            <label className="text-xs font-medium text-muted-foreground mb-2 block">Assign Employees</label>
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setShowEmployeeDropdown(!showEmployeeDropdown)}
+                className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground text-left flex items-center justify-between"
+              >
+                <span className={selectedEmployees.length === 0 ? "text-muted-foreground" : ""}>
+                  {selectedEmployees.length === 0 
+                    ? "Select employees..." 
+                    : `${selectedEmployees.length} employee${selectedEmployees.length > 1 ? 's' : ''} selected`}
+                </span>
+                <svg className={`w-4 h-4 transition-transform ${showEmployeeDropdown ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              
+              {showEmployeeDropdown && (
+                <div className="absolute z-10 w-full mt-1 bg-card border border-border rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                  {employees.length === 0 ? (
+                    <div className="px-3 py-2 text-sm text-muted-foreground">No employees available</div>
+                  ) : (
+                    employees.map((emp) => (
+                      <label
+                        key={emp.id}
+                        className="flex items-center gap-3 px-3 py-2 hover:bg-secondary cursor-pointer transition-colors"
+                      >
+                        <div className="relative flex items-center">
+                          <input
+                            type="checkbox"
+                            checked={selectedEmployees.includes(emp.name)}
+                            onChange={() => toggleEmployee(emp.name)}
+                            className="w-4 h-4 rounded border-border text-primary focus:ring-2 focus:ring-primary/20"
+                          />
+                          {selectedEmployees.includes(emp.name) && (
+                            <Check className="w-3 h-3 text-primary absolute left-0.5 pointer-events-none" />
+                          )}
+                        </div>
+                        <div className="flex-1">
+                          <div className="text-sm font-medium text-card-foreground">{emp.name}</div>
+                          <div className="text-xs text-muted-foreground">{emp.role}</div>
+                        </div>
+                      </label>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+            
+            {/* Display selected employees */}
+            {selectedEmployees.length > 0 && (
+              <div className="flex flex-wrap gap-2 mt-2">
+                {selectedEmployees.map((empName) => {
+                  const emp = employees.find(e => e.name === empName);
+                  return (
+                    <div key={empName} className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 border border-primary/20 rounded-lg">
+                      <span className="text-xs font-medium text-primary">{empName}</span>
+                      {emp && <span className="text-xs text-primary/70">• {emp.role}</span>}
+                      <button 
+                        type="button" 
+                        onClick={() => toggleEmployee(empName)} 
+                        className="text-primary hover:text-primary/70"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            
+            {/* Hidden input for form compatibility */}
+            <input type="hidden" {...register("assignedTech")} value={selectedEmployees.join(", ")} />
           </div>
 
           <div className="md:col-span-2">
@@ -300,7 +387,19 @@ const CreateWorkOrderPage = () => {
                   <td className="px-4 py-3 font-medium text-card-foreground text-xs">{task.title}</td>
                   <td className="px-4 py-3 text-muted-foreground text-xs">{task.startDate || "—"}</td>
                   <td className="px-4 py-3 text-muted-foreground text-xs">{task.endDate || "—"}</td>
-                  <td className="px-4 py-3 text-muted-foreground text-xs">{task.assignedTo || "—"}</td>
+                  <td className="px-4 py-3 text-muted-foreground text-xs">
+                    {task.assignedEmployees.length > 0 ? (
+                      <div className="flex flex-wrap gap-1">
+                        {task.assignedEmployees.map((empName, idx) => (
+                          <span key={idx} className="inline-flex items-center px-2 py-0.5 rounded-md bg-primary/10 text-primary text-xs font-medium">
+                            {empName}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      task.assignedTo || "—"
+                    )}
+                  </td>
                   <td className="px-4 py-3">
                     <span className={`inline-flex items-center px-2 py-1 rounded-lg text-xs font-medium border ${statusColors[task.status]}`}>{task.status}</span>
                   </td>
@@ -324,8 +423,8 @@ const CreateWorkOrderPage = () => {
       {/* Edit Task Modal */}
       {editingTask && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75">
-          <div className="bg-card rounded-[20px] shadow-2xl w-full max-w-md">
-            <div className="flex items-center justify-between p-6 border-b border-border">
+          <div className="bg-card rounded-[20px] shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-6 border-b border-border sticky top-0 bg-card z-10">
               <h2 className="text-lg font-bold text-card-foreground">Edit Task</h2>
               <button onClick={() => setEditingTask(null)} className="p-1 hover:bg-secondary rounded-lg transition-colors">
                 <X className="w-5 h-5 text-muted-foreground" />
@@ -347,11 +446,73 @@ const CreateWorkOrderPage = () => {
                 </div>
               </div>
               <div>
-                <label className="text-xs font-medium text-muted-foreground mb-2 block">Assign Employee</label>
-                <select value={editingTask.assignedTo} onChange={(e) => setEditingTask({ ...editingTask, assignedTo: e.target.value })} className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground">
-                  <option value="">Unassigned</option>
-                  {employees.map((emp) => <option key={emp.id} value={emp.name}>{emp.name} — {emp.role}</option>)}
-                </select>
+                <label className="text-xs font-medium text-muted-foreground mb-2 block">Assign Employees</label>
+                <div className="space-y-2 max-h-48 overflow-y-auto border border-border rounded-lg p-2">
+                  {employees.length === 0 ? (
+                    <div className="text-sm text-muted-foreground text-center py-2">No employees available</div>
+                  ) : (
+                    employees.map((emp) => (
+                      <label
+                        key={emp.id}
+                        className="flex items-center gap-3 px-2 py-2 hover:bg-secondary cursor-pointer transition-colors rounded-md"
+                      >
+                        <div className="relative flex items-center">
+                          <input
+                            type="checkbox"
+                            checked={editingTask.assignedEmployees.includes(emp.name)}
+                            onChange={(e) => {
+                              const newEmployees = e.target.checked
+                                ? [...editingTask.assignedEmployees, emp.name]
+                                : editingTask.assignedEmployees.filter(n => n !== emp.name);
+                              setEditingTask({ 
+                                ...editingTask, 
+                                assignedEmployees: newEmployees,
+                                assignedTo: newEmployees.join(", ")
+                              });
+                            }}
+                            className="w-4 h-4 rounded border-border text-primary focus:ring-2 focus:ring-primary/20"
+                          />
+                          {editingTask.assignedEmployees.includes(emp.name) && (
+                            <Check className="w-3 h-3 text-primary absolute left-0.5 pointer-events-none" />
+                          )}
+                        </div>
+                        <div className="flex-1">
+                          <div className="text-sm font-medium text-card-foreground">{emp.name}</div>
+                          <div className="text-xs text-muted-foreground">{emp.role}</div>
+                        </div>
+                      </label>
+                    ))
+                  )}
+                </div>
+                
+                {/* Display selected employees */}
+                {editingTask.assignedEmployees.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {editingTask.assignedEmployees.map((empName) => {
+                      const emp = employees.find(e => e.name === empName);
+                      return (
+                        <div key={empName} className="flex items-center gap-1.5 px-2 py-1 bg-primary/10 border border-primary/20 rounded-md">
+                          <span className="text-xs font-medium text-primary">{empName}</span>
+                          {emp && <span className="text-xs text-primary/70">• {emp.role}</span>}
+                          <button 
+                            type="button" 
+                            onClick={() => {
+                              const newEmployees = editingTask.assignedEmployees.filter(n => n !== empName);
+                              setEditingTask({ 
+                                ...editingTask, 
+                                assignedEmployees: newEmployees,
+                                assignedTo: newEmployees.join(", ")
+                              });
+                            }}
+                            className="text-primary hover:text-primary/70"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
               <div>
                 <label className="text-xs font-medium text-muted-foreground mb-2 block">Status</label>
