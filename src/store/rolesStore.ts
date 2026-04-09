@@ -22,6 +22,7 @@ const initialRoles: Role[] = [
   { id: "ROLE-1", name: "Admin", description: "Full access to all modules", permissions: PERMISSIONS, active: true },
   { id: "ROLE-2", name: "Manager", description: "Access to operations and reports", permissions: ["Dashboard", "Leads", "Customers", "Work Orders", "Payments"], active: true },
   { id: "ROLE-3", name: "Technician", description: "Access to assigned work orders only", permissions: ["Dashboard", "Work Orders"], active: true },
+  { id: "ROLE-4", name: "Sales Executive", description: "Access to leads, customers, and work orders", permissions: ["Dashboard", "Leads", "Customers", "Work Orders"], active: true },
 ];
 
 export const useRolesStore = create<RolesStore>()(
