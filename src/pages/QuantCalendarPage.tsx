@@ -10,7 +10,8 @@ import {
   Users,
   RefreshCw,
   Filter,
-  Calendar as CalendarIcon
+  Calendar as CalendarIcon,
+  X
 } from "lucide-react";
 import { useProjectsStore } from "@/store/projectsStore";
 import { useEmployeesStore } from "@/store/employeesStore";
@@ -29,6 +30,7 @@ import {
 } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
+import { toast } from "sonner";
 import {
   DndContext,
   DragOverlay,
@@ -65,7 +67,7 @@ type DragData = {
 };
 
 // Draggable Scheduled Job for Week/Month View
-const DraggableScheduledJobCard = ({ job, workOrder, service, getPriority, priorityBgColors }: any) => {
+const DraggableScheduledJobCard = ({ job, workOrder, service, getPriority, priorityBgColors, onRemoveJob }: any) => {
   const dragData: DragData = {
     type: 'scheduledJob',
     workOrder,
@@ -84,8 +86,22 @@ const DraggableScheduledJobCard = ({ job, workOrder, service, getPriority, prior
       {...listeners}
       {...attributes}
       onClick={(e) => e.stopPropagation()}
-      className={`mt-1 rounded p-1 border text-[10px] cursor-move hover:shadow-md transition-all ${priorityBgColors[getPriority(workOrder)]} ${isDragging ? 'opacity-50' : ''}`}
+      className={`group relative mt-1 rounded p-1 border text-[10px] cursor-move hover:shadow-md transition-all ${priorityBgColors[getPriority(workOrder)]} ${isDragging ? 'opacity-50' : ''}`}
     >
+      {/* Remove button */}
+      {onRemoveJob && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onRemoveJob(job.id);
+          }}
+          className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-md z-20"
+          title="Remove service"
+        >
+          <X className="w-2.5 h-2.5" />
+        </button>
+      )}
+      
       <p className="font-bold truncate">{workOrder.id}</p>
       {service ? (
         <p className="truncate font-semibold">{service.title}</p>
@@ -97,7 +113,7 @@ const DraggableScheduledJobCard = ({ job, workOrder, service, getPriority, prior
 };
 
 // Droppable Day Cell for Week/Month View
-const DroppableDayCell = ({ employeeId, date, dayJobs, workOrders, getTasksByWorkOrder, getPriority, priorityBgColors, activeDropZone }: any) => {
+const DroppableDayCell = ({ employeeId, date, dayJobs, workOrders, getTasksByWorkOrder, getPriority, priorityBgColors, activeDropZone, onRemoveJob }: any) => {
   const dropId = `drop-day-${employeeId}-${date}`;
   
   const { setNodeRef, isOver } = useDroppable({
@@ -132,6 +148,7 @@ const DroppableDayCell = ({ employeeId, date, dayJobs, workOrders, getTasksByWor
             service={service}
             getPriority={getPriority}
             priorityBgColors={priorityBgColors}
+            onRemoveJob={onRemoveJob}
           />
         );
       })}
@@ -252,6 +269,7 @@ const DraggableServiceCard = ({ service, workOrder }: any) => {
 };
 
 // Droppable Time Slot Component
+// Droppable Time Slot Component
 const DroppableTimeSlot = ({ 
   employeeId, 
   timeSlot, 
@@ -261,7 +279,7 @@ const DroppableTimeSlot = ({
   service, 
   priority,
   isOver,
-  onScheduledJobDragStart 
+  onRemoveJob
 }: any) => {
   const dropId = `drop-${employeeId}-${timeSlot}-${date}`;
   
@@ -314,7 +332,7 @@ const DroppableTimeSlot = ({
           {...listeners}
           {...attributes}
           onClick={(e) => e.stopPropagation()}
-          className={`absolute rounded-lg p-2 border-2 shadow-md cursor-move hover:shadow-lg transition-all ${priorityBgColors[priority]} ${isDragging ? 'opacity-50' : ''}`}
+          className={`group absolute rounded-lg p-2 border-2 shadow-md cursor-move hover:shadow-lg transition-all ${priorityBgColors[priority]} ${isDragging ? 'opacity-50' : ''}`}
           style={{ 
             width: `calc(${job.duration * 100}% - 4px)`,
             left: '2px',
@@ -323,6 +341,18 @@ const DroppableTimeSlot = ({
             zIndex: isDragging ? 50 : 10
           }}
         >
+          {/* Remove button */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onRemoveJob(job.id);
+            }}
+            className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-md z-20"
+            title="Remove service"
+          >
+            <X className="w-3 h-3" />
+          </button>
+          
           <p className="text-xs font-bold truncate">{workOrder.id}</p>
           {service ? (
             <p className="text-[10px] truncate font-semibold text-primary">{service.title}</p>
@@ -552,16 +582,29 @@ const QuantCalendarPage = () => {
       const matchesSearch = wo.customer.toLowerCase().includes(searchText.toLowerCase()) ||
                            wo.id.toLowerCase().includes(searchText.toLowerCase());
       
-      // Not scheduled filter
-      const isNotScheduled = !filteredSchedule.some(s => s.workOrderId === wo.id);
+      // Check if work order has services
+      const services = getTasksByWorkOrder(wo.id);
+      
+      // If work order has no services, it should not be shown (as per requirement)
+      if (services.length === 0) {
+        return false;
+      }
+      
+      // Check if ALL services are scheduled
+      const allServicesScheduled = services.every(service => 
+        filteredSchedule.some(s => s.workOrderId === wo.id && s.serviceId === service.id)
+      );
+      
+      // Only hide if ALL services are scheduled
+      const hasUnscheduledServices = !allServicesScheduled;
       
       // Service type filter
       const matchesService = selectedService === "all" || 
                             wo.serviceType.split('(')[0].trim() === selectedService;
       
-      return matchesSearch && isNotScheduled && matchesService;
+      return matchesSearch && hasUnscheduledServices && matchesService;
     });
-  }, [workOrders, searchText, filteredSchedule, selectedService]);
+  }, [workOrders, searchText, filteredSchedule, selectedService, getTasksByWorkOrder]);
 
   const getEmployeeJobs = (employeeId: string, date?: string) => {
     if (date) {
@@ -700,6 +743,11 @@ const QuantCalendarPage = () => {
     }
     setActiveDragData(null);
     setActiveDropZone(null);
+  };
+
+  const handleRemoveJob = (jobId: string) => {
+    setSchedule(prev => prev.filter(job => job.id !== jobId));
+    toast.success("Service removed from schedule");
   };
 
   const handleWorkOrderClick = (wo: any) => {
@@ -955,6 +1003,12 @@ const QuantCalendarPage = () => {
               const hasServices = services.length > 0;
               const isSelected = selectedWorkOrder?.id === wo.id;
               
+              // Count scheduled services
+              const scheduledCount = services.filter(service => 
+                filteredSchedule.some(s => s.workOrderId === wo.id && s.serviceId === service.id)
+              ).length;
+              const unscheduledCount = services.length - scheduledCount;
+              
               return (
                 <div key={wo.id}>
                   <div
@@ -967,7 +1021,12 @@ const QuantCalendarPage = () => {
                         {!hasServices && (
                           <span className="text-[9px] px-1.5 py-0.5 rounded bg-gray-200 text-gray-600">No Services</span>
                         )}
-                        {hasServices && (
+                        {hasServices && scheduledCount > 0 && (
+                          <span className="text-[9px] px-1.5 py-0.5 rounded bg-green-100 text-green-700">
+                            {scheduledCount}/{services.length} scheduled
+                          </span>
+                        )}
+                        {hasServices && scheduledCount === 0 && (
                           <span className="text-[9px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-700">Click to expand</span>
                         )}
                       </div>
@@ -983,7 +1042,9 @@ const QuantCalendarPage = () => {
                     <div className="flex items-center justify-between text-[10px]">
                       <span className="truncate">{wo.serviceType.split('(')[0].trim()}</span>
                       {hasServices && (
-                        <span className="text-[10px] font-semibold text-primary">{services.length} services →</span>
+                        <span className="text-[10px] font-semibold text-primary">
+                          {unscheduledCount} remaining →
+                        </span>
                       )}
                     </div>
                   </div>
@@ -1010,13 +1071,27 @@ const QuantCalendarPage = () => {
               <p className="text-xs font-semibold">{selectedWorkOrder.customer}</p>
             </div>
             <div className="p-3 space-y-2 max-h-[600px] overflow-y-auto">
-              {getTasksByWorkOrder(selectedWorkOrder.id).map(service => (
-                <DraggableServiceCard
-                  key={service.id}
-                  service={service}
-                  workOrder={selectedWorkOrder}
-                />
-              ))}
+              {getTasksByWorkOrder(selectedWorkOrder.id)
+                .filter(service => {
+                  // Only show services that are not yet scheduled
+                  return !filteredSchedule.some(s => 
+                    s.workOrderId === selectedWorkOrder.id && s.serviceId === service.id
+                  );
+                })
+                .map(service => (
+                  <DraggableServiceCard
+                    key={service.id}
+                    service={service}
+                    workOrder={selectedWorkOrder}
+                  />
+                ))}
+              {getTasksByWorkOrder(selectedWorkOrder.id).every(service => 
+                filteredSchedule.some(s => s.workOrderId === selectedWorkOrder.id && s.serviceId === service.id)
+              ) && (
+                <div className="text-center py-8">
+                  <p className="text-sm text-muted-foreground">All services have been scheduled</p>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -1125,7 +1200,7 @@ const QuantCalendarPage = () => {
                                     service={service}
                                     priority={wo ? getPriority(wo) : null}
                                     isOver={isOver}
-                                    onScheduledJobDragStart={() => {}}
+                                    onRemoveJob={handleRemoveJob}
                                   />
                                 );
                               })}
@@ -1197,6 +1272,7 @@ const QuantCalendarPage = () => {
                                   getPriority={getPriority}
                                   priorityBgColors={priorityBgColors}
                                   activeDropZone={activeDropZone}
+                                  onRemoveJob={handleRemoveJob}
                                 />
                               );
                             })}

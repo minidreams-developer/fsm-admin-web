@@ -18,11 +18,19 @@ Implemented precise grid-based drag-and-drop functionality for scheduling work o
 - Strict snapping to column boundaries (no free-position dropping)
 - Automatic alignment to nearest valid column
 
-### 2. Visual Feedback
+### 2. Cancel/Remove Services
+- **Hover to reveal**: Hover over any scheduled service to see a red X button
+- **Click to remove**: Click the X button to remove the service instantly
+- **No confirmation**: Service is removed immediately for quick workflow
+- **Toast notification**: Shows success message after removal
+- **Re-draggable**: Removed services can be dragged back into the schedule
+
+### 3. Visual Feedback
 - **Hover Effect**: Active column highlights when dragging over it
 - **Drop Preview**: Shows placeholder with time label inside the target column
 - **Drag Overlay**: Displays a semi-transparent preview of the dragged item
 - **Snap Animation**: Smooth transition when item snaps to column
+- **Remove Button**: Red X button appears on hover (day view) or always visible (week/month view)
 
 ### 3. Data Storage
 Each dropped service stores:
@@ -124,6 +132,13 @@ Each dropped service stores:
 2. Move to a different time slot or employee
 3. Drop to update the schedule
 4. Conflict detection prevents invalid moves
+
+### Removing Services
+1. Hover over a scheduled service card
+2. Red X button appears in the top-right corner
+3. Click the X button
+4. Service is removed instantly with a success notification
+5. Service can be re-dragged if needed
 
 ## Visual Enhancements
 
