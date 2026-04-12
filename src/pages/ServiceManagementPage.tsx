@@ -1,22 +1,22 @@
 import { useState } from "react";
-import { Plus, Search, Eye, Pencil, Trash2 } from "lucide-react";
+import { Plus, Search, Eye, Pencil, Trash2, Download } from "lucide-react";
 import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
 import { useServicesStore } from "@/store/servicesStore";
 import { StatusBadge } from "@/components/StatusBadge";
 import { ServiceFormModal } from "@/components/ServiceFormModal";
-import { ServiceDetailsModal } from "@/components/ServiceDetailsModal";
 import type { ServiceAppointment } from "@/store/servicesStore";
+import * as XLSX from 'xlsx';
 
 const statusMap = { Scheduled: "info", Unscheduled: "neutral", Completed: "success", Cancelled: "error" } as const;
 
 const ServiceManagementPage = () => {
+  const navigate = useNavigate();
   const { appointments, updateAppointment } = useServicesStore();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"All" | "Active" | "Inactive">("All");
   const [showForm, setShowForm] = useState(false);
   const [editingService, setEditingService] = useState<ServiceAppointment | null>(null);
-  const [showDetailsModal, setShowDetailsModal] = useState(false);
-  const [selectedService, setSelectedService] = useState<ServiceAppointment | null>(null);
 
   const filtered = appointments.filter((apt) => {
     const matchStatus = statusFilter === "All" || (statusFilter === "Active" ? apt.status === "Completed" : apt.status !== "Completed");
@@ -34,6 +34,82 @@ const ServiceManagementPage = () => {
     cancelled: appointments.filter(a => a.status === "Cancelled").length,
   };
 
+  const handleExportToExcel = () => {
+    try {
+      // Prepare data for export
+      const exportData = filtered.map((apt) => ({
+        'Reference No': apt.refNo || '—',
+        'Subject': apt.subject || '—',
+        'Service Description': apt.serviceDescription || '—',
+        'Work Order ID': apt.workOrderId,
+        'Employee': apt.employeeName,
+        'Date': apt.date,
+        'Time': apt.time,
+        'In Time': apt.inTime || '—',
+        'Out Time': apt.outTime || '—',
+        'Status': apt.status,
+        'Warranty Period': apt.warrantyPeriod || '—',
+        'Sales Executive': apt.salesExecutive || '—',
+        'State': apt.state || '—',
+        'Unit Price': apt.unitPrice || '—',
+        'GST': apt.gst || '—',
+        'IGST': apt.igst || '—',
+        'CGST': apt.cgst || '—',
+        'Technicians': apt.technicians?.join(', ') || '—',
+        'Instructions': apt.instructions || '—',
+        'Payment Mode': apt.payment?.mode || '—',
+        'Payment Amount': apt.payment?.amount || '—',
+        'Regular Billing': apt.payment?.regularBilling ? 'Yes' : 'No',
+      }));
+
+      // Create worksheet
+      const ws = XLSX.utils.json_to_sheet(exportData);
+
+      // Set column widths
+      const colWidths = [
+        { wch: 15 }, // Reference No
+        { wch: 30 }, // Subject
+        { wch: 40 }, // Service Description
+        { wch: 15 }, // Work Order ID
+        { wch: 20 }, // Employee
+        { wch: 12 }, // Date
+        { wch: 10 }, // Time
+        { wch: 10 }, // In Time
+        { wch: 10 }, // Out Time
+        { wch: 15 }, // Status
+        { wch: 15 }, // Warranty Period
+        { wch: 20 }, // Sales Executive
+        { wch: 15 }, // State
+        { wch: 12 }, // Unit Price
+        { wch: 10 }, // GST
+        { wch: 10 }, // IGST
+        { wch: 10 }, // CGST
+        { wch: 25 }, // Technicians
+        { wch: 40 }, // Instructions
+        { wch: 15 }, // Payment Mode
+        { wch: 15 }, // Payment Amount
+        { wch: 15 }, // Regular Billing
+      ];
+      ws['!cols'] = colWidths;
+
+      // Create workbook
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Service Appointments');
+
+      // Generate filename with current date
+      const date = new Date().toISOString().split('T')[0];
+      const filename = `Service_Appointments_${date}.xlsx`;
+
+      // Download file
+      XLSX.writeFile(wb, filename);
+
+      toast.success(`Exported ${filtered.length} service appointment${filtered.length !== 1 ? 's' : ''} to Excel`);
+    } catch (error) {
+      console.error('Export error:', error);
+      toast.error('Failed to export data');
+    }
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -41,9 +117,23 @@ const ServiceManagementPage = () => {
           <h2 className="text-lg sm:text-xl font-bold text-card-foreground">Service Management</h2>
           <p className="text-sm text-muted-foreground">Manage service appointments and tasks</p>
         </div>
-        <button onClick={() => setShowForm(true)} className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 transition-all text-white shadow-[0px_5px_12px_rgba(39,47,158,0.2)]" style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}>
-          <Plus className="w-4 h-4" /> Add Service
-        </button>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <button 
+            onClick={handleExportToExcel}
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 border border-primary text-primary bg-primary/5 hover:bg-primary/10 transition-all"
+          >
+            <Download className="w-4 h-4" />
+            Export Data
+          </button>
+          <button 
+            onClick={() => setShowForm(true)} 
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 transition-all text-white shadow-[0px_5px_12px_rgba(39,47,158,0.2)]" 
+            style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}
+          >
+            <Plus className="w-4 h-4" /> 
+            Add Service
+          </button>
+        </div>
       </div>
 
       {/* KPI Cards */}
@@ -113,7 +203,7 @@ const ServiceManagementPage = () => {
               {filtered.map((apt) => (
                 <tr
                   key={apt.id}
-                  onClick={() => { setSelectedService(apt); setShowDetailsModal(true); }}
+                  onClick={() => navigate(`/service/${apt.id}`)}
                   className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors cursor-pointer"
                 >
                   <td className="px-3 py-2.5 font-semibold text-primary text-xs">{apt.refNo || "—"}</td>
@@ -169,16 +259,6 @@ const ServiceManagementPage = () => {
         mode={editingService ? "edit" : "create"}
         appointment={editingService || undefined}
         onClose={() => { setShowForm(false); setEditingService(null); }}
-      />
-
-      {/* Service Details Modal */}
-      <ServiceDetailsModal 
-        open={showDetailsModal} 
-        service={selectedService || undefined}
-        onClose={() => {
-          setShowDetailsModal(false);
-          setSelectedService(null);
-        }}
       />
     </div>
   );

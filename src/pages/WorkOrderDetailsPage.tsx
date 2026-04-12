@@ -1,12 +1,14 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Briefcase, CheckCircle, Clock, AlertCircle, MapPin, Phone, Mail, DollarSign, Calendar, Edit2, Trash2, Share2, Copy } from "lucide-react";
-import { useState } from "react";
+import { ArrowLeft, Briefcase, CheckCircle, Clock, AlertCircle, MapPin, Phone, Mail, DollarSign, Calendar, Edit2, Trash2, Download } from "lucide-react";
+import { useState, useRef } from "react";
 import { useProjectsStore } from "@/store/projectsStore";
 import { useTasksStore } from "@/store/tasksStore";
 import { StatusBadge } from "@/components/StatusBadge";
 import { WorkOrderEditModal } from "@/components/WorkOrderEditModal";
 import { TaskEditModal } from "@/components/TaskEditModal";
 import { toast } from "sonner";
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 export const WorkOrderDetailsPage = () => {
   const { id } = useParams();
@@ -16,9 +18,76 @@ export const WorkOrderDetailsPage = () => {
   const [isEditingWorkOrder, setIsEditingWorkOrder] = useState(false);
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const contentRef = useRef<HTMLDivElement>(null);
 
   const workOrder = id ? getWorkOrder(id) : null;
   const tasks = id ? getTasksByWorkOrder(id) : [];
+
+  const handleDownloadPDF = async () => {
+    if (!contentRef.current || !workOrder) return;
+
+    try {
+      toast.info("Generating PDF...");
+
+      // Create a clone of the content to modify for PDF
+      const element = contentRef.current;
+      
+      // Temporarily hide buttons and interactive elements
+      const buttons = element.querySelectorAll('button');
+      const originalDisplay: string[] = [];
+      buttons.forEach((btn, index) => {
+        originalDisplay[index] = btn.style.display;
+        btn.style.display = 'none';
+      });
+
+      // Capture the content as canvas
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff',
+      });
+
+      // Restore buttons
+      buttons.forEach((btn, index) => {
+        btn.style.display = originalDisplay[index];
+      });
+
+      // Calculate PDF dimensions
+      const imgWidth = 210; // A4 width in mm
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      
+      // Create PDF
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const imgData = canvas.toDataURL('image/png');
+      
+      // Add image to PDF
+      let heightLeft = imgHeight;
+      let position = 0;
+      
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+      heightLeft -= 297; // A4 height in mm
+      
+      // Add new pages if content is longer than one page
+      while (heightLeft > 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        heightLeft -= 297;
+      }
+
+      // Generate filename
+      const filename = `WorkOrder_${workOrder.id}_${new Date().toISOString().split('T')[0]}.pdf`;
+      
+      // Download PDF
+      pdf.save(filename);
+      
+      toast.success("PDF downloaded successfully!");
+    } catch (error) {
+      console.error('PDF generation error:', error);
+      toast.error("Failed to generate PDF");
+    }
+  };
 
   const handleDeleteTask = (taskId: string) => {
     if (window.confirm("Are you sure you want to delete this service?")) {
@@ -26,12 +95,6 @@ export const WorkOrderDetailsPage = () => {
       toast.success("Service deleted successfully!");
       setRefreshKey(prev => prev + 1);
     }
-  };
-
-  const handleCopySignatureLink = () => {
-    const signatureUrl = `${window.location.origin}/work-order-signature/${workOrder?.id}`;
-    navigator.clipboard.writeText(signatureUrl);
-    toast.success("Signature link copied to clipboard!");
   };
 
   if (!workOrder) {
@@ -81,16 +144,13 @@ export const WorkOrderDetailsPage = () => {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {workOrder.status === "Authorization Pending" && (
-            <button
-              onClick={handleCopySignatureLink}
-              className="inline-flex items-center gap-2 h-10 px-4 rounded-lg text-white text-sm font-semibold hover:opacity-90 transition-all"
-              style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}
-            >
-              <Share2 className="w-4 h-4" />
-              Share for Signature
-            </button>
-          )}
+          <button
+            onClick={handleDownloadPDF}
+            className="inline-flex items-center gap-2 h-10 px-4 rounded-lg border border-primary text-primary bg-primary/5 hover:bg-primary/10 transition-colors text-sm font-semibold"
+          >
+            <Download className="w-4 h-4" />
+            Download PDF
+          </button>
           <button
             onClick={() => setIsEditingWorkOrder(true)}
             className="inline-flex items-center gap-2 h-10 px-4 rounded-lg border border-border bg-card hover:bg-secondary transition-colors text-sm font-semibold text-card-foreground"
@@ -102,7 +162,7 @@ export const WorkOrderDetailsPage = () => {
       </div>
 
       {/* Work Order Details Card */}
-      <div className="bg-card rounded-xl p-8 card-shadow border border-border">
+      <div ref={contentRef} className="bg-card rounded-xl p-8 card-shadow border border-border">
         {/* Header Section */}
         <div className="mb-8 pb-8 border-b border-border">
           <div className="flex items-start justify-between gap-4 mb-4">

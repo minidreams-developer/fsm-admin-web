@@ -1,9 +1,12 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Calendar, User, CheckCircle, Clock, AlertCircle, FileText, Edit2, Gauge, Image as ImageIcon } from "lucide-react";
-import { useState } from "react";
-import { useTasksStore } from "@/store/tasksStore";
+import { ArrowLeft, Calendar, User, CheckCircle, Clock, AlertCircle, FileText, Edit2, Gauge, Image as ImageIcon, Download } from "lucide-react";
+import { useState, useRef } from "react";
+import { useServicesStore } from "@/store/servicesStore";
 import { StatusBadge } from "@/components/StatusBadge";
-import { TaskEditModal } from "@/components/TaskEditModal";
+import { ServiceFormModal } from "@/components/ServiceFormModal";
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
+import { toast } from "sonner";
 
 // Dummy odometer data with images
 const dummyOdometerReadings = [
@@ -28,11 +31,77 @@ const workplaceImages = {
 export const ServiceDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { getTask } = useTasksStore();
+  const { appointments } = useServicesStore();
   const [isEditing, setIsEditing] = useState(false);
-  const [refreshKey, setRefreshKey] = useState(0);
+  const contentRef = useRef<HTMLDivElement>(null);
 
-  const service = id ? getTask(id) : null;
+  const service = appointments.find(apt => apt.id === id);
+
+  const handleDownloadPDF = async () => {
+    if (!contentRef.current || !service) return;
+
+    try {
+      toast.info("Generating PDF...");
+
+      // Create a clone of the content to modify for PDF
+      const element = contentRef.current;
+      
+      // Temporarily hide buttons and interactive elements
+      const buttons = element.querySelectorAll('button');
+      const originalDisplay: string[] = [];
+      buttons.forEach((btn, index) => {
+        originalDisplay[index] = btn.style.display;
+        btn.style.display = 'none';
+      });
+
+      // Capture the content as canvas
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff',
+      });
+
+      // Restore buttons
+      buttons.forEach((btn, index) => {
+        btn.style.display = originalDisplay[index];
+      });
+
+      // Calculate PDF dimensions
+      const imgWidth = 210; // A4 width in mm
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      
+      // Create PDF
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const imgData = canvas.toDataURL('image/png');
+      
+      // Add image to PDF
+      let heightLeft = imgHeight;
+      let position = 0;
+      
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+      heightLeft -= 297; // A4 height in mm
+      
+      // Add new pages if content is longer than one page
+      while (heightLeft > 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        heightLeft -= 297;
+      }
+
+      // Generate filename
+      const filename = `Service_${service.refNo || service.id}_${new Date().toISOString().split('T')[0]}.pdf`;
+      
+      // Download PDF
+      pdf.save(filename);
+      
+      toast.success("PDF downloaded successfully!");
+    } catch (error) {
+      console.error('PDF generation error:', error);
+      toast.error("Failed to generate PDF");
+    }
+  };
 
   if (!service) {
     return (
@@ -62,10 +131,23 @@ export const ServiceDetailPage = () => {
     switch (service.status) {
       case "Completed":
         return <CheckCircle className="w-6 h-6 text-success" />;
-      case "In Progress":
+      case "Scheduled":
         return <Clock className="w-6 h-6 text-warning" />;
       default:
         return <AlertCircle className="w-6 h-6 text-muted-foreground" />;
+    }
+  };
+
+  const getStatusVariant = () => {
+    switch (service.status) {
+      case "Completed":
+        return "success";
+      case "Scheduled":
+        return "info";
+      case "Cancelled":
+        return "error";
+      default:
+        return "neutral";
     }
   };
 
@@ -87,37 +169,40 @@ export const ServiceDetailPage = () => {
             <p className="text-sm text-muted-foreground">{service.id}</p>
           </div>
         </div>
-        <button
-          onClick={() => setIsEditing(true)}
-          className="inline-flex items-center gap-2 h-10 px-4 rounded-lg border border-border bg-card hover:bg-secondary transition-colors text-sm font-semibold text-card-foreground"
-        >
-          <Edit2 className="w-4 h-4" />
-          Edit
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleDownloadPDF}
+            className="inline-flex items-center gap-2 h-10 px-4 rounded-lg border border-primary text-primary bg-primary/5 hover:bg-primary/10 transition-colors text-sm font-semibold"
+          >
+            <Download className="w-4 h-4" />
+            Download PDF
+          </button>
+          <button
+            onClick={() => setIsEditing(true)}
+            className="inline-flex items-center gap-2 h-10 px-4 rounded-lg border border-border bg-card hover:bg-secondary transition-colors text-sm font-semibold text-card-foreground"
+          >
+            <Edit2 className="w-4 h-4" />
+            Edit
+          </button>
+        </div>
       </div>
 
       {/* Main Service Details Card */}
-      <div className="bg-card rounded-xl p-8 card-shadow border border-border">
+      <div ref={contentRef} className="bg-card rounded-xl p-8 card-shadow border border-border">
         {/* Header Section */}
         <div className="mb-8 pb-8 border-b border-border">
           <div className="flex items-start justify-between gap-4 mb-4">
             <div className="flex-1">
-              <h1 className="text-3xl font-bold text-card-foreground mb-2">{service.title}</h1>
-              {service.description && (
-                <p className="text-lg text-muted-foreground">{service.description}</p>
+              <h1 className="text-3xl font-bold text-card-foreground mb-2">{service.subject || "Service Appointment"}</h1>
+              {service.serviceDescription && (
+                <p className="text-lg text-muted-foreground">{service.serviceDescription}</p>
               )}
             </div>
             <div className="flex items-center gap-3">
               {getStatusIcon()}
               <StatusBadge
                 label={service.status}
-                variant={
-                  service.status === "Completed"
-                    ? "success"
-                    : service.status === "In Progress"
-                    ? "warning"
-                    : "info"
-                }
+                variant={getStatusVariant()}
               />
             </div>
           </div>
@@ -131,6 +216,12 @@ export const ServiceDetailPage = () => {
             <p className="text-lg font-bold text-card-foreground">{service.id}</p>
           </div>
 
+          {/* Reference No */}
+          <div className="space-y-2">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Reference No</p>
+            <p className="text-lg font-bold text-primary">{service.refNo || "—"}</p>
+          </div>
+
           {/* Work Order */}
           <div className="space-y-2">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Work Order</p>
@@ -142,6 +233,22 @@ export const ServiceDetailPage = () => {
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Current Status</p>
             <p className="text-lg font-bold text-card-foreground">{service.status}</p>
           </div>
+
+          {/* Warranty Period */}
+          {service.warrantyPeriod && (
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Warranty Period</p>
+              <p className="text-lg font-bold text-card-foreground">{service.warrantyPeriod}</p>
+            </div>
+          )}
+
+          {/* Sales Executive */}
+          {service.salesExecutive && (
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Sales Executive</p>
+              <p className="text-lg font-bold text-card-foreground">{service.salesExecutive}</p>
+            </div>
+          )}
         </div>
 
         {/* Assignment Information */}
@@ -151,19 +258,19 @@ export const ServiceDetailPage = () => {
             <User className="w-5 h-5 text-primary flex-shrink-0 mt-1" />
             <div className="flex-1">
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Assigned To</p>
-              {service.assignedEmployees && service.assignedEmployees.length > 0 ? (
+              {service.technicians && service.technicians.length > 0 ? (
                 <div className="flex flex-wrap gap-2">
-                  {service.assignedEmployees.map((employee, index) => (
+                  {service.technicians.map((technician, index) => (
                     <span
                       key={index}
                       className="inline-flex items-center px-3 py-1.5 bg-primary/10 text-primary text-sm font-semibold rounded-lg border border-primary/20"
                     >
-                      {employee}
+                      {technician}
                     </span>
                   ))}
                 </div>
               ) : (
-                <p className="text-lg font-bold text-primary">{service.assignedTo}</p>
+                <p className="text-lg font-bold text-primary">{service.employeeName}</p>
               )}
             </div>
           </div>
@@ -176,30 +283,63 @@ export const ServiceDetailPage = () => {
             <div className="flex items-start gap-3">
               <Calendar className="w-5 h-5 text-primary flex-shrink-0 mt-1" />
               <div>
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Start Date</p>
-                <p className="text-lg font-medium text-card-foreground">{service.startDate}</p>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Date</p>
+                <p className="text-lg font-medium text-card-foreground">{service.date}</p>
               </div>
             </div>
 
             <div className="flex items-start gap-3">
-              <Calendar className="w-5 h-5 text-primary flex-shrink-0 mt-1" />
+              <Clock className="w-5 h-5 text-primary flex-shrink-0 mt-1" />
               <div>
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">End Date</p>
-                <p className="text-lg font-medium text-card-foreground">{service.endDate}</p>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Time</p>
+                <p className="text-lg font-medium text-card-foreground">{service.time}</p>
               </div>
             </div>
+
+            {service.inTime && (
+              <div className="flex items-start gap-3">
+                <Clock className="w-5 h-5 text-success flex-shrink-0 mt-1" />
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">In Time</p>
+                  <p className="text-lg font-medium text-card-foreground">{service.inTime}</p>
+                </div>
+              </div>
+            )}
+
+            {service.outTime && (
+              <div className="flex items-start gap-3">
+                <Clock className="w-5 h-5 text-destructive flex-shrink-0 mt-1" />
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Out Time</p>
+                  <p className="text-lg font-medium text-card-foreground">{service.outTime}</p>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
         {/* Description Section */}
-        {service.description && (
+        {service.serviceDescription && (
           <div className="mb-8 pb-8 border-b border-border">
             <h3 className="text-lg font-bold text-card-foreground mb-3 flex items-center gap-2">
               <FileText className="w-5 h-5" />
-              Description
+              Service Description
             </h3>
             <div className="bg-secondary/30 rounded-lg p-4 border border-border">
-              <p className="text-sm text-card-foreground leading-relaxed">{service.description}</p>
+              <p className="text-sm text-card-foreground leading-relaxed whitespace-pre-wrap">{service.serviceDescription}</p>
+            </div>
+          </div>
+        )}
+
+        {/* Instructions Section */}
+        {service.instructions && (
+          <div className="mb-8 pb-8 border-b border-border">
+            <h3 className="text-lg font-bold text-card-foreground mb-3 flex items-center gap-2">
+              <FileText className="w-5 h-5" />
+              Instructions
+            </h3>
+            <div className="bg-secondary/30 rounded-lg p-4 border border-border">
+              <p className="text-sm text-card-foreground leading-relaxed whitespace-pre-wrap">{service.instructions}</p>
             </div>
           </div>
         )}
@@ -364,11 +504,11 @@ export const ServiceDetailPage = () => {
       </div>
 
       {/* Edit Modal */}
-      <TaskEditModal
-        task={service}
-        isOpen={isEditing}
+      <ServiceFormModal
+        open={isEditing}
+        mode="edit"
+        appointment={service}
         onClose={() => setIsEditing(false)}
-        onSave={() => setRefreshKey(prev => prev + 1)}
       />
     </div>
   );

@@ -1,9 +1,11 @@
 import { StatusBadge } from "@/components/StatusBadge";
-import { Search, Plus, Clipboard, Calendar, User, CreditCard, Eye } from "lucide-react";
+import { Search, Plus, Clipboard, Calendar, User, CreditCard, Eye, Download } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { useProjectsStore, type WorkOrder } from "@/store/projectsStore";
 import { useLeadsStore } from "@/store/leadsStore";
+import * as XLSX from 'xlsx';
+import { toast } from "sonner";
 
 const statusMap = {
   Scheduled: "success",
@@ -80,6 +82,76 @@ const ProjectsPage = () => {
     return Math.round((paid / total) * 100);
   };
 
+  const handleExportToExcel = () => {
+    try {
+      // Prepare data for export
+      const exportData = filtered.map((wo) => ({
+        'Work Order ID': wo.id,
+        'Customer': wo.customer,
+        'Phone': wo.phone,
+        'Email': wo.email || '-',
+        'Address': wo.address,
+        'Site Address': wo.siteAddress || '-',
+        'Billing Address': wo.billingAddress || '-',
+        'Subject': wo.subject,
+        'Service Type': wo.serviceType,
+        'Frequency': wo.frequency,
+        'Total Value': wo.totalValue,
+        'Paid Amount': wo.paidAmount,
+        'Payment Progress': `${getPaymentProgress(wo)}%`,
+        'Start Date': wo.start,
+        'End Date': wo.end || '-',
+        'Status': wo.status,
+        'Assigned Tech': wo.assignedTech,
+        'Next Service': wo.nextService,
+        'Notes': wo.notes || '-',
+      }));
+
+      // Create worksheet
+      const ws = XLSX.utils.json_to_sheet(exportData);
+
+      // Set column widths
+      const colWidths = [
+        { wch: 15 }, // Work Order ID
+        { wch: 25 }, // Customer
+        { wch: 15 }, // Phone
+        { wch: 25 }, // Email
+        { wch: 30 }, // Address
+        { wch: 30 }, // Site Address
+        { wch: 30 }, // Billing Address
+        { wch: 30 }, // Subject
+        { wch: 20 }, // Service Type
+        { wch: 15 }, // Frequency
+        { wch: 15 }, // Total Value
+        { wch: 15 }, // Paid Amount
+        { wch: 15 }, // Payment Progress
+        { wch: 12 }, // Start Date
+        { wch: 12 }, // End Date
+        { wch: 15 }, // Status
+        { wch: 20 }, // Assigned Tech
+        { wch: 15 }, // Next Service
+        { wch: 30 }, // Notes
+      ];
+      ws['!cols'] = colWidths;
+
+      // Create workbook
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Work Orders');
+
+      // Generate filename with current date
+      const date = new Date().toISOString().split('T')[0];
+      const filename = `Work_Orders_${date}.xlsx`;
+
+      // Download file
+      XLSX.writeFile(wb, filename);
+
+      toast.success(`Exported ${filtered.length} work order${filtered.length !== 1 ? 's' : ''} to Excel`);
+    } catch (error) {
+      console.error('Export error:', error);
+      toast.error('Failed to export data');
+    }
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       {showSuccessMessage && (
@@ -95,14 +167,23 @@ const ProjectsPage = () => {
           <h2 className="text-lg sm:text-xl font-bold text-card-foreground">Work Orders</h2>
           <p className="text-sm text-muted-foreground">View and manage all work orders and AMCs.</p>
         </div>
-        <button 
-          onClick={() => navigate("/create-work-order")} 
-          className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 text-white shadow-[0px_5px_12px_rgba(39,47,158,0.2)] transition-all"
-          style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}
-        >
-          <Plus className="w-4 h-4" />
-          Create Work Order
-        </button>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <button 
+            onClick={handleExportToExcel}
+            className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 border border-primary text-primary bg-primary/5 hover:bg-primary/10 transition-all"
+          >
+            <Download className="w-4 h-4" />
+            Export Data
+          </button>
+          <button 
+            onClick={() => navigate("/create-work-order")} 
+            className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 text-white shadow-[0px_5px_12px_rgba(39,47,158,0.2)] transition-all"
+            style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}
+          >
+            <Plus className="w-4 h-4" />
+            Create Work Order
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4">

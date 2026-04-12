@@ -1,0 +1,208 @@
+# Export Button - Visual Guide
+
+## Button Location
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ Work Orders                                                  │
+│ View and manage all work orders and AMCs.                   │
+│                                                              │
+│                    ┌──────────────┐  ┌──────────────────┐  │
+│                    │ ⬇ Export Data│  │ + Create Work... │  │
+│                    └──────────────┘  └──────────────────┘  │
+└─────────────────────────────────────────────────────────────┘
+```
+
+## Button Styles
+
+### Export Data Button (New)
+```
+┌──────────────────┐
+│ ⬇ Export Data   │  ← Outlined style
+└──────────────────┘
+```
+- Border: Primary color
+- Background: Primary/5 (light)
+- Text: Primary color
+- Icon: Download (⬇)
+- Hover: Darker background
+
+### Create Work Order Button (Existing)
+```
+┌──────────────────────┐
+│ + Create Work Order │  ← Gradient style
+└──────────────────────┘
+```
+- Background: Purple gradient
+- Text: White
+- Icon: Plus (+)
+- Shadow: Elevated
+
+## Responsive Layout
+
+### Desktop View
+```
+┌─────────────────────────────────────────────────────────────┐
+│ Work Orders                    [Export Data] [Create Work...] │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Mobile View
+```
+┌─────────────────────────┐
+│ Work Orders             │
+│                         │
+│ ┌─────────────────────┐ │
+│ │  ⬇ Export Data     │ │
+│ └─────────────────────┘ │
+│                         │
+│ ┌─────────────────────┐ │
+│ │  + Create Work...  │ │
+│ └─────────────────────┘ │
+└─────────────────────────┘
+```
+
+## Click Flow
+
+### Step 1: Initial State
+```
+┌──────────────────┐
+│ ⬇ Export Data   │  ← Click here
+└──────────────────┘
+```
+
+### Step 2: Processing
+```
+┌──────────────────┐
+│ ⬇ Export Data   │  ← Generating file...
+└──────────────────┘
+```
+
+### Step 3: Download
+```
+┌──────────────────┐
+│ ⬇ Export Data   │
+└──────────────────┘
+
+📥 Work_Orders_2026-04-13.xlsx  ← File downloads
+```
+
+### Step 4: Success Toast
+```
+┌─────────────────────────────────────┐
+│ ✓ Exported 25 work orders to Excel │  ← Toast notification
+└─────────────────────────────────────┘
+```
+
+## Excel File Preview
+
+### File Icon
+```
+📊 Work_Orders_2026-04-13.xlsx
+```
+
+### File Contents
+```
+┌─────────────┬──────────┬────────────┬──────────────────┐
+│ Work Order  │ Customer │ Phone      │ Email            │
+│ ID          │          │            │                  │
+├─────────────┼──────────┼────────────┼──────────────────┤
+│ WO-001      │ John Doe │ 9876543210 │ john@example.com │
+├─────────────┼──────────┼────────────┼──────────────────┤
+│ WO-002      │ Jane S.  │ 9876543211 │ jane@example.com │
+├─────────────┼──────────┼────────────┼──────────────────┤
+│ WO-003      │ Bob J.   │ 9876543212 │ -                │
+└─────────────┴──────────┴────────────┴──────────────────┘
+```
+
+## Button States
+
+### Normal State
+```
+┌──────────────────┐
+│ ⬇ Export Data   │  ← Default appearance
+└──────────────────┘
+```
+
+### Hover State
+```
+┌──────────────────┐
+│ ⬇ Export Data   │  ← Slightly darker background
+└──────────────────┘
+```
+
+### Active/Click State
+```
+┌──────────────────┐
+│ ⬇ Export Data   │  ← Pressed appearance
+└──────────────────┘
+```
+
+## With Filters Applied
+
+### Scenario: Filtered View
+```
+┌─────────────────────────────────────────────────────────────┐
+│ 🔍 Search: "John"                                           │
+│ 📅 Status: Open                                             │
+│                                                              │
+│ Showing 5 of 150 work orders                                │
+│                                                              │
+│                    ┌──────────────┐  ┌──────────────────┐  │
+│                    │ ⬇ Export Data│  │ + Create Work... │  │
+│                    └──────────────┘  └──────────────────┘  │
+└─────────────────────────────────────────────────────────────┘
+
+Click Export → Only 5 filtered work orders exported
+Toast: "Exported 5 work orders to Excel"
+```
+
+## Color Scheme
+
+### Export Button Colors
+```
+Border:     #942BF4 (Primary)
+Background: rgba(148, 43, 244, 0.05)
+Text:       #942BF4 (Primary)
+Hover BG:   rgba(148, 43, 244, 0.10)
+```
+
+### Create Button Colors
+```
+Background: linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)
+Text:       #FFFFFF (White)
+Shadow:     rgba(39, 47, 158, 0.2)
+```
+
+## Icon Details
+
+### Download Icon
+```
+  ⬇
+ ───
+│   │
+ ───
+  │
+  ▼
+```
+- Size: 16x16px (w-4 h-4)
+- Color: Primary
+- Style: Lucide React icon
+
+## Accessibility
+
+### Keyboard Navigation
+```
+Tab → Focus on Export button
+Enter/Space → Trigger export
+```
+
+### Screen Reader
+```
+"Export Data button"
+"Click to download work orders as Excel file"
+```
+
+## Summary
+
+The Export Data button is positioned prominently in the top right corner of the Projects page, next to the Create Work Order button. It features an outlined style with a download icon, making it visually distinct from the primary action button. When clicked, it exports all visible work orders to an Excel file with a success notification.

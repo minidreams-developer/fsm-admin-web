@@ -63,6 +63,16 @@ Each dropped service stores:
 - Shows alert if conflict detected
 - Restores original position if drop is invalid
 
+### 8. Duration Resizing (NEW)
+- **Resize Handle**: Drag the right edge of scheduled service cards
+- **Live Preview**: Duration updates in real-time while dragging
+- **Snapping**: Automatically snaps to 30-minute increments
+- **Minimum Duration**: 0.5 hours (30 minutes)
+- **Fixed Start Time**: Only end time changes when resizing
+- **Instance-Specific**: Each cloned service can have different duration
+- **Visual Feedback**: Shows duration indicator (e.g., `+2.5h`)
+- See `RESIZE_DURATION_FEATURE.md` for detailed documentation
+
 ## Technical Implementation
 
 ### Libraries Used
@@ -148,6 +158,15 @@ Each dropped service stores:
 3. Click the X button
 4. Service is removed instantly with a success notification
 5. Service can be re-dragged if needed
+
+### Resizing Service Duration
+1. Hover over a scheduled service card
+2. Locate the resize handle on the right edge
+3. Click and drag the handle right to increase duration
+4. Click and drag the handle left to decrease duration
+5. Duration snaps to 30-minute increments
+6. Release to apply the new duration
+7. Toast notification confirms the change
 
 ## Visual Enhancements
 

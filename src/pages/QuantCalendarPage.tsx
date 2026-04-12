@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { 
   Search, 
   ChevronLeft,
@@ -279,9 +279,19 @@ const DroppableTimeSlot = ({
   service, 
   priority,
   isOver,
-  onRemoveJob
+  onRemoveJob,
+  onResizeStart,
+  onResizeMove,
+  onResizeEnd,
+  onResizeCancel,
+  resizingJobId,
+  resizePreview
 }: any) => {
   const dropId = `drop-${employeeId}-${timeSlot}-${date}`;
+  const [isResizing, setIsResizing] = useState(false);
+  const [resizeStartX, setResizeStartX] = useState(0);
+  const [resizeStartWidth, setResizeStartWidth] = useState(0);
+  const cardRef = useRef<HTMLDivElement>(null);
   
   const { setNodeRef, isOver: isOverCurrent } = useDroppable({
     id: dropId,
@@ -302,10 +312,70 @@ const DroppableTimeSlot = ({
   const { attributes, listeners, setNodeRef: setDragRef, isDragging } = useDraggable({
     id: job ? `scheduled-${job.id}` : `empty-${dropId}`,
     data: dragData,
-    disabled: !job,
+    disabled: !job || isResizing,
   });
 
   const showHighlight = isOverCurrent || isOver;
+  
+  // Calculate display duration (use preview if resizing this job)
+  const displayDuration = (resizingJobId === job?.id && resizePreview !== null) 
+    ? resizePreview 
+    : job?.duration || 2;
+
+  // Handle resize mouse down
+  const handleResizeMouseDown = (e: React.MouseEvent) => {
+    if (!job || !cardRef.current) return;
+    
+    e.preventDefault();
+    e.stopPropagation();
+    
+    setIsResizing(true);
+    setResizeStartX(e.clientX);
+    setResizeStartWidth(cardRef.current.offsetWidth);
+    
+    if (onResizeStart) {
+      onResizeStart(job.id, job.duration);
+    }
+  };
+
+  // Handle resize mouse move
+  useEffect(() => {
+    if (!isResizing || !job) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!cardRef.current) return;
+      
+      const deltaX = e.clientX - resizeStartX;
+      const parentWidth = cardRef.current.parentElement?.offsetWidth || 1;
+      const columnWidth = parentWidth; // Each column is one hour
+      
+      // Calculate new duration based on pixel change
+      const durationChange = deltaX / columnWidth;
+      const newDuration = Math.max(0.5, job.duration + durationChange);
+      
+      if (onResizeMove) {
+        onResizeMove(job.id, newDuration);
+      }
+    };
+
+    const handleMouseUp = () => {
+      if (!job) return;
+      
+      setIsResizing(false);
+      
+      if (onResizeEnd && resizePreview !== null) {
+        onResizeEnd(job.id, resizePreview);
+      }
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizing, job, resizeStartX, resizePreview, onResizeMove, onResizeEnd]);
 
   return (
     <div
@@ -328,17 +398,22 @@ const DroppableTimeSlot = ({
       {/* Scheduled job card */}
       {workOrder && job && (
         <div
-          ref={setDragRef}
-          {...listeners}
-          {...attributes}
+          ref={(node) => {
+            setDragRef(node);
+            if (node) cardRef.current = node;
+          }}
+          {...(isResizing ? {} : listeners)}
+          {...(isResizing ? {} : attributes)}
           onClick={(e) => e.stopPropagation()}
-          className={`group absolute rounded-lg p-2 border-2 shadow-md cursor-move hover:shadow-lg transition-all ${priorityBgColors[priority]} ${isDragging ? 'opacity-50' : ''}`}
+          className={`group absolute rounded-lg p-2 border-2 shadow-md transition-all ${
+            isResizing ? 'cursor-ew-resize' : 'cursor-move hover:shadow-lg'
+          } ${priorityBgColors[priority]} ${isDragging ? 'opacity-50' : ''}`}
           style={{ 
-            width: `calc(${job.duration * 100}% - 4px)`,
+            width: `calc(${displayDuration * 100}% - 4px)`,
             left: '2px',
             top: '4px',
             bottom: '4px',
-            zIndex: isDragging ? 50 : 10
+            zIndex: isDragging || isResizing ? 50 : 10
           }}
         >
           {/* Remove button */}
@@ -353,16 +428,30 @@ const DroppableTimeSlot = ({
             <X className="w-3 h-3" />
           </button>
           
-          <p className="text-xs font-bold truncate">{workOrder.id}</p>
+          {/* Resize handle */}
+          <div
+            onMouseDown={handleResizeMouseDown}
+            className="absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize hover:bg-primary/30 transition-colors group-hover:bg-primary/20"
+            title="Drag to resize duration"
+          >
+            <div className="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-primary/50 rounded-l" />
+          </div>
+          
+          <p className="text-xs font-bold truncate pr-2">{workOrder.id}</p>
           {service ? (
-            <p className="text-[10px] truncate font-semibold text-primary">{service.title}</p>
+            <p className="text-[10px] truncate font-semibold text-primary pr-2">{service.title}</p>
           ) : (
-            <p className="text-[10px] truncate">{workOrder.customer}</p>
+            <p className="text-[10px] truncate pr-2">{workOrder.customer}</p>
           )}
-          <div className="flex items-center justify-between mt-1">
+          <div className="flex items-center justify-between mt-1 pr-2">
             <p className="text-[10px] flex items-center gap-1">
               <Clock className="w-3 h-3" />
               {formatTimeSlot(timeSlot)}
+              {displayDuration !== 2 && (
+                <span className="text-[9px] text-primary font-semibold">
+                  +{displayDuration}h
+                </span>
+              )}
             </p>
             <div className="flex items-center gap-1">
               <Users className="w-3 h-3" />
@@ -410,6 +499,10 @@ const QuantCalendarPage = () => {
   // Drag state
   const [activeDragData, setActiveDragData] = useState<DragData | null>(null);
   const [activeDropZone, setActiveDropZone] = useState<{ employeeId: string; timeSlot: number; date: string } | null>(null);
+  
+  // Resize state
+  const [resizingJob, setResizingJob] = useState<{ jobId: string; originalDuration: number } | null>(null);
+  const [resizePreview, setResizePreview] = useState<number | null>(null);
   
   // DnD sensors
   const sensors = useSensors(
@@ -744,6 +837,40 @@ const QuantCalendarPage = () => {
   const handleRemoveJob = (jobId: string) => {
     setSchedule(prev => prev.filter(job => job.id !== jobId));
     toast.success("Service removed from schedule");
+  };
+
+  const handleResizeStart = (jobId: string, originalDuration: number) => {
+    setResizingJob({ jobId, originalDuration });
+    setResizePreview(originalDuration);
+  };
+
+  const handleResizeMove = (jobId: string, newDuration: number) => {
+    // Snap to 0.5 hour increments (30 minutes)
+    const snappedDuration = Math.max(0.5, Math.round(newDuration * 2) / 2);
+    setResizePreview(snappedDuration);
+  };
+
+  const handleResizeEnd = (jobId: string, newDuration: number) => {
+    if (!resizingJob) return;
+    
+    // Snap to 0.5 hour increments (30 minutes)
+    const snappedDuration = Math.max(0.5, Math.round(newDuration * 2) / 2);
+    
+    // Update the job duration
+    setSchedule(prev => prev.map(job => 
+      job.id === jobId 
+        ? { ...job, duration: snappedDuration }
+        : job
+    ));
+    
+    setResizingJob(null);
+    setResizePreview(null);
+    toast.success(`Duration updated to ${snappedDuration} hour${snappedDuration !== 1 ? 's' : ''}`);
+  };
+
+  const handleResizeCancel = () => {
+    setResizingJob(null);
+    setResizePreview(null);
   };
 
   const handleWorkOrderClick = (wo: any) => {
@@ -1192,6 +1319,12 @@ const QuantCalendarPage = () => {
                                     priority={wo ? getPriority(wo) : null}
                                     isOver={isOver}
                                     onRemoveJob={handleRemoveJob}
+                                    onResizeStart={handleResizeStart}
+                                    onResizeMove={handleResizeMove}
+                                    onResizeEnd={handleResizeEnd}
+                                    onResizeCancel={handleResizeCancel}
+                                    resizingJobId={resizingJob?.jobId}
+                                    resizePreview={resizePreview}
                                   />
                                 );
                               })}
