@@ -10,7 +10,7 @@ import { ConvertLeadModal } from "@/components/ConvertLeadModal";
 import { useBranchesStore } from "@/store/branchesStore";
 
 const statusBadge: Record<LeadStatus, "info" | "warning" | "success" | "error" | "neutral"> = {
-  New: "info", Contacted: "warning", "Quote Sent": "warning", "Follow Up": "info", Converted: "success", Lost: "error",
+  New: "info", Contacted: "warning", "Follow Up": "info", Converted: "success", Lost: "error",
 };
 
 const statuses: LeadStatus[] = ["New", "Contacted", "Follow Up", "Converted", "Lost"];
@@ -71,10 +71,9 @@ const LeadsPage = () => {
     const statusOrder: Record<LeadStatus, number> = {
       "New": 0,
       "Contacted": 1,
-      "Quote Sent": 2,
-      "Follow Up": 3,
-      "Converted": 4,
-      "Lost": 5,
+      "Follow Up": 2,
+      "Converted": 3,
+      "Lost": 4,
     };
     return statusOrder[a.status] - statusOrder[b.status];
   });
@@ -116,7 +115,7 @@ const LeadsPage = () => {
   const handleSendQuote = () => {
     if (selectedLeadForQuote && quoteFormData.amount && quoteFormData.contract) {
       updateLead(selectedLeadForQuote.id, {
-        status: "Quote Sent",
+        status: "Follow Up",
         quoteAmount: parseInt(quoteFormData.amount),
         quoteContract: quoteFormData.contract,
         quoteNotes: quoteFormData.notes,
@@ -500,23 +499,11 @@ const LeadsPage = () => {
                           className="relative inline-flex items-center justify-center w-8 h-8 rounded-lg border border-border bg-card hover:bg-secondary transition-colors"
                           title="Add reminder"
                         >
-                          <Plus className="w-4 h-4 text-muted-foreground" />
+                          <Bell className="w-4 h-4 text-muted-foreground" />
                           {(l.reminders?.length ?? 0) > 0 && (
                             <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-primary text-white text-[9px] flex items-center justify-center">{l.reminders?.length}</span>
                           )}
                         </button>
-                        {reminderLeadId === l.id && (
-                          <div className="absolute right-0 top-10 z-50 w-72 bg-card border border-border rounded-xl shadow-2xl p-4 space-y-2">
-                            <p className="text-xs font-semibold text-card-foreground">Add Reminder</p>
-                            <input type="date" value={reminderDate} onChange={(e) => setReminderDate(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20" />
-                            <input type="time" value={reminderTime} onChange={(e) => setReminderTime(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20" />
-                            <input value={reminderText} onChange={(e) => setReminderText(e.target.value)} placeholder="Reminder text..." className="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20" />
-                            <div className="flex gap-2">
-                              <button onClick={() => saveReminder(l.id)} className="flex-1 h-8 text-xs font-semibold hover:opacity-90 text-white rounded-lg transition-all" style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}>Save</button>
-                              <button onClick={() => setReminderLeadId(null)} className="flex-1 h-8 text-xs font-medium border border-border rounded-lg hover:bg-secondary transition-colors">Cancel</button>
-                            </div>
-                          </div>
-                        )}
                       </div>
                     </div>
                   </td>
@@ -527,6 +514,71 @@ const LeadsPage = () => {
           </table>
         </div>
       </div>
+
+      {/* Reminder Modal */}
+      {reminderLeadId !== null && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/50 animate-in fade-in duration-200">
+          <div className="bg-card rounded-xl shadow-2xl w-full max-w-md border border-border animate-in zoom-in-95 duration-200">
+            <div className="p-6 border-b border-border">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-bold text-card-foreground">Add Reminder</h3>
+                <button
+                  onClick={() => setReminderLeadId(null)}
+                  className="p-1 hover:bg-secondary rounded-lg transition-colors"
+                >
+                  <X className="w-5 h-5 text-muted-foreground" />
+                </button>
+              </div>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-2 block">Date *</label>
+                <input 
+                  type="date" 
+                  value={reminderDate} 
+                  onChange={(e) => setReminderDate(e.target.value)} 
+                  className="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20" 
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-2 block">Time (Optional)</label>
+                <input 
+                  type="time" 
+                  value={reminderTime} 
+                  onChange={(e) => setReminderTime(e.target.value)} 
+                  className="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20" 
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-2 block">Reminder Text *</label>
+                <textarea 
+                  value={reminderText} 
+                  onChange={(e) => setReminderText(e.target.value)} 
+                  placeholder="Enter reminder details..."
+                  rows={3}
+                  className="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none" 
+                />
+              </div>
+            </div>
+            <div className="p-6 border-t border-border flex gap-3">
+              <button 
+                onClick={() => setReminderLeadId(null)} 
+                className="flex-1 h-10 text-sm font-medium border border-border rounded-lg hover:bg-secondary transition-colors"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={() => saveReminder(reminderLeadId)} 
+                className="flex-1 h-10 text-sm font-semibold hover:opacity-90 text-white rounded-lg transition-all shadow-[0px_5px_12px_rgba(39,47,158,0.2)]" 
+                style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}
+              >
+                Save Reminder
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
 
       {/* Quote View Details Dropdown */}
       {selectedLead && (
@@ -673,7 +725,7 @@ const LeadsPage = () => {
               </div>
 
               {/* Action Buttons */}
-              {selectedLead.status === "Quote Sent" && (
+              {selectedLead.status === "Follow Up" && (
                 <div className="flex flex-col sm:flex-row gap-3 p-6">
                   {selectedLead.quoteIsViewed ? (
                     <button

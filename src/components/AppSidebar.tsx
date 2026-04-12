@@ -44,9 +44,19 @@ export const AppSidebar: FC<AppSidebarProps> = ({ className, onNavigate, collaps
 
   const isInventoryActive = ["/inventory", "/inventory/allocate", "/branches", "/products"].includes(location.pathname);
 
+  // Auto-expand inventory menu if on an inventory page
+  if (isInventoryActive && expandedMenu !== "inventory") {
+    setExpandedMenu("inventory");
+  }
+
   return (
-    <aside className={`${collapsed ? "w-20" : "w-64"} h-svh bg-card border-r border-border flex flex-col shrink-0 transition-all duration-300 ${className || ""}`}>
-      <div className="p-6 flex items-center gap-3">
+    <aside className={cn(
+      "h-screen bg-card border-r border-border flex flex-col shrink-0 transition-all duration-300",
+      collapsed ? "w-20" : "w-64",
+      className
+    )}>
+      {/* Header - Fixed */}
+      <div className="p-6 flex items-center gap-3 flex-shrink-0">
         <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}>
           <Bug className="w-5 h-5 text-white" />
         </div>
@@ -58,68 +68,82 @@ export const AppSidebar: FC<AppSidebarProps> = ({ className, onNavigate, collaps
         )}
       </div>
 
-      <nav className="flex-1 px-3 space-y-1">
-        {menuItems.map((item) => {
-          const active = location.pathname === item.path;
-          return (
-            <Link
-              key={item.path}
-              to={item.path}
-              onClick={onNavigate}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                active
+      {/* Navigation - Scrollable */}
+      <nav className="flex-1 px-3 overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
+        <div className="space-y-1 pb-4">
+          {menuItems.map((item) => {
+            const active = location.pathname === item.path;
+            return (
+              <Link
+                key={item.path}
+                to={item.path}
+                onClick={onNavigate}
+                className={cn(
+                  "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all",
+                  active
+                    ? "bg-secondary text-primary"
+                    : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
+                )}
+                title={collapsed ? item.label : undefined}
+              >
+                <item.icon className="w-[18px] h-[18px] flex-shrink-0" />
+                {!collapsed && <span className="truncate">{item.label}</span>}
+              </Link>
+            );
+          })}
+
+          {/* Inventory Manage Menu */}
+          <div className="pt-1">
+            <button
+              onClick={() => setExpandedMenu(expandedMenu === "inventory" ? null : "inventory")}
+              className={cn(
+                "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all",
+                isInventoryActive
                   ? "bg-secondary text-primary"
                   : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
-              }`}
-              title={collapsed ? item.label : undefined}
+              )}
+              title={collapsed ? "Inventory Manage" : undefined}
             >
-              <item.icon className="w-[18px] h-[18px] flex-shrink-0" />
-              {!collapsed && item.label}
-            </Link>
-          );
-        })}
+              <Boxes className="w-[18px] h-[18px] flex-shrink-0" />
+              {!collapsed && <span className="flex-1 text-left truncate">Inventory Manage</span>}
+              {!collapsed && (
+                <ChevronDown
+                  className={cn(
+                    "w-4 h-4 transition-transform flex-shrink-0",
+                    expandedMenu === "inventory" ? "rotate-180" : ""
+                  )}
+                />
+              )}
+            </button>
 
-        {/* Inventory Manage Menu */}
-        <div>
-          <button
-            onClick={() => setExpandedMenu(expandedMenu === "inventory" ? null : "inventory")}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
-            title={collapsed ? "Inventory Manage" : undefined}
-          >
-            <Boxes className="w-[18px] h-[18px] flex-shrink-0" />
-            {!collapsed && <span className="flex-1 text-left">Inventory Manage</span>}
-            {!collapsed && (
-              <ChevronDown
-                className={`w-4 h-4 transition-transform ${expandedMenu === "inventory" ? "-rotate-180" : ""}`}
-              />
+            {!collapsed && expandedMenu === "inventory" && (
+              <div className="mt-1 ml-3 space-y-1 border-l-2 border-border pl-3 animate-in slide-in-from-top-2 duration-200">
+                {inventoryMenuItems.map((item) => {
+                  const active = location.pathname === item.path;
+                  return (
+                    <Link
+                      key={item.path}
+                      to={item.path}
+                      onClick={onNavigate}
+                      className={cn(
+                        "flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-all",
+                        active
+                          ? "bg-secondary text-primary"
+                          : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
+                      )}
+                    >
+                      <span className="truncate">{item.label}</span>
+                    </Link>
+                  );
+                })}
+              </div>
             )}
-          </button>
-
-          {!collapsed && expandedMenu === "inventory" && (
-            <div className="mt-1 ml-3 space-y-1 border-l border-border pl-3">
-              {inventoryMenuItems.map((item) => {
-                const active = location.pathname === item.path;
-                return (
-                  <Link
-                    key={item.path}
-                    to={item.path}
-                    onClick={onNavigate}
-                    className={`flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-                      active
-                        ? "bg-secondary text-primary"
-                        : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
-                    }`}
-                  >
-                    {item.label}
-                  </Link>
-                );
-              })}
-            </div>
-          )}
+          </div>
         </div>
       </nav>
 
-      <div className="p-4 border-t border-border">
+      {/* Footer - Fixed */}
+      <div className="p-4 border-t border-border flex-shrink-0">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-full bg-secondary flex items-center justify-center flex-shrink-0">
             <span className="text-xs font-bold text-primary">AK</span>

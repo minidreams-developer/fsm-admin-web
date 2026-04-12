@@ -22,7 +22,7 @@ const workOrderSchema = z.object({
   paidAmount: z.string().optional(),
   start: z.string().min(1, "Start date is required"),
   end: z.string().optional(),
-  status: z.enum(["Open", "Scheduled", "Completed", "Converted"]),
+  status: z.enum(["Authorization Pending", "Open", "Scheduled", "Completed", "Converted"]),
   assignedTech: z.string().optional(),
   notes: z.string().optional(),
 });
@@ -222,6 +222,7 @@ export function WorkOrderEditModal({ workOrder, isOpen, onClose, onSave }: WorkO
               <div>
                 <label className="text-xs font-medium text-muted-foreground mb-2 block">Status</label>
                 <select {...register("status")} className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground">
+                  <option value="Authorization Pending">Authorization Pending</option>
                   <option value="Open">Open</option>
                   <option value="Scheduled">Scheduled</option>
                   <option value="Completed">Completed</option>

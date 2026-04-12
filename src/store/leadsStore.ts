@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-export type LeadStatus = "New" | "Contacted" | "Quote Sent" | "Follow Up" | "Converted" | "Lost";
+export type LeadStatus = "New" | "Contacted" | "Follow Up" | "Converted" | "Lost";
 
 export type UrgencyLevel = "Low" | "Medium" | "High";
 
@@ -43,9 +43,9 @@ interface LeadsStore {
 }
 
 const initialLeads: Lead[] = [
-  { id: 1, name: "Arun Sharma", phone: "9876543210", address: "12 MG Road, Kochi", services: ["Termite Treatment"], amount: 5000, expectedDateTime: "", leadSource: "Referral", urgencyLevel: "Medium", branch: "Kochi", salesExecutive: "—", notes: "", status: "Quote Sent", date: "Mar 5", quoteIsViewed: true, quoteViewedAt: "Mar 13, 2:30 PM", quoteAmount: 5000, quoteContract: "3 Months" },
-  { id: 2, name: "safeeq", phone: "5555555555", address: "fffffffffffff", services: ["Pest Control", "Fumigation", "Termite Treatment"], amount: 8000, expectedDateTime: "", leadSource: "Call", urgencyLevel: "Medium", branch: "", salesExecutive: "—", notes: "", status: "Quote Sent", date: "Mar 13, 2026", quoteIsViewed: true, quoteViewedAt: null, quoteAmount: 8000, quoteContract: "One-Time" },
-  { id: 3, name: "kkkkkk", phone: "78987", address: "jkjio", services: ["General Pest"], amount: 3000, expectedDateTime: "", leadSource: "Website", urgencyLevel: "Low", branch: "", salesExecutive: "—", notes: "", status: "Quote Sent", date: "Mar 13, 2026", quoteIsViewed: false, quoteViewedAt: null, quoteAmount: 3000, quoteContract: "3 Months" },
+  { id: 1, name: "Arun Sharma", phone: "9876543210", address: "12 MG Road, Kochi", services: ["Termite Treatment"], amount: 5000, expectedDateTime: "", leadSource: "Referral", urgencyLevel: "Medium", branch: "Kochi", salesExecutive: "—", notes: "", status: "Follow Up", date: "Mar 5", quoteIsViewed: true, quoteViewedAt: "Mar 13, 2:30 PM", quoteAmount: 5000, quoteContract: "3 Months" },
+  { id: 2, name: "safeeq", phone: "5555555555", address: "fffffffffffff", services: ["Pest Control", "Fumigation", "Termite Treatment"], amount: 8000, expectedDateTime: "", leadSource: "Call", urgencyLevel: "Medium", branch: "", salesExecutive: "—", notes: "", status: "Follow Up", date: "Mar 13, 2026", quoteIsViewed: true, quoteViewedAt: null, quoteAmount: 8000, quoteContract: "One-Time" },
+  { id: 3, name: "kkkkkk", phone: "78987", address: "jkjio", services: ["General Pest"], amount: 3000, expectedDateTime: "", leadSource: "Website", urgencyLevel: "Low", branch: "", salesExecutive: "—", notes: "", status: "Follow Up", date: "Mar 13, 2026", quoteIsViewed: false, quoteViewedAt: null, quoteAmount: 3000, quoteContract: "3 Months" },
   { id: 4, name: "Priya Nair", phone: "9876543211", address: "45 NH Bypass, Thrissur", services: ["General Pest"], amount: null, expectedDateTime: "", leadSource: "Walk-in", urgencyLevel: "Medium", branch: "Thrissur", salesExecutive: "—", notes: "", status: "Contacted", date: "Mar 4", quoteIsViewed: false, quoteViewedAt: null },
   { id: 5, name: "Hotel Sunrise", phone: "9876543212", address: "Beach Road, Calicut", services: ["Commercial Pest Control", "Kitchen Deep Clean", "Fumigation Service"], amount: 45000, expectedDateTime: "", leadSource: "Referral", urgencyLevel: "High", branch: "Calicut", salesExecutive: "—", notes: "", status: "Converted", date: "Mar 3", quoteIsViewed: true, quoteViewedAt: "Mar 4, 2:30 PM", quoteAmount: 45000, quoteContract: "3 Months" },
   { id: 6, name: "Deepak M", phone: "9876543213", address: "Sector 5, Trivandrum", services: ["Rodent Control"], amount: 12000, expectedDateTime: "", leadSource: "Website", urgencyLevel: "Medium", branch: "Trivandrum", salesExecutive: "—", notes: "", status: "Converted", date: "Mar 1", quoteIsViewed: true, quoteViewedAt: "Mar 2, 10:15 AM", quoteAmount: 12000, quoteContract: "One-Time" },
