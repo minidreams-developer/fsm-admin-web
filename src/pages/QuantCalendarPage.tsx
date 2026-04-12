@@ -590,19 +590,11 @@ const QuantCalendarPage = () => {
         return false;
       }
       
-      // Check if ALL services are scheduled
-      const allServicesScheduled = services.every(service => 
-        filteredSchedule.some(s => s.workOrderId === wo.id && s.serviceId === service.id)
-      );
-      
-      // Only hide if ALL services are scheduled
-      const hasUnscheduledServices = !allServicesScheduled;
-      
       // Service type filter
       const matchesService = selectedService === "all" || 
                             wo.serviceType.split('(')[0].trim() === selectedService;
       
-      return matchesSearch && hasUnscheduledServices && matchesService;
+      return matchesSearch && matchesService;
     });
   }, [workOrders, searchText, filteredSchedule, selectedService, getTasksByWorkOrder]);
 
@@ -640,10 +632,12 @@ const QuantCalendarPage = () => {
     
     setActiveDragData(dragData);
     
-    // If dragging a scheduled job, remove it from schedule
+    // Only remove from schedule if dragging a scheduled job (re-dragging)
+    // Do NOT remove if dragging a service from the service panel (cloning behavior)
     if (dragData?.type === 'scheduledJob' && dragData.scheduledJob) {
       setSchedule(prev => prev.filter(s => s.id !== dragData.scheduledJob!.id));
     }
+    // For 'service' type, we don't remove anything - this enables cloning
   };
 
   const handleDragOver = (event: DragOverEvent) => {
@@ -719,7 +713,8 @@ const QuantCalendarPage = () => {
       return;
     }
 
-    // Create new scheduled job
+    // Create new scheduled job (always creates a new instance - cloning behavior)
+    // Use timestamp to ensure unique IDs even for the same service
     const newJob: ScheduledJob = {
       id: `job-${workOrder.id}-${service.id}-${employeeId}-${timeSlot}-${Date.now()}`,
       workOrderId: workOrder.id,
@@ -731,6 +726,7 @@ const QuantCalendarPage = () => {
       selectedTimeSlot: formatTimeSlot(timeSlot),
     };
 
+    // Always add the new job (cloning behavior for services, moving behavior for scheduled jobs)
     setSchedule(prev => [...prev, newJob]);
     setActiveDragData(null);
     setActiveDropZone(null);
@@ -1003,10 +999,13 @@ const QuantCalendarPage = () => {
               const hasServices = services.length > 0;
               const isSelected = selectedWorkOrder?.id === wo.id;
               
-              // Count scheduled services
-              const scheduledCount = services.filter(service => 
-                filteredSchedule.some(s => s.workOrderId === wo.id && s.serviceId === service.id)
-              ).length;
+              // Count how many unique services have been scheduled at least once
+              const scheduledServiceIds = new Set(
+                filteredSchedule
+                  .filter(s => s.workOrderId === wo.id)
+                  .map(s => s.serviceId)
+              );
+              const scheduledCount = scheduledServiceIds.size;
               const unscheduledCount = services.length - scheduledCount;
               
               return (
@@ -1072,12 +1071,6 @@ const QuantCalendarPage = () => {
             </div>
             <div className="p-3 space-y-2 max-h-[600px] overflow-y-auto">
               {getTasksByWorkOrder(selectedWorkOrder.id)
-                .filter(service => {
-                  // Only show services that are not yet scheduled
-                  return !filteredSchedule.some(s => 
-                    s.workOrderId === selectedWorkOrder.id && s.serviceId === service.id
-                  );
-                })
                 .map(service => (
                   <DraggableServiceCard
                     key={service.id}
@@ -1085,11 +1078,9 @@ const QuantCalendarPage = () => {
                     workOrder={selectedWorkOrder}
                   />
                 ))}
-              {getTasksByWorkOrder(selectedWorkOrder.id).every(service => 
-                filteredSchedule.some(s => s.workOrderId === selectedWorkOrder.id && s.serviceId === service.id)
-              ) && (
+              {getTasksByWorkOrder(selectedWorkOrder.id).length === 0 && (
                 <div className="text-center py-8">
-                  <p className="text-sm text-muted-foreground">All services have been scheduled</p>
+                  <p className="text-sm text-muted-foreground">No services available</p>
                 </div>
               )}
             </div>

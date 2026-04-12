@@ -13,42 +13,51 @@ Implemented precise grid-based drag-and-drop functionality for scheduling work o
 
 ## Key Features
 
-### 1. Grid-Based Collision Detection
+### 1. Service Cloning (Multi-Assignment)
+- **Clone on Drag**: Services are cloned (not moved) when dragged from the service panel
+- **Unlimited Assignments**: The same service can be dragged multiple times to different employees and/or time slots
+- **No Restrictions**: Services remain available in the panel after assignment
+- **Unique Instances**: Each drag creates a new scheduled job instance with a unique ID
+- **One-by-One Assignment**: Each drag-and-drop assigns to one employee at one specific time slot
+- **No "Already Assigned" Blocking**: Services can be assigned repeatedly without limitation
+
+### 2. Grid-Based Collision Detection
 - Each time slot column acts as an independent drop zone
 - Strict snapping to column boundaries (no free-position dropping)
 - Automatic alignment to nearest valid column
 
-### 2. Cancel/Remove Services
+### 3. Cancel/Remove Services
 - **Hover to reveal**: Hover over any scheduled service to see a red X button
 - **Click to remove**: Click the X button to remove the service instantly
 - **No confirmation**: Service is removed immediately for quick workflow
 - **Toast notification**: Shows success message after removal
 - **Re-draggable**: Removed services can be dragged back into the schedule
 
-### 3. Visual Feedback
+### 4. Visual Feedback
 - **Hover Effect**: Active column highlights when dragging over it
 - **Drop Preview**: Shows placeholder with time label inside the target column
 - **Drag Overlay**: Displays a semi-transparent preview of the dragged item
 - **Snap Animation**: Smooth transition when item snaps to column
 - **Remove Button**: Red X button appears on hover (day view) or always visible (week/month view)
 
-### 3. Data Storage
+### 5. Data Storage
 Each dropped service stores:
-- `id`: Unique identifier for the scheduled job
+- `id`: Unique identifier for the scheduled job (includes timestamp for uniqueness)
 - `employeeId`: ID of the assigned employee
 - `workOrderId`: ID of the work order
-- `serviceId`: ID of the specific service (optional)
+- `serviceId`: ID of the specific service
 - `selectedTimeSlot`: Formatted time slot (e.g., "7AM")
 - `startTime`: Numeric hour (e.g., 7)
 - `duration`: Duration in hours
 - `date`: Date string (YYYY-MM-DD)
 
-### 4. Re-dragging Support
+### 6. Re-dragging Support
 - Already placed services can be dragged between time slots
 - Time slot updates dynamically on drop
 - Conflict detection prevents overlapping schedules
+- Re-dragging moves the scheduled job (not cloning)
 
-### 5. Conflict Detection
+### 7. Conflict Detection
 - Checks for time slot conflicts before allowing drop
 - Prevents overlapping schedules for the same employee
 - Shows alert if conflict detected
@@ -92,8 +101,10 @@ Each dropped service stores:
 
 #### handleDragStart
 - Captures drag data (work order, service, or scheduled job)
-- Removes scheduled job from schedule if re-dragging
+- For scheduled jobs: removes from schedule (enables moving)
+- For services: does NOT remove anything (enables cloning)
 - Sets active drag state for overlay
+- Distinguishes between cloning (service panel) and moving (scheduled jobs)
 
 #### handleDragOver
 - Tracks which drop zone is currently hovered
@@ -102,7 +113,9 @@ Each dropped service stores:
 #### handleDragEnd
 - Validates drop target
 - Checks for time slot conflicts
-- Creates new scheduled job with all required data
+- Creates new scheduled job with unique ID (timestamp-based)
+- For services: creates clone (original remains in panel)
+- For scheduled jobs: moves to new location
 - Updates schedule state
 - Restores job if drop was invalid
 
@@ -112,26 +125,22 @@ Each dropped service stores:
 
 ## Usage
 
-### Dragging Work Orders
-1. ~~Drag a work order card from the left panel~~ **Work orders cannot be dragged directly**
-2. Click a work order card that has services (shows "Click to expand" badge)
-3. The services panel appears in the middle showing all services for that work order
-4. Drag individual service cards from the services panel
-5. Hover over a time slot column (highlights in blue)
-6. Drop to schedule the service
-7. Card snaps precisely to the column
+### Dragging Services (Cloning Behavior)
+1. Click a work order card that has services (shows "Click to expand" badge)
+2. The services panel appears in the middle showing all services for that work order
+3. Drag individual service cards from the services panel
+4. Hover over a time slot column (highlights in blue)
+5. Drop to schedule the service
+6. Card snaps precisely to the column
+7. **Service remains in the panel** - drag it again to assign to another employee/time slot
+8. Repeat steps 3-6 to assign the same service multiple times
 
-### Dragging Services
-1. Click a work order with multiple services
-2. Services panel appears in the middle
-3. Drag individual service cards
-4. Drop into specific time slots
-
-### Re-scheduling
-1. Drag an already scheduled job
+### Re-scheduling (Moving Behavior)
+1. Drag an already scheduled job from the calendar
 2. Move to a different time slot or employee
 3. Drop to update the schedule
-4. Conflict detection prevents invalid moves
+4. The scheduled job moves (not cloned)
+5. Conflict detection prevents invalid moves
 
 ### Removing Services
 1. Hover over a scheduled service card

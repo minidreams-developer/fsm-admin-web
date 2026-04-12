@@ -711,9 +711,9 @@ const Dashboard = () => {
 
       {/* Add New Lead Modal */}
       {showAddLeadModal && createPortal(
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4 overflow-hidden bg-black/75 rounded-[20px]">
-          <div className="bg-card rounded-[20px] shadow-lg w-full max-w-md max-h-[90vh] overflow-y-auto">
-            <div className="p-6 space-y-5 sticky top-0 bg-card border-b border-border">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-0 sm:p-4 bg-black/75">
+          <div className="bg-card rounded-[20px] shadow-2xl w-full h-full sm:h-auto sm:max-w-md sm:max-h-[90vh] flex flex-col animate-in fade-in slide-in-from-bottom-4 duration-300 relative z-[10000]">
+            <div className="p-6 space-y-5 flex-shrink-0 bg-card border-b border-border">
               {/* Header */}
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-bold text-card-foreground">Add New Enquiry</h3>
@@ -729,7 +729,7 @@ const Dashboard = () => {
               </div>
             </div>
 
-            <div className="p-6 space-y-5">
+            <div className="p-6 space-y-5 overflow-y-auto flex-1 min-h-0">
               <div>
                 <label className="text-xs font-medium text-muted-foreground mb-1 block">Customer Name</label>
                 <input
@@ -908,49 +908,49 @@ const Dashboard = () => {
                   </div>
                 </div>
               )}
+            </div>
 
-              {/* Action Buttons */}
-              <div className="flex gap-3 pt-4 border-t border-border">
-                <button
-                  onClick={() => {
-                    setShowAddLeadModal(false);
-                    resetLeadForm();
-                  }}
-                  className="flex-1 h-10 border border-border text-card-foreground rounded-lg hover:text-primary transition-colors font-medium text-sm"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => {
-                    if (!canSaveLead) return;
-                    addLead({
-                      name: leadFormData.name,
-                      phone: leadFormData.phone,
-                      address: leadFormData.address,
-                      services: leadFormData.services,
-                      amount: leadFormData.amount.trim() ? Number(leadFormData.amount) : null,
-                      expectedDateTime: leadFormData.expectedDateTime,
-                      leadSource: leadFormData.leadSource,
-                      urgencyLevel: leadFormData.urgencyLevel,
-                      branch: leadFormData.branch,
-                      salesExecutive: leadFormData.salesExecutive,
-                      notes: leadFormData.notes,
-                      status: "New",
-                      date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }),
-                      quoteIsViewed: false,
-                      quoteViewedAt: null,
-                    });
-                    toast.success("Lead created successfully!");
-                    setShowAddLeadModal(false);
-                    resetLeadForm();
-                    navigate("/leads");
-                  }}
-                  className={`flex-1 h-10 text-white rounded-lg transition-all font-semibold text-sm shadow-[0px_5px_12px_rgba(39,47,158,0.2)] ${canSaveLead ? "hover:opacity-90" : "opacity-60 cursor-not-allowed"}`}
-                  style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}
-                >
-                  Save & Go to Enquiries
-                </button>
-              </div>
+            {/* Action Buttons */}
+            <div className="flex gap-3 p-6 border-t border-border bg-card flex-shrink-0">
+              <button
+                onClick={() => {
+                  setShowAddLeadModal(false);
+                  resetLeadForm();
+                }}
+                className="flex-1 h-10 border border-border text-card-foreground rounded-lg hover:text-primary transition-colors font-medium text-sm"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  if (!canSaveLead) return;
+                  addLead({
+                    name: leadFormData.name,
+                    phone: leadFormData.phone,
+                    address: leadFormData.address,
+                    services: leadFormData.services,
+                    amount: leadFormData.amount.trim() ? Number(leadFormData.amount) : null,
+                    expectedDateTime: leadFormData.expectedDateTime,
+                    leadSource: leadFormData.leadSource,
+                    urgencyLevel: leadFormData.urgencyLevel,
+                    branch: leadFormData.branch,
+                    salesExecutive: leadFormData.salesExecutive,
+                    notes: leadFormData.notes,
+                    status: "New",
+                    date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }),
+                    quoteIsViewed: false,
+                    quoteViewedAt: null,
+                  });
+                  toast.success("Lead created successfully!");
+                  setShowAddLeadModal(false);
+                  resetLeadForm();
+                  navigate("/leads");
+                }}
+                className={`flex-1 h-10 text-white rounded-lg transition-all font-semibold text-sm shadow-[0px_5px_12px_rgba(39,47,158,0.2)] ${canSaveLead ? "hover:opacity-90" : "opacity-60 cursor-not-allowed"}`}
+                style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}
+              >
+                Save & Go to Enquiries
+              </button>
             </div>
           </div>
         </div>,

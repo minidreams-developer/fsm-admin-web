@@ -1,5 +1,5 @@
 import { useNavigate, useLocation } from "react-router-dom";
-import { X, Edit2, Check, Plus } from "lucide-react";
+import { X, Edit2, Plus } from "lucide-react";
 import { useState } from "react";
 import { createPortal } from "react-dom";
 import { useForm } from "react-hook-form";

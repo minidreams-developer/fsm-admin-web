@@ -122,8 +122,8 @@ export function WorkOrderEditModal({ workOrder, isOpen, onClose, onSave }: WorkO
   if (!isOpen) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4 overflow-hidden bg-black/75">
-      <div className="bg-card rounded-[20px] shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-0 sm:p-4 bg-black/75">
+      <div className="bg-card rounded-[20px] shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col relative z-[10000]">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-border flex-shrink-0">
           <div>
