@@ -20,7 +20,10 @@ const EmployeesPage = () => {
 
   const filtered = employees.filter((e) => {
     const matchSearch = e.name.toLowerCase().includes(search.toLowerCase());
-    const matchBranch = branchFilter === "All" || (e.branch || []).includes(branchFilter);
+    const matchBranch = branchFilter === "All" || (e.branch || []).some(empBranch => 
+      branchFilter.toLowerCase().includes(empBranch.toLowerCase()) || 
+      empBranch.toLowerCase().includes(branchFilter.toLowerCase())
+    );
     return matchSearch && matchBranch;
   });
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
