@@ -144,6 +144,16 @@ export const WorkOrderDetailsPage = () => {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {workOrder.status === "Authorization Pending" && (
+            <button
+              onClick={() => navigate(`/work-order-signature/${workOrder.id}`)}
+              className="inline-flex items-center gap-2 h-10 px-4 rounded-lg text-white text-sm font-semibold hover:opacity-90 transition-all shadow-[0px_5px_12px_rgba(39,47,158,0.2)]"
+              style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}
+            >
+              <Edit2 className="w-4 h-4" />
+              Get Authorization
+            </button>
+          )}
           <button
             onClick={handleDownloadPDF}
             className="inline-flex items-center gap-2 h-10 px-4 rounded-lg border border-primary text-primary bg-primary/5 hover:bg-primary/10 transition-colors text-sm font-semibold"

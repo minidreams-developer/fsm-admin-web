@@ -105,7 +105,7 @@ export function ServiceFormModal({ open, onClose, onSaved, appointment, mode = "
       serviceDescription: form.serviceDescription || "",
       instructions: form.instructions || "",
       tasks: form.tasks || [],
-      status: "Scheduled",
+      status: form.status || "Scheduled",
     };
 
     addAppointment(newService);
@@ -156,7 +156,20 @@ export function ServiceFormModal({ open, onClose, onSaved, appointment, mode = "
                 ))}
               </select>
             </div>
-            {/* <div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-2 block">Status</label>
+              <select
+                value={form.status || "Scheduled"}
+                onChange={(e) => setField("status", e.target.value as ServiceAppointment["status"])}
+                className="w-full px-3 py-2 rounded-lg bg-secondary text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 border border-border"
+              >
+                <option value="Scheduled">Scheduled</option>
+                <option value="In Progress">In Progress</option>
+                <option value="Completed">Completed</option>
+                <option value="Cancelled">Cancelled</option>
+              </select>
+            </div>
+            <div>
               <label className="text-xs font-medium text-muted-foreground mb-2 block">Date *</label>
               <input
                 type="date"
@@ -173,7 +186,7 @@ export function ServiceFormModal({ open, onClose, onSaved, appointment, mode = "
                 onChange={(e) => setField("time", e.target.value)}
                 className="w-full px-3 py-2 rounded-lg bg-secondary text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 border border-border"
               />
-            </div> */}
+            </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-2 block">Reference No</label>
               <input

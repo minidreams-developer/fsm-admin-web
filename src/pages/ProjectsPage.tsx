@@ -8,6 +8,7 @@ import * as XLSX from 'xlsx';
 import { toast } from "sonner";
 
 const statusMap = {
+  "Authorization Pending": "warning",
   Scheduled: "success",
   Open: "warning",
   Completed: "neutral",
@@ -21,7 +22,7 @@ const ProjectsPage = () => {
   const { getLead, updateLead } = useLeadsStore();
   const [search, setSearch] = useState("");
   const [dateFilter, setDateFilter] = useState<"All" | "Due Today">("All");
-  const [statusFilter, setStatusFilter] = useState<"All" | "Open" | "Scheduled" | "Completed" | "Converted">("All");
+  const [statusFilter, setStatusFilter] = useState<"All" | "Authorization Pending" | "Open" | "Scheduled" | "Completed" | "Converted">("All");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [showDateFilter, setShowDateFilter] = useState(false);
@@ -186,7 +187,21 @@ const ProjectsPage = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
+        <div className="bg-card rounded-xl p-5 card-shadow border border-border">
+          <div className="flex items-start gap-3">
+            <div className="p-2.5 bg-warning/10 rounded-lg flex-shrink-0">
+              <Clipboard className="w-5 h-5 text-warning" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-medium text-muted-foreground mb-1">Authorization Pending</p>
+              <p className="text-2xl font-bold text-card-foreground">
+                {workOrders.filter((p) => p.status === "Authorization Pending").length}
+              </p>
+            </div>
+          </div>
+        </div>
+
         <div className="bg-card rounded-xl p-5 card-shadow border border-border">
           <div className="flex items-start gap-3">
             <div className="p-2.5 bg-warning/10 rounded-lg flex-shrink-0">
@@ -288,7 +303,7 @@ const ProjectsPage = () => {
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          {(["All", "Open", "Scheduled", "Completed", "Converted"] as const).map((s) => (
+          {(["All", "Authorization Pending", "Open", "Scheduled", "Completed", "Converted"] as const).map((s) => (
             <button key={s} type="button" onClick={() => setStatusFilter(s)}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap ${statusFilter === s ? "text-white shadow-[0px_5px_12px_rgba(39,47,158,0.2)]" : "bg-card border border-border text-muted-foreground hover:text-card-foreground"}`}
               style={statusFilter === s ? { background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" } : {}}

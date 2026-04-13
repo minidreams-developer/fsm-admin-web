@@ -49,7 +49,7 @@ const WorkOrderSignaturePage = () => {
       status: "Open"
     });
     setIsSigned(true);
-    toast.success("Signature submitted successfully!");
+    toast.success("Signature submitted successfully! Status changed to Open.");
   };
 
   return (
@@ -202,7 +202,7 @@ const WorkOrderSignaturePage = () => {
             <div className="text-center">
               <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
               <h2 className="text-xl font-bold text-gray-900 mb-2">Signature Submitted Successfully!</h2>
-              <p className="text-sm text-gray-600 mb-6">Thank you for authorizing this work order.</p>
+              <p className="text-sm text-gray-600 mb-6">Thank you for authorizing this work order. The status has been changed to "Open".</p>
               
               {workOrder.customerSignature && (
                 <div className="mb-6">
@@ -212,6 +212,14 @@ const WorkOrderSignaturePage = () => {
                   </div>
                 </div>
               )}
+
+              <button
+                onClick={() => navigate(`/work-order/${workOrder.id}`)}
+                className="px-6 py-2.5 text-white text-sm font-medium rounded-lg hover:opacity-90 transition-all"
+                style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}
+              >
+                Back to Work Order
+              </button>
             </div>
           </div>
         )}
