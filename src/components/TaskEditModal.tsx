@@ -6,13 +6,14 @@ import { z } from "zod";
 import { toast } from "sonner";
 import { useTasksStore, type Task } from "@/store/tasksStore";
 import { useEmployeesStore } from "@/store/employeesStore";
+import { useState } from "react";
 
 const taskSchema = z.object({
   title: z.string().min(1, "Task title is required"),
   description: z.string().optional(),
   startDate: z.string().min(1, "Start date is required"),
   endDate: z.string().min(1, "End date is required"),
-  assignedTo: z.string().min(1, "Task assigned is required"),
+  assignedEmployees: z.array(z.string()).min(1, "At least one person must be assigned"),
   status: z.enum(["Pending", "In Progress", "Completed"]),
 });
 
@@ -28,10 +29,13 @@ interface TaskEditModalProps {
 export function TaskEditModal({ task, isOpen, onClose, onSave }: TaskEditModalProps) {
   const { updateTask } = useTasksStore();
   const { employees } = useEmployeesStore();
+  const [selectedEmployees, setSelectedEmployees] = useState<string[]>(task.assignedEmployees || []);
+  
   const {
     register,
     handleSubmit,
     formState: { errors },
+    setValue,
   } = useForm<TaskFormData>({
     resolver: zodResolver(taskSchema),
     defaultValues: {
@@ -39,10 +43,18 @@ export function TaskEditModal({ task, isOpen, onClose, onSave }: TaskEditModalPr
       description: task.description,
       startDate: task.startDate,
       endDate: task.endDate,
-      assignedTo: task.assignedTo,
+      assignedEmployees: task.assignedEmployees || [],
       status: task.status,
     },
   });
+
+  const removeEmployee = (employeeName: string) => {
+    setSelectedEmployees((prev) => {
+      const newSelection = prev.filter((name) => name !== employeeName);
+      setValue("assignedEmployees", newSelection);
+      return newSelection;
+    });
+  };
 
   const onSubmit = (data: TaskFormData) => {
     try {
@@ -51,7 +63,8 @@ export function TaskEditModal({ task, isOpen, onClose, onSave }: TaskEditModalPr
         description: data.description || "",
         startDate: data.startDate,
         endDate: data.endDate,
-        assignedTo: data.assignedTo,
+        assignedTo: data.assignedEmployees[0] || "", // Primary assignee
+        assignedEmployees: data.assignedEmployees,
         status: data.status,
       });
       toast.success("Service updated successfully!");
@@ -65,8 +78,8 @@ export function TaskEditModal({ task, isOpen, onClose, onSave }: TaskEditModalPr
   if (!isOpen) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4 overflow-hidden bg-black/75 rounded-[20px]">
-      <div className="bg-card rounded-[20px] shadow-lg w-full max-w-md max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-0 sm:p-4 bg-black/75">
+      <div className="bg-card rounded-[20px] shadow-lg w-full max-w-md max-h-[90vh] overflow-y-auto relative z-[10000]">
         {/* Modal Header */}
         <div className="flex items-center justify-between p-6 border-b border-border sticky top-0 bg-card">
           <h2 className="text-lg font-bold text-card-foreground">Edit Service</h2>
@@ -122,15 +135,64 @@ export function TaskEditModal({ task, isOpen, onClose, onSave }: TaskEditModalPr
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-2 block">Assigned To *</label>
             <select
-              {...register("assignedTo")}
-              className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
+              onChange={(e) => {
+                if (e.target.value) {
+                  const empName = e.target.value;
+                  if (!selectedEmployees.includes(empName)) {
+                    const newSelection = [...selectedEmployees, empName];
+                    setSelectedEmployees(newSelection);
+                    setValue("assignedEmployees", newSelection);
+                  }
+                  e.target.value = "";
+                }
+              }}
+              className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground mb-2"
+              defaultValue=""
             >
-              <option value="">Unassigned</option>
+              <option value="" disabled>
+                {employees.length === 0 ? "No employees available" : "Select employees..."}
+              </option>
               {employees.map((emp) => (
-                <option key={emp.id} value={emp.name}>{emp.name} — {emp.role}</option>
+                <option 
+                  key={emp.id} 
+                  value={emp.name} 
+                  disabled={selectedEmployees.includes(emp.name)}
+                >
+                  {emp.name} — {emp.role}{selectedEmployees.includes(emp.name) ? " ✓" : ""}
+                </option>
               ))}
             </select>
-            {errors.assignedTo && <p className="text-xs text-red-500 mt-1">{errors.assignedTo.message}</p>}
+
+            {/* Selected Employees Tags */}
+            {selectedEmployees.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {selectedEmployees.map((name) => {
+                  const emp = employees.find(e => e.name === name);
+                  return (
+                    <span
+                      key={name}
+                      className="inline-flex items-center gap-1.5 px-2 py-1 bg-primary/10 text-primary text-xs font-medium rounded-md border border-primary/20"
+                    >
+                      {name}
+                      {emp && <span className="text-primary/70">• {emp.role}</span>}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          removeEmployee(name);
+                        }}
+                        className="hover:bg-primary/20 rounded-full p-0.5 transition-colors"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </span>
+                  );
+                })}
+              </div>
+            )}
+            {errors.assignedEmployees && (
+              <p className="text-xs text-red-500 mt-1">{errors.assignedEmployees.message}</p>
+            )}
           </div>
 
           <div>

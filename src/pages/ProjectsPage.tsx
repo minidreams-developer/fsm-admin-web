@@ -1,11 +1,14 @@
 import { StatusBadge } from "@/components/StatusBadge";
-import { Search, Plus, Clipboard, Calendar, User, CreditCard, Eye } from "lucide-react";
+import { Search, Plus, Clipboard, Calendar, User, CreditCard, Eye, Download } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { useProjectsStore, type WorkOrder } from "@/store/projectsStore";
 import { useLeadsStore } from "@/store/leadsStore";
+import * as XLSX from 'xlsx';
+import { toast } from "sonner";
 
 const statusMap = {
+  "Authorization Pending": "warning",
   Scheduled: "success",
   Open: "warning",
   Completed: "neutral",
@@ -19,7 +22,7 @@ const ProjectsPage = () => {
   const { getLead, updateLead } = useLeadsStore();
   const [search, setSearch] = useState("");
   const [dateFilter, setDateFilter] = useState<"All" | "Due Today">("All");
-  const [statusFilter, setStatusFilter] = useState<"All" | "Open" | "Scheduled" | "Completed" | "Converted">("All");
+  const [statusFilter, setStatusFilter] = useState<"All" | "Authorization Pending" | "Open" | "Scheduled" | "Completed" | "Converted">("All");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [showDateFilter, setShowDateFilter] = useState(false);
@@ -80,6 +83,76 @@ const ProjectsPage = () => {
     return Math.round((paid / total) * 100);
   };
 
+  const handleExportToExcel = () => {
+    try {
+      // Prepare data for export
+      const exportData = filtered.map((wo) => ({
+        'Work Order ID': wo.id,
+        'Customer': wo.customer,
+        'Phone': wo.phone,
+        'Email': wo.email || '-',
+        'Address': wo.address,
+        'Site Address': wo.siteAddress || '-',
+        'Billing Address': wo.billingAddress || '-',
+        'Subject': wo.subject,
+        'Service Type': wo.serviceType,
+        'Frequency': wo.frequency,
+        'Total Value': wo.totalValue,
+        'Paid Amount': wo.paidAmount,
+        'Payment Progress': `${getPaymentProgress(wo)}%`,
+        'Start Date': wo.start,
+        'End Date': wo.end || '-',
+        'Status': wo.status,
+        'Assigned Tech': wo.assignedTech,
+        'Next Service': wo.nextService,
+        'Notes': wo.notes || '-',
+      }));
+
+      // Create worksheet
+      const ws = XLSX.utils.json_to_sheet(exportData);
+
+      // Set column widths
+      const colWidths = [
+        { wch: 15 }, // Work Order ID
+        { wch: 25 }, // Customer
+        { wch: 15 }, // Phone
+        { wch: 25 }, // Email
+        { wch: 30 }, // Address
+        { wch: 30 }, // Site Address
+        { wch: 30 }, // Billing Address
+        { wch: 30 }, // Subject
+        { wch: 20 }, // Service Type
+        { wch: 15 }, // Frequency
+        { wch: 15 }, // Total Value
+        { wch: 15 }, // Paid Amount
+        { wch: 15 }, // Payment Progress
+        { wch: 12 }, // Start Date
+        { wch: 12 }, // End Date
+        { wch: 15 }, // Status
+        { wch: 20 }, // Assigned Tech
+        { wch: 15 }, // Next Service
+        { wch: 30 }, // Notes
+      ];
+      ws['!cols'] = colWidths;
+
+      // Create workbook
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Work Orders');
+
+      // Generate filename with current date
+      const date = new Date().toISOString().split('T')[0];
+      const filename = `Work_Orders_${date}.xlsx`;
+
+      // Download file
+      XLSX.writeFile(wb, filename);
+
+      toast.success(`Exported ${filtered.length} work order${filtered.length !== 1 ? 's' : ''} to Excel`);
+    } catch (error) {
+      console.error('Export error:', error);
+      toast.error('Failed to export data');
+    }
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       {showSuccessMessage && (
@@ -95,17 +168,40 @@ const ProjectsPage = () => {
           <h2 className="text-lg sm:text-xl font-bold text-card-foreground">Work Orders</h2>
           <p className="text-sm text-muted-foreground">View and manage all work orders and AMCs.</p>
         </div>
-        <button 
-          onClick={() => navigate("/create-work-order")} 
-          className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 text-white shadow-[0px_5px_12px_rgba(39,47,158,0.2)] transition-all"
-          style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}
-        >
-          <Plus className="w-4 h-4" />
-          Create Work Order
-        </button>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <button 
+            onClick={handleExportToExcel}
+            className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 border border-primary text-primary bg-primary/5 hover:bg-primary/10 transition-all"
+          >
+            <Download className="w-4 h-4" />
+            Export Data
+          </button>
+          <button 
+            onClick={() => navigate("/create-work-order")} 
+            className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 text-white shadow-[0px_5px_12px_rgba(39,47,158,0.2)] transition-all"
+            style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}
+          >
+            <Plus className="w-4 h-4" />
+            Create Work Order
+          </button>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
+        <div className="bg-card rounded-xl p-5 card-shadow border border-border">
+          <div className="flex items-start gap-3">
+            <div className="p-2.5 bg-warning/10 rounded-lg flex-shrink-0">
+              <Clipboard className="w-5 h-5 text-warning" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-medium text-muted-foreground mb-1">Authorization Pending</p>
+              <p className="text-2xl font-bold text-card-foreground">
+                {workOrders.filter((p) => p.status === "Authorization Pending").length}
+              </p>
+            </div>
+          </div>
+        </div>
+
         <div className="bg-card rounded-xl p-5 card-shadow border border-border">
           <div className="flex items-start gap-3">
             <div className="p-2.5 bg-warning/10 rounded-lg flex-shrink-0">
@@ -207,7 +303,7 @@ const ProjectsPage = () => {
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          {(["All", "Open", "Scheduled", "Completed", "Converted"] as const).map((s) => (
+          {(["All", "Authorization Pending", "Open", "Scheduled", "Completed", "Converted"] as const).map((s) => (
             <button key={s} type="button" onClick={() => setStatusFilter(s)}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap ${statusFilter === s ? "text-white shadow-[0px_5px_12px_rgba(39,47,158,0.2)]" : "bg-card border border-border text-muted-foreground hover:text-card-foreground"}`}
               style={statusFilter === s ? { background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" } : {}}

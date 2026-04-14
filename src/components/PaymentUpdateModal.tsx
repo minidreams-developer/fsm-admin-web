@@ -70,8 +70,8 @@ export function PaymentUpdateModal({ open, workOrder, onClose }: Props) {
   if (!open || !workOrder) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4 overflow-hidden bg-black/75 rounded-[20px]">
-      <div className="bg-card rounded-[20px] shadow-2xl w-full h-full sm:h-auto sm:max-w-md sm:max-h-[90vh] flex flex-col animate-in fade-in slide-in-from-bottom-4 duration-300">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-0 sm:p-4 bg-black/75">
+      <div className="bg-card rounded-[20px] shadow-2xl w-full h-full sm:h-auto sm:max-w-md sm:max-h-[90vh] flex flex-col animate-in fade-in slide-in-from-bottom-4 duration-300 relative z-[10000]">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-border bg-card flex-shrink-0">
           <div>
@@ -84,7 +84,7 @@ export function PaymentUpdateModal({ open, workOrder, onClose }: Props) {
         </div>
 
         {/* Content */}
-        <form onSubmit={handleSubmit(onSubmit)} className="overflow-y-auto flex-1 p-6 space-y-4 min-h-0">
+        <div className="overflow-y-auto flex-1 p-6 space-y-4 min-h-0">
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-2 block">Payment Method</label>
             <select
@@ -128,7 +128,7 @@ export function PaymentUpdateModal({ open, workOrder, onClose }: Props) {
           </div>
 
           <div>
-            <label className="text-xs font-medium text-muted-foreground mb-2 block">Collect By</label>
+            <label className="text-xs font-medium text-muted-foreground mb-2 block">Collected By</label>
             <select
               {...register("paidBy")}
               className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
@@ -142,25 +142,26 @@ export function PaymentUpdateModal({ open, workOrder, onClose }: Props) {
               <p className="text-xs text-red-500 mt-1">{errors.paidBy.message}</p>
             )}
           </div>
-        </form>
+        </div>
 
         {/* Footer */}
-        <div className="flex gap-3 p-6 border-t border-border bg-card flex-shrink-0">
+        <form onSubmit={handleSubmit(onSubmit)} className="flex gap-3 p-6 border-t border-border bg-card flex-shrink-0">
           <button
+            type="button"
             onClick={onClose}
             className="flex-1 h-10 border border-border text-card-foreground text-sm font-medium hover:text-primary transition-colors rounded-lg"
           >
             Cancel
           </button>
           <button
-            onClick={handleSubmit(onSubmit)}
+            type="submit"
             disabled={isSubmitting}
             className="flex-1 h-10 text-white text-sm font-medium rounded-lg hover:opacity-90 transition-all disabled:opacity-50"
             style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}
           >
             {isSubmitting ? "Updating..." : "Update Payment"}
           </button>
-        </div>
+        </form>
       </div>
     </div>,
     document.body

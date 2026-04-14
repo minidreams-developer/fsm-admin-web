@@ -1,12 +1,14 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Briefcase, CheckCircle, Clock, AlertCircle, MapPin, Phone, Mail, DollarSign, Calendar, Edit2, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { ArrowLeft, Briefcase, CheckCircle, Clock, AlertCircle, MapPin, Phone, Mail, DollarSign, Calendar, Edit2, Trash2, Download } from "lucide-react";
+import { useState, useRef } from "react";
 import { useProjectsStore } from "@/store/projectsStore";
 import { useTasksStore } from "@/store/tasksStore";
 import { StatusBadge } from "@/components/StatusBadge";
 import { WorkOrderEditModal } from "@/components/WorkOrderEditModal";
 import { TaskEditModal } from "@/components/TaskEditModal";
 import { toast } from "sonner";
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 export const WorkOrderDetailsPage = () => {
   const { id } = useParams();
@@ -16,9 +18,76 @@ export const WorkOrderDetailsPage = () => {
   const [isEditingWorkOrder, setIsEditingWorkOrder] = useState(false);
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const contentRef = useRef<HTMLDivElement>(null);
 
   const workOrder = id ? getWorkOrder(id) : null;
   const tasks = id ? getTasksByWorkOrder(id) : [];
+
+  const handleDownloadPDF = async () => {
+    if (!contentRef.current || !workOrder) return;
+
+    try {
+      toast.info("Generating PDF...");
+
+      // Create a clone of the content to modify for PDF
+      const element = contentRef.current;
+      
+      // Temporarily hide buttons and interactive elements
+      const buttons = element.querySelectorAll('button');
+      const originalDisplay: string[] = [];
+      buttons.forEach((btn, index) => {
+        originalDisplay[index] = btn.style.display;
+        btn.style.display = 'none';
+      });
+
+      // Capture the content as canvas
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff',
+      });
+
+      // Restore buttons
+      buttons.forEach((btn, index) => {
+        btn.style.display = originalDisplay[index];
+      });
+
+      // Calculate PDF dimensions
+      const imgWidth = 210; // A4 width in mm
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      
+      // Create PDF
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const imgData = canvas.toDataURL('image/png');
+      
+      // Add image to PDF
+      let heightLeft = imgHeight;
+      let position = 0;
+      
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+      heightLeft -= 297; // A4 height in mm
+      
+      // Add new pages if content is longer than one page
+      while (heightLeft > 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        heightLeft -= 297;
+      }
+
+      // Generate filename
+      const filename = `WorkOrder_${workOrder.id}_${new Date().toISOString().split('T')[0]}.pdf`;
+      
+      // Download PDF
+      pdf.save(filename);
+      
+      toast.success("PDF downloaded successfully!");
+    } catch (error) {
+      console.error('PDF generation error:', error);
+      toast.error("Failed to generate PDF");
+    }
+  };
 
   const handleDeleteTask = (taskId: string) => {
     if (window.confirm("Are you sure you want to delete this service?")) {
@@ -74,17 +143,36 @@ export const WorkOrderDetailsPage = () => {
             <p className="text-sm text-muted-foreground">{workOrder.customer}</p>
           </div>
         </div>
-        <button
-          onClick={() => setIsEditingWorkOrder(true)}
-          className="inline-flex items-center gap-2 h-10 px-4 rounded-lg border border-border bg-card hover:bg-secondary transition-colors text-sm font-semibold text-card-foreground"
-        >
-          <Edit2 className="w-4 h-4" />
-          Edit
-        </button>
+        <div className="flex items-center gap-2">
+          {workOrder.status === "Authorization Pending" && (
+            <button
+              onClick={() => navigate(`/work-order-signature/${workOrder.id}`)}
+              className="inline-flex items-center gap-2 h-10 px-4 rounded-lg text-white text-sm font-semibold hover:opacity-90 transition-all shadow-[0px_5px_12px_rgba(39,47,158,0.2)]"
+              style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}
+            >
+              <Edit2 className="w-4 h-4" />
+              Get Authorization
+            </button>
+          )}
+          <button
+            onClick={handleDownloadPDF}
+            className="inline-flex items-center gap-2 h-10 px-4 rounded-lg border border-primary text-primary bg-primary/5 hover:bg-primary/10 transition-colors text-sm font-semibold"
+          >
+            <Download className="w-4 h-4" />
+            Download PDF
+          </button>
+          <button
+            onClick={() => setIsEditingWorkOrder(true)}
+            className="inline-flex items-center gap-2 h-10 px-4 rounded-lg border border-border bg-card hover:bg-secondary transition-colors text-sm font-semibold text-card-foreground"
+          >
+            <Edit2 className="w-4 h-4" />
+            Edit
+          </button>
+        </div>
       </div>
 
       {/* Work Order Details Card */}
-      <div className="bg-card rounded-xl p-8 card-shadow border border-border">
+      <div ref={contentRef} className="bg-card rounded-xl p-8 card-shadow border border-border">
         {/* Header Section */}
         <div className="mb-8 pb-8 border-b border-border">
           <div className="flex items-start justify-between gap-4 mb-4">
@@ -228,6 +316,16 @@ export const WorkOrderDetailsPage = () => {
           </div>
         )}
 
+        {/* Customer Signature */}
+        {workOrder.customerSignature && (
+          <div className="mb-8 pb-8 border-b border-border">
+            <h3 className="text-lg font-bold text-card-foreground mb-3">Customer Signature</h3>
+            <div className="bg-secondary/30 rounded-lg p-4 border border-border inline-block">
+              <img src={workOrder.customerSignature} alt="Customer Signature" className="max-w-md h-32" />
+            </div>
+          </div>
+        )}
+
         {/* Period Information */}
         {workOrder.period && (
           <div>
@@ -282,7 +380,11 @@ export const WorkOrderDetailsPage = () => {
         {tasks.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {tasks.map((task) => (
-              <div key={task.id} className="bg-secondary/30 rounded-lg p-4 border border-border hover:border-primary/30 transition-all">
+              <div 
+                key={task.id} 
+                className="bg-secondary/30 rounded-lg p-4 border border-border hover:border-primary/30 transition-all cursor-pointer"
+                onClick={() => navigate(`/service/${task.id}`)}
+              >
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex-1">
                     <h4 className="font-semibold text-card-foreground">{task.title}</h4>
@@ -290,14 +392,20 @@ export const WorkOrderDetailsPage = () => {
                   </div>
                   <div className="flex items-center gap-2 ml-2">
                     <button
-                      onClick={() => setEditingTaskId(task.id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEditingTaskId(task.id);
+                      }}
                       className="p-1.5 hover:bg-primary/10 rounded-lg transition-colors text-primary"
                       title="Edit service"
                     >
                       <Edit2 className="w-4 h-4" />
                     </button>
                     <button
-                      onClick={() => handleDeleteTask(task.id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteTask(task.id);
+                      }}
                       className="p-1.5 hover:bg-destructive/10 rounded-lg transition-colors text-destructive"
                       title="Delete service"
                     >
@@ -309,7 +417,20 @@ export const WorkOrderDetailsPage = () => {
                 <div className="grid grid-cols-2 gap-3 mb-3 pb-3 border-b border-border">
                   <div>
                     <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Assigned To</p>
-                    <p className="text-sm font-semibold text-card-foreground mt-1">{task.assignedTo}</p>
+                    {task.assignedEmployees && task.assignedEmployees.length > 0 ? (
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {task.assignedEmployees.map((employee, index) => (
+                          <span
+                            key={index}
+                            className="inline-flex items-center px-2 py-0.5 bg-primary/10 text-primary text-xs font-semibold rounded border border-primary/20"
+                          >
+                            {employee}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm font-semibold text-card-foreground mt-1">{task.assignedTo}</p>
+                    )}
                   </div>
                   <div>
                     <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</p>

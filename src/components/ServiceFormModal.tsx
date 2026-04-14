@@ -105,7 +105,7 @@ export function ServiceFormModal({ open, onClose, onSaved, appointment, mode = "
       serviceDescription: form.serviceDescription || "",
       instructions: form.instructions || "",
       tasks: form.tasks || [],
-      status: "Scheduled",
+      status: form.status || "Scheduled",
     };
 
     addAppointment(newService);
@@ -117,8 +117,8 @@ export function ServiceFormModal({ open, onClose, onSaved, appointment, mode = "
   if (!open) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4 overflow-hidden bg-black/75">
-      <div className="bg-card rounded-[20px] shadow-2xl w-full h-full sm:h-auto sm:max-w-2xl sm:max-h-[90vh] flex flex-col animate-in fade-in slide-in-from-bottom-4 duration-300">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-0 sm:p-4 bg-black/75">
+      <div className="bg-card rounded-[20px] shadow-2xl w-full h-full sm:h-auto sm:max-w-2xl sm:max-h-[90vh] flex flex-col animate-in fade-in slide-in-from-bottom-4 duration-300 relative z-[10000]">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-border bg-card flex-shrink-0">
           <div>
@@ -156,7 +156,20 @@ export function ServiceFormModal({ open, onClose, onSaved, appointment, mode = "
                 ))}
               </select>
             </div>
-            {/* <div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-2 block">Status</label>
+              <select
+                value={form.status || "Scheduled"}
+                onChange={(e) => setField("status", e.target.value as ServiceAppointment["status"])}
+                className="w-full px-3 py-2 rounded-lg bg-secondary text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 border border-border"
+              >
+                <option value="Scheduled">Scheduled</option>
+                <option value="In Progress">In Progress</option>
+                <option value="Completed">Completed</option>
+                <option value="Cancelled">Cancelled</option>
+              </select>
+            </div>
+            <div>
               <label className="text-xs font-medium text-muted-foreground mb-2 block">Date *</label>
               <input
                 type="date"
@@ -173,7 +186,7 @@ export function ServiceFormModal({ open, onClose, onSaved, appointment, mode = "
                 onChange={(e) => setField("time", e.target.value)}
                 className="w-full px-3 py-2 rounded-lg bg-secondary text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 border border-border"
               />
-            </div> */}
+            </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-2 block">Reference No</label>
               <input
