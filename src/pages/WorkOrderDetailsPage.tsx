@@ -182,7 +182,15 @@ export const WorkOrderDetailsPage = () => {
             </div>
             <StatusBadge 
               label={workOrder.status} 
-              variant={workOrder.status === "Completed" ? "neutral" : workOrder.status === "Scheduled" ? "success" : "warning"} 
+              variant={
+                workOrder.status === "Completed" ? "neutral" : 
+                workOrder.status === "Ongoing" ? "success" : 
+                workOrder.status === "Upcoming" ? "info" :
+                workOrder.status === "Missed" ? "destructive" :
+                workOrder.status === "Cancelled" ? "neutral" :
+                workOrder.status === "Converted" ? "info" :
+                "warning"
+              } 
             />
           </div>
         </div>

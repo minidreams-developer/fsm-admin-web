@@ -277,6 +277,7 @@ export function CustomerFormModal({ open, mode, customer, prefill, onClose, onSa
               <textarea
                 value={form.siteAddress}
                 onChange={(e) => setField("siteAddress", e.target.value)}
+                onChange={(e) => setField("siteAddress", e.target.value)}
                 placeholder="e.g. 12 MG Road, Kochi"
                 rows={2}
                 className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none"

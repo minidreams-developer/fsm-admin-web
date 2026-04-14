@@ -46,10 +46,10 @@ const WorkOrderSignaturePage = () => {
     const signatureData = signatureRef.current?.toDataURL();
     updateWorkOrder(workOrder.id, {
       customerSignature: signatureData,
-      status: "Open"
+      status: "Upcoming"
     });
     setIsSigned(true);
-    toast.success("Signature submitted successfully! Status changed to Open.");
+    toast.success("Signature submitted successfully! Status changed to Upcoming.");
   };
 
   return (
@@ -202,7 +202,7 @@ const WorkOrderSignaturePage = () => {
             <div className="text-center">
               <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
               <h2 className="text-xl font-bold text-gray-900 mb-2">Signature Submitted Successfully!</h2>
-              <p className="text-sm text-gray-600 mb-6">Thank you for authorizing this work order. The status has been changed to "Open".</p>
+              <p className="text-sm text-gray-600 mb-6">Thank you for authorizing this work order. The status has been changed to "Upcoming".</p>
               
               {workOrder.customerSignature && (
                 <div className="mb-6">

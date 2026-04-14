@@ -24,8 +24,9 @@ const workOrderSchema = z.object({
   paidAmount: z.string().optional(),
   start: z.string().min(1, "Start date is required"),
   end: z.string().optional(),
-  status: z.enum(["Authorization Pending", "Open", "Scheduled", "Completed"]),
+  status: z.enum(["Authorization Pending", "Ongoing", "Upcoming", "Missed", "Cancelled", "Completed", "Converted"]),
   assignedTech: z.string().optional(),
+  workOrderIncharge: z.string().optional(),
   notes: z.string().optional(),
   siteAddress: z.string().optional(),
   billingAddress: z.string().optional(),
@@ -38,12 +39,15 @@ type TaskStatus = "Pending" | "In Progress" | "Completed";
 type Task = {
   id: string;
   title: string;
+  description: string;
+  unitPrice: number;
+  quantity: number;
+  amount: number;
   startDate: string;
   endDate: string;
   assignedTo: string;
-  assignedEmployees: string[]; // Add support for multiple employees
+  assignedEmployees: string[];
   status: TaskStatus;
-  quantity: number;
 };
 
 const CreateWorkOrderPage = () => {
@@ -108,13 +112,16 @@ const CreateWorkOrderPage = () => {
       if (!prev.includes(value) && !tasks.find((t) => t.title === value)) {
         setTasks((t) => [...t, { 
           id: Date.now().toString(), 
-          title: value, 
+          title: value,
+          description: "",
+          unitPrice: 0,
+          quantity: 1,
+          amount: 0,
           startDate: "", 
           endDate: "", 
           assignedTo: "", 
           assignedEmployees: [],
-          status: "Pending",
-          quantity: 1
+          status: "Pending"
         }]);
       }
       if (prev.includes(value)) {
@@ -169,8 +176,9 @@ const CreateWorkOrderPage = () => {
         paidAmount: data.paidAmount ? `₹ ${parseInt(data.paidAmount).toLocaleString()}` : "₹ 0",
         start: data.start,
         end: data.end || data.start,
-        status: data.status as "Authorization Pending" | "Open" | "Scheduled" | "Completed",
+        status: data.status,
         assignedTech: selectedEmployees.length > 0 ? selectedEmployees.join(", ") : "Unassigned",
+        workOrderIncharge: data.workOrderIncharge || "",
         notes: data.notes || "",
         siteAddress: allSiteAddresses,
         billingAddress: data.billingAddress || data.address,
@@ -217,7 +225,7 @@ const CreateWorkOrderPage = () => {
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 bg-white rounded-lg p-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-2 block">Customer Name *</label>
             <select
@@ -264,7 +272,7 @@ const CreateWorkOrderPage = () => {
             {errors.address && <p className="text-xs text-red-500 mt-1">{errors.address.message}</p>}
           </div>
 
-          <div className="md:col-span-2">
+          <div className="md:col-span-3">
             <div className="flex items-center justify-between mb-2">
               <label className="text-xs font-medium text-muted-foreground block">Site Address</label>
               <button
@@ -302,7 +310,7 @@ const CreateWorkOrderPage = () => {
             ))}
           </div>
 
-          <div className="md:col-span-2">
+          <div className="md:col-span-3">
             <div className="flex items-center justify-between gap-3 mb-2">
               <label className="text-xs font-medium text-muted-foreground block">Billing Address</label>
               <button
@@ -324,39 +332,10 @@ const CreateWorkOrderPage = () => {
             />
           </div>
 
-          <div className="md:col-span-2">
+          <div>
             <label className="text-xs font-medium text-muted-foreground mb-2 block">Subject *</label>
             <input type="text" placeholder="Work order subject" {...register("subject")} className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground" />
             {errors.subject && <p className="text-xs text-red-500 mt-1">{errors.subject.message}</p>}
-          </div>
-
-
-          
-
-          <div>
-            <label className="text-xs font-medium text-muted-foreground mb-2 block">Service Type</label>
-            <select
-              onChange={(e) => { if (e.target.value) { toggleService(e.target.value); e.target.value = ""; } }}
-              className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground mb-2"
-              defaultValue=""
-            >
-              <option value="" disabled>Select service type...</option>
-              {serviceOptions.map((s) => (
-                <option key={s} value={s} disabled={selectedServices.includes(s)}>{s}{selectedServices.includes(s) ? " ✓" : ""}</option>
-              ))}
-            </select>
-            {selectedServices.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {selectedServices.map((s) => (
-                  <div key={s} className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 border border-primary/20 rounded-lg">
-                    <span className="text-xs font-medium text-primary">{s}</span>
-                    <button type="button" onClick={() => removeService(s)} className="text-primary hover:text-primary/70"><X className="w-3 h-3" /></button>
-                  </div>
-                ))}
-              </div>
-            )}
-            {/* hidden input to satisfy react-hook-form */}
-            <input type="hidden" {...register("serviceType")} />
           </div>
 
           <div>
@@ -389,13 +368,30 @@ const CreateWorkOrderPage = () => {
             <label className="text-xs font-medium text-muted-foreground mb-2 block">Status</label>
             <select {...register("status")} className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground">
               <option value="Authorization Pending">Authorization Pending</option>
-              <option value="Open">Open</option>
-              <option value="Scheduled">Scheduled</option>
+              <option value="Ongoing">Ongoing</option>
+              <option value="Upcoming">Upcoming</option>
+              <option value="Missed">Missed</option>
+              <option value="Cancelled">Cancelled</option>
               <option value="Completed">Completed</option>
+              <option value="Converted">Converted</option>
             </select>
           </div>
 
           <div>
+            <label className="text-xs font-medium text-muted-foreground mb-2 block">Assign Work Order Incharge</label>
+            <select {...register("workOrderIncharge")} className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground">
+              <option value="">Select incharge...</option>
+              {employees.map((emp) => (
+                <option key={emp.id} value={emp.name}>
+                  {emp.name} — {emp.role}
+                </option>
+              ))}
+            </select>
+          </div>
+
+         
+
+          <div className="md:col-span-3">
             <label className="text-xs font-medium text-muted-foreground mb-2 block">Assign Sales Executives</label>
             <select
               onChange={(e) => { if (e.target.value) { toggleEmployee(e.target.value); e.target.value = ""; } }}
@@ -438,11 +434,147 @@ const CreateWorkOrderPage = () => {
             <input type="hidden" {...register("assignedTech")} value={selectedEmployees.join(", ")} />
           </div>
 
-          <div className="md:col-span-2">
+          <div className="md:col-span-3">
             <label className="text-xs font-medium text-muted-foreground mb-2 block">Notes</label>
             <textarea placeholder="Additional notes..." rows={3} {...register("notes")} className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground resize-none" />
           </div>
+
+           <div className="md:col-span-3">
+            <label className="text-xs font-medium text-muted-foreground mb-2 block">Service Type</label>
+            <select
+              onChange={(e) => { if (e.target.value) { toggleService(e.target.value); e.target.value = ""; } }}
+              className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground mb-2"
+              defaultValue=""
+            >
+              <option value="" disabled>Select service type...</option>
+              {serviceOptions.map((s) => (
+                <option key={s} value={s} disabled={selectedServices.includes(s)}>{s}{selectedServices.includes(s) ? " ✓" : ""}</option>
+              ))}
+            </select>
+            {selectedServices.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {selectedServices.map((s) => (
+                  <div key={s} className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 border border-primary/20 rounded-lg">
+                    <span className="text-xs font-medium text-primary">{s}</span>
+                    <button type="button" onClick={() => removeService(s)} className="text-primary hover:text-primary/70"><X className="w-3 h-3" /></button>
+                  </div>
+                ))}
+              </div>
+            )}
+            {/* hidden input to satisfy react-hook-form */}
+            <input type="hidden" {...register("serviceType")} />
+          </div>
+
+
+         
         </div>
+         {/* Services Section */}
+      {tasks.length > 0 && (
+        <div className="bg-card rounded-xl card-shadow border border-border overflow-hidden">
+          <div className="px-6 py-4 border-b border-border">
+            <h2 className="text-base font-bold text-card-foreground">Services</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">Services added</p>
+          </div>
+          <div className="flex">
+            <div className="flex-1">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border bg-secondary/30">
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">#</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Service</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Description</th>
+                    <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Unit Price</th>
+                    <th className="text-center px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Quantity</th>
+                    <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Amount</th>
+                    <th className="text-center px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {tasks.map((task, index) => (
+                    <tr key={task.id} className="border-b border-border last:border-0 hover:bg-secondary/10 transition-colors">
+                      <td className="px-4 py-3 text-xs text-muted-foreground">{index + 1}</td>
+                      <td className="px-4 py-3 font-medium text-card-foreground text-xs">{task.title}</td>
+                      <td className="px-4 py-3 text-muted-foreground text-xs max-w-xs truncate">{task.description || "—"}</td>
+                      <td className="px-4 py-3 text-right text-card-foreground text-xs font-semibold">₹ {task.unitPrice?.toLocaleString() || 0}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center justify-center gap-2">
+                          <button 
+                            type="button"
+                            onClick={() => {
+                              const newQuantity = Math.max(1, task.quantity - 1);
+                              const newAmount = task.unitPrice * newQuantity;
+                              setTasks(prev => prev.map(t => t.id === task.id ? { ...t, quantity: newQuantity, amount: newAmount } : t));
+                            }}
+                            className="w-6 h-6 flex items-center justify-center rounded border border-border hover:bg-secondary transition-colors"
+                          >
+                            <span className="text-xs">−</span>
+                          </button>
+                          <span className="text-xs font-semibold text-card-foreground min-w-[2rem] text-center">{task.quantity || 1}</span>
+                          <button 
+                            type="button"
+                            onClick={() => {
+                              const newQuantity = task.quantity + 1;
+                              const newAmount = task.unitPrice * newQuantity;
+                              setTasks(prev => prev.map(t => t.id === task.id ? { ...t, quantity: newQuantity, amount: newAmount } : t));
+                            }}
+                            className="w-6 h-6 flex items-center justify-center rounded border border-border hover:bg-secondary transition-colors"
+                          >
+                            <span className="text-xs">+</span>
+                          </button>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-right text-card-foreground text-xs font-bold">₹ {task.amount?.toLocaleString() || 0}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center justify-center gap-1">
+                          <button 
+                            type="button"
+                            onClick={() => setEditingTask({ ...task })} 
+                            className="p-1.5 rounded-md border border-border hover:bg-secondary transition-colors" 
+                            title="Edit service"
+                          >
+                            <Edit2 className="w-3.5 h-3.5 text-muted-foreground" />
+                          </button>
+                          <button 
+                            type="button"
+                            onClick={() => removeTask(task.id)} 
+                            className="p-1.5 rounded-md border border-border hover:bg-destructive/10 transition-colors" 
+                            title="Remove service"
+                          >
+                            <X className="w-3.5 h-3.5 text-destructive" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="w-64 border-l border-border bg-secondary/10 p-4 space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-xs font-medium text-muted-foreground">Subtotal</span>
+                <span className="text-sm font-semibold text-card-foreground">
+                  ₹ {tasks.reduce((sum, t) => sum + (t.amount || 0), 0).toLocaleString()}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-xs font-medium text-muted-foreground">GST (18%)</span>
+                <span className="text-sm font-semibold text-card-foreground">
+                  ₹ {(tasks.reduce((sum, t) => sum + (t.amount || 0), 0) * 0.18).toLocaleString()}
+                </span>
+              </div>
+              <div className="pt-3 border-t border-border">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-bold text-card-foreground">Total Amount</span>
+                  <span className="text-lg font-bold text-primary">
+                    ₹ {(tasks.reduce((sum, t) => sum + (t.amount || 0), 0) * 1.18).toLocaleString()}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
 
         <div className="flex justify-end gap-3 pt-6 border-t border-border">
           <button type="button" onClick={() => navigate("/projects")} className="px-6 py-2.5 border border-border text-card-foreground text-sm font-medium hover:text-primary transition-colors rounded-lg">Cancel</button>
@@ -452,61 +584,7 @@ const CreateWorkOrderPage = () => {
         </div>
       </form>
 
-      {/* Services Section */}
-      {tasks.length > 0 && (
-        <div className="bg-card rounded-xl card-shadow border border-border overflow-hidden">
-          <div className="px-6 py-4 border-b border-border">
-            <h2 className="text-base font-bold text-card-foreground">Services</h2>
-            <p className="text-xs text-muted-foreground mt-0.5">Services added — click Edit to configure</p>
-          </div>
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border">
-                {["Service", "Quantity", "From Date", "To Date", "Assigned To", "Status", "Action"].map((h) => (
-                  <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {tasks.map((task) => (
-                <tr key={task.id} className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors">
-                  <td className="px-4 py-3 font-medium text-card-foreground text-xs">{task.title}</td>
-                  <td className="px-4 py-3 text-card-foreground text-xs font-semibold">{task.quantity || 1}</td>
-                  <td className="px-4 py-3 text-muted-foreground text-xs">{task.startDate || "—"}</td>
-                  <td className="px-4 py-3 text-muted-foreground text-xs">{task.endDate || "—"}</td>
-                  <td className="px-4 py-3 text-muted-foreground text-xs">
-                    {task.assignedEmployees.length > 0 ? (
-                      <div className="flex flex-wrap gap-1">
-                        {task.assignedEmployees.map((empName, idx) => (
-                          <span key={idx} className="inline-flex items-center px-2 py-0.5 rounded-md bg-primary/10 text-primary text-xs font-medium">
-                            {empName}
-                          </span>
-                        ))}
-                      </div>
-                    ) : (
-                      task.assignedTo || "—"
-                    )}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className={`inline-flex items-center px-2 py-1 rounded-lg text-xs font-medium border ${statusColors[task.status]}`}>{task.status}</span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-1">
-                      <button onClick={() => setEditingTask({ ...task })} className="p-1.5 rounded-md border border-border hover:bg-secondary transition-colors" title="Edit service">
-                        <Edit2 className="w-3.5 h-3.5 text-muted-foreground" />
-                      </button>
-                      <button onClick={() => removeTask(task.id)} className="p-1.5 rounded-md border border-border hover:bg-destructive/10 transition-colors" title="Remove service">
-                        <X className="w-3.5 h-3.5 text-destructive" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
+     
       {/* Edit Service Modal */}
       {editingTask && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75">
@@ -523,87 +601,52 @@ const CreateWorkOrderPage = () => {
                 <input value={editingTask.title} readOnly className="w-full px-3 py-2 rounded-lg bg-secondary/50 text-sm border border-border text-card-foreground" />
               </div>
               <div>
+                <label className="text-xs font-medium text-muted-foreground mb-2 block">Description</label>
+                <textarea 
+                  value={editingTask.description} 
+                  onChange={(e) => setEditingTask({ ...editingTask, description: e.target.value })} 
+                  placeholder="Service description..."
+                  rows={3}
+                  className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground resize-none" 
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-2 block">Unit Price (₹)</label>
+                <input 
+                  type="number" 
+                  min="0"
+                  value={editingTask.unitPrice} 
+                  onChange={(e) => {
+                    const unitPrice = Math.max(0, parseFloat(e.target.value) || 0);
+                    const amount = unitPrice * editingTask.quantity;
+                    setEditingTask({ ...editingTask, unitPrice, amount });
+                  }} 
+                  placeholder="0"
+                  className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground" 
+                />
+              </div>
+              <div>
                 <label className="text-xs font-medium text-muted-foreground mb-2 block">Quantity</label>
                 <input 
                   type="number" 
                   min="1"
                   value={editingTask.quantity} 
-                  onChange={(e) => setEditingTask({ ...editingTask, quantity: Math.max(1, parseInt(e.target.value) || 1) })} 
+                  onChange={(e) => {
+                    const quantity = Math.max(1, parseInt(e.target.value) || 1);
+                    const amount = editingTask.unitPrice * quantity;
+                    setEditingTask({ ...editingTask, quantity, amount });
+                  }} 
                   className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground" 
                 />
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-2 block">From Date</label>
-                  <input type="date" value={editingTask.startDate} onChange={(e) => setEditingTask({ ...editingTask, startDate: e.target.value })} className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground" />
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-2 block">To Date</label>
-                  <input type="date" value={editingTask.endDate} onChange={(e) => setEditingTask({ ...editingTask, endDate: e.target.value })} className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground" />
-                </div>
-              </div>
               <div>
-                <label className="text-xs font-medium text-muted-foreground mb-2 block">Assign Employees</label>
-                <select
-                  onChange={(e) => {
-                    if (e.target.value) {
-                      const empName = e.target.value;
-                      if (!editingTask.assignedEmployees.includes(empName)) {
-                        const newEmployees = [...editingTask.assignedEmployees, empName];
-                        setEditingTask({ 
-                          ...editingTask, 
-                          assignedEmployees: newEmployees,
-                          assignedTo: newEmployees.join(", ")
-                        });
-                      }
-                      e.target.value = "";
-                    }
-                  }}
-                  className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground mb-2"
-                  defaultValue=""
-                >
-                  <option value="" disabled>
-                    {employees.length === 0 ? "No employees available" : "Select employees..."}
-                  </option>
-                  {employees.map((emp) => (
-                    <option 
-                      key={emp.id} 
-                      value={emp.name} 
-                      disabled={editingTask.assignedEmployees.includes(emp.name)}
-                    >
-                      {emp.name} — {emp.role}{editingTask.assignedEmployees.includes(emp.name) ? " ✓" : ""}
-                    </option>
-                  ))}
-                </select>
-                
-                {/* Display selected employees */}
-                {editingTask.assignedEmployees.length > 0 && (
-                  <div className="flex flex-wrap gap-2">
-                    {editingTask.assignedEmployees.map((empName) => {
-                      const emp = employees.find(e => e.name === empName);
-                      return (
-                        <div key={empName} className="flex items-center gap-1.5 px-2 py-1 bg-primary/10 border border-primary/20 rounded-md">
-                          <span className="text-xs font-medium text-primary">{empName}</span>
-                          {emp && <span className="text-xs text-primary/70">• {emp.role}</span>}
-                          <button 
-                            type="button" 
-                            onClick={() => {
-                              const newEmployees = editingTask.assignedEmployees.filter(n => n !== empName);
-                              setEditingTask({ 
-                                ...editingTask, 
-                                assignedEmployees: newEmployees,
-                                assignedTo: newEmployees.join(", ")
-                              });
-                            }}
-                            className="text-primary hover:text-primary/70"
-                          >
-                            <X className="w-3 h-3" />
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
+                <label className="text-xs font-medium text-muted-foreground mb-2 block">Amount (₹)</label>
+                <input 
+                  type="text" 
+                  value={`₹ ${editingTask.amount?.toLocaleString() || 0}`}
+                  readOnly
+                  className="w-full px-3 py-2 rounded-lg bg-secondary/50 text-sm border border-border text-card-foreground font-bold" 
+                />
               </div>
               <div>
                 <label className="text-xs font-medium text-muted-foreground mb-2 block">Status</label>
