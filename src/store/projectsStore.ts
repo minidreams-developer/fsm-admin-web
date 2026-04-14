@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-export type WorkOrderStatus = "Authorization Pending" | "Open" | "Scheduled" | "Completed" | "Converted";
+export type WorkOrderStatus = "Authorization Pending" | "Ongoing" | "Upcoming" | "Missed" | "Cancelled" | "Completed" | "Converted";
 
 export type ExecutiveSignature = {
   name: string;
@@ -25,6 +25,7 @@ export type WorkOrder = {
   billingAddress?: string;
   workOrderDateTime?: string;
   salesExecutive?: string;
+  workOrderIncharge?: string;
   subject?: string;
   reference?: string;
   period?: string;
@@ -182,7 +183,7 @@ const initialWorkOrders: WorkOrder[] = [
     termsAndConditions: "Standard terms apply.",
     start: "Jan 10, 2026",
     end: "Jan 9, 2027",
-    status: "Scheduled",
+    status: "Ongoing",
     phone: "9876543210",
     email: "",
     serviceType: "Cockroach Control (AMC - 4/Year)",
@@ -234,7 +235,7 @@ const initialWorkOrders: WorkOrder[] = [
     termsAndConditions: "Standard terms apply.",
     start: "Mar 1, 2026",
     end: "Mar 1, 2026",
-    status: "Open",
+    status: "Upcoming",
     phone: "9876543210",
     email: "",
     serviceType: "Mosquito Fogging (One-Time)",
@@ -260,7 +261,7 @@ const initialWorkOrders: WorkOrder[] = [
     termsAndConditions: "Standard terms apply.",
     start: "Mar 20, 2026",
     end: "Mar 19, 2027",
-    status: "Scheduled",
+    status: "Ongoing",
     phone: "9876543210",
     email: "",
     serviceType: "Rat Control (AMC - Bi-Monthly)",
@@ -288,7 +289,7 @@ const initialWorkOrders: WorkOrder[] = [
     termsAndConditions: "Standard terms apply.",
     start: "Jan 15, 2026",
     end: "Jan 15, 2027",
-    status: "Scheduled",
+    status: "Ongoing",
     phone: "9876543220",
     email: "manager@hotelgrand.com",
     serviceType: "Bed Bug Treatment (AMC - Monthly)",
@@ -314,7 +315,7 @@ const initialWorkOrders: WorkOrder[] = [
     termsAndConditions: "Standard terms apply.",
     start: "Feb 10, 2026",
     end: "Feb 9, 2027",
-    status: "Scheduled",
+    status: "Ongoing",
     phone: "9876543220",
     email: "manager@hotelgrand.com",
     serviceType: "Cockroach Control (AMC - Monthly)",
@@ -366,7 +367,7 @@ const initialWorkOrders: WorkOrder[] = [
     termsAndConditions: "Standard terms apply.",
     start: "Mar 25, 2026",
     end: "Mar 24, 2027",
-    status: "Open",
+    status: "Upcoming",
     phone: "9876543220",
     email: "manager@hotelgrand.com",
     serviceType: "Mosquito Control (AMC - Monthly)",
@@ -420,7 +421,7 @@ const initialWorkOrders: WorkOrder[] = [
     termsAndConditions: "Standard terms apply.",
     start: "Feb 15, 2026",
     end: "Feb 14, 2027",
-    status: "Scheduled",
+    status: "Ongoing",
     phone: "9876543240",
     email: "lakshmi.stores@email.com",
     serviceType: "Cockroach Control (AMC - Quarterly)",
@@ -472,7 +473,7 @@ const initialWorkOrders: WorkOrder[] = [
     termsAndConditions: "Standard terms apply.",
     start: "Mar 28, 2026",
     end: "Mar 27, 2027",
-    status: "Open",
+    status: "Upcoming",
     phone: "9876543240",
     email: "lakshmi.stores@email.com",
     serviceType: "Fly Control (AMC - Monthly)",
@@ -540,7 +541,7 @@ export const useProjectsStore = create<ProjectsStore>()(
             customerConfirmation: wo.customerConfirmation as CustomerConfirmation | undefined,
             start: typeof wo.start === "string" ? wo.start : "",
             end: typeof wo.end === "string" ? wo.end : "",
-            status: wo.status === "Authorization Pending" || wo.status === "Open" || wo.status === "Scheduled" || wo.status === "Completed" ? wo.status : "Authorization Pending",
+            status: wo.status === "Authorization Pending" || wo.status === "Ongoing" || wo.status === "Upcoming" || wo.status === "Missed" || wo.status === "Cancelled" || wo.status === "Completed" || wo.status === "Converted" ? wo.status : "Authorization Pending",
             phone: typeof wo.phone === "string" ? wo.phone : "",
             email: typeof wo.email === "string" ? wo.email : "",
             serviceType: typeof wo.serviceType === "string" ? wo.serviceType : "",

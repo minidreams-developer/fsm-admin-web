@@ -9,8 +9,10 @@ import { toast } from "sonner";
 
 const statusMap = {
   "Authorization Pending": "warning",
-  Scheduled: "success",
-  Open: "warning",
+  Ongoing: "success",
+  Upcoming: "info",
+  Missed: "destructive",
+  Cancelled: "neutral",
   Completed: "neutral",
   Converted: "info",
 } as const;
@@ -22,7 +24,7 @@ const ProjectsPage = () => {
   const { getLead, updateLead } = useLeadsStore();
   const [search, setSearch] = useState("");
   const [dateFilter, setDateFilter] = useState<"All" | "Due Today">("All");
-  const [statusFilter, setStatusFilter] = useState<"All" | "Authorization Pending" | "Open" | "Scheduled" | "Completed" | "Converted">("All");
+  const [statusFilter, setStatusFilter] = useState<"All" | "Authorization Pending" | "Ongoing" | "Upcoming" | "Missed" | "Cancelled" | "Completed" | "Converted">("All");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [showDateFilter, setShowDateFilter] = useState(false);
@@ -187,7 +189,7 @@ const ProjectsPage = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-7 gap-4">
         <div className="bg-card rounded-xl p-5 card-shadow border border-border">
           <div className="flex items-start gap-3">
             <div className="p-2.5 bg-warning/10 rounded-lg flex-shrink-0">
@@ -204,27 +206,13 @@ const ProjectsPage = () => {
 
         <div className="bg-card rounded-xl p-5 card-shadow border border-border">
           <div className="flex items-start gap-3">
-            <div className="p-2.5 bg-warning/10 rounded-lg flex-shrink-0">
-              <Clipboard className="w-5 h-5 text-warning" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-medium text-muted-foreground mb-1">Not Yet Scheduled</p>
-              <p className="text-2xl font-bold text-card-foreground">
-                {workOrders.filter((p) => p.status === "Open").length}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-card rounded-xl p-5 card-shadow border border-border">
-          <div className="flex items-start gap-3">
             <div className="p-2.5 bg-success/10 rounded-lg flex-shrink-0">
               <Calendar className="w-5 h-5 text-success" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-medium text-muted-foreground mb-1">Scheduled & Active</p>
+              <p className="text-xs font-medium text-muted-foreground mb-1">Ongoing</p>
               <p className="text-2xl font-bold text-card-foreground">
-                {workOrders.filter((p) => p.status === "Scheduled").length}
+                {workOrders.filter((p) => p.status === "Ongoing").length}
               </p>
             </div>
           </div>
@@ -236,8 +224,36 @@ const ProjectsPage = () => {
               <Calendar className="w-5 h-5 text-primary" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-medium text-muted-foreground mb-1">Due Today</p>
-              <p className="text-2xl font-bold text-card-foreground">{workOrders.filter(isDueToday).length}</p>
+              <p className="text-xs font-medium text-muted-foreground mb-1">Upcoming</p>
+              <p className="text-2xl font-bold text-card-foreground">
+                {workOrders.filter((p) => p.status === "Upcoming").length}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-card rounded-xl p-5 card-shadow border border-border">
+          <div className="flex items-start gap-3">
+            <div className="p-2.5 bg-destructive/10 rounded-lg flex-shrink-0">
+              <Calendar className="w-5 h-5 text-destructive" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-medium text-muted-foreground mb-1">Missed</p>
+              <p className="text-2xl font-bold text-card-foreground">{workOrders.filter((p) => p.status === "Missed").length}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-card rounded-xl p-5 card-shadow border border-border">
+          <div className="flex items-start gap-3">
+            <div className="p-2.5 bg-neutral/10 rounded-lg flex-shrink-0">
+              <User className="w-5 h-5 text-muted-foreground" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-medium text-muted-foreground mb-1">Cancelled</p>
+              <p className="text-2xl font-bold text-card-foreground">
+                {workOrders.filter((p) => p.status === "Cancelled").length}
+              </p>
             </div>
           </div>
         </div>
@@ -251,6 +267,20 @@ const ProjectsPage = () => {
               <p className="text-xs font-medium text-muted-foreground mb-1">Completed This Month</p>
               <p className="text-2xl font-bold text-card-foreground">
                 {workOrders.filter((p) => p.status === "Completed").length}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-card rounded-xl p-5 card-shadow border border-border">
+          <div className="flex items-start gap-3">
+            <div className="p-2.5 bg-primary/10 rounded-lg flex-shrink-0">
+              <User className="w-5 h-5 text-primary" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-medium text-muted-foreground mb-1">Converted</p>
+              <p className="text-2xl font-bold text-card-foreground">
+                {workOrders.filter((p) => p.status === "Converted").length}
               </p>
             </div>
           </div>
@@ -303,7 +333,7 @@ const ProjectsPage = () => {
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          {(["All", "Authorization Pending", "Open", "Scheduled", "Completed", "Converted"] as const).map((s) => (
+          {(["All", "Authorization Pending", "Ongoing", "Upcoming", "Missed", "Cancelled", "Completed", "Converted"] as const).map((s) => (
             <button key={s} type="button" onClick={() => setStatusFilter(s)}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap ${statusFilter === s ? "text-white shadow-[0px_5px_12px_rgba(39,47,158,0.2)]" : "bg-card border border-border text-muted-foreground hover:text-card-foreground"}`}
               style={statusFilter === s ? { background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" } : {}}
