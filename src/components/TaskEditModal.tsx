@@ -11,8 +11,8 @@ import { useState } from "react";
 const taskSchema = z.object({
   title: z.string().min(1, "Task title is required"),
   description: z.string().optional(),
-  startDate: z.string().min(1, "Start date is required"),
-  endDate: z.string().min(1, "End date is required"),
+  startTime: z.string().min(1, "Start time is required"),
+  endTime: z.string().min(1, "End time is required"),
   assignedEmployees: z.array(z.string()).min(1, "At least one person must be assigned"),
   status: z.enum(["Pending", "In Progress", "Completed"]),
 });
@@ -41,8 +41,8 @@ export function TaskEditModal({ task, isOpen, onClose, onSave }: TaskEditModalPr
     defaultValues: {
       title: task.title,
       description: task.description,
-      startDate: task.startDate,
-      endDate: task.endDate,
+      startTime: task.startDate || "",
+      endTime: task.endDate || "",
       assignedEmployees: task.assignedEmployees || [],
       status: task.status,
     },
@@ -61,8 +61,8 @@ export function TaskEditModal({ task, isOpen, onClose, onSave }: TaskEditModalPr
       updateTask(task.id, {
         title: data.title,
         description: data.description || "",
-        startDate: data.startDate,
-        endDate: data.endDate,
+        startDate: data.startTime,
+        endDate: data.endTime,
         assignedTo: data.assignedEmployees[0] || "", // Primary assignee
         assignedEmployees: data.assignedEmployees,
         status: data.status,
@@ -113,23 +113,23 @@ export function TaskEditModal({ task, isOpen, onClose, onSave }: TaskEditModalPr
           </div>
 
           <div>
-            <label className="text-xs font-medium text-muted-foreground mb-2 block">Start Date *</label>
+            <label className="text-xs font-medium text-muted-foreground mb-2 block">Start Time *</label>
             <input
-              type="date"
-              {...register("startDate")}
+              type="time"
+              {...register("startTime")}
               className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
             />
-            {errors.startDate && <p className="text-xs text-red-500 mt-1">{errors.startDate.message}</p>}
+            {errors.startTime && <p className="text-xs text-red-500 mt-1">{errors.startTime.message}</p>}
           </div>
 
           <div>
-            <label className="text-xs font-medium text-muted-foreground mb-2 block">End Date *</label>
+            <label className="text-xs font-medium text-muted-foreground mb-2 block">End Time *</label>
             <input
-              type="date"
-              {...register("endDate")}
+              type="time"
+              {...register("endTime")}
               className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
             />
-            {errors.endDate && <p className="text-xs text-red-500 mt-1">{errors.endDate.message}</p>}
+            {errors.endTime && <p className="text-xs text-red-500 mt-1">{errors.endTime.message}</p>}
           </div>
 
           <div>
