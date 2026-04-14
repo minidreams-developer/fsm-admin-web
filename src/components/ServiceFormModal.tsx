@@ -75,10 +75,10 @@ export function ServiceFormModal({ open, onClose, onSaved, appointment, mode = "
       toast.error("Employee name is required");
       return;
     }
-    if (!form.date) {
-      toast.error("Date is required");
-      return;
-    }
+    // if (!form.date) {
+    //   toast.error("Date is required");
+    //   return;
+    // }
     if (!form.time) {
       toast.error("Time is required");
       return;
@@ -102,6 +102,11 @@ export function ServiceFormModal({ open, onClose, onSaved, appointment, mode = "
       subject: form.subject.trim(),
       refNo: form.refNo || "",
       warrantyPeriod: form.warrantyPeriod || "",
+      unitPrice: form.unitPrice || "",
+      state: form.state || "",
+      gst: form.gst || "",
+      igst: form.igst || "",
+      cgst: form.cgst || "",
       serviceDescription: form.serviceDescription || "",
       instructions: form.instructions || "",
       tasks: form.tasks || [],
@@ -169,7 +174,7 @@ export function ServiceFormModal({ open, onClose, onSaved, appointment, mode = "
                 <option value="Cancelled">Cancelled</option>
               </select>
             </div>
-            <div>
+            {/* <div>
               <label className="text-xs font-medium text-muted-foreground mb-2 block">Date *</label>
               <input
                 type="date"
@@ -177,7 +182,7 @@ export function ServiceFormModal({ open, onClose, onSaved, appointment, mode = "
                 onChange={(e) => setField("date", e.target.value)}
                 className="w-full px-3 py-2 rounded-lg bg-secondary text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 border border-border"
               />
-            </div>
+            </div> */}
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-2 block">Time *</label>
               <input

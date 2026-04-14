@@ -11,6 +11,7 @@ import { useTasksStore } from "@/store/tasksStore";
 import { useProductsStore } from "@/store/productsStore";
 import { useEmployeesStore } from "@/store/employeesStore";
 import { useCustomersStore } from "@/store/customersStore";
+import { useServicesStore } from "@/store/servicesStore";
 
 const workOrderSchema = z.object({
   customer: z.string().min(1, "Customer name is required"),
@@ -58,6 +59,7 @@ const CreateWorkOrderPage = () => {
   const { products } = useProductsStore();
   const { employees } = useEmployeesStore();
   const { customers } = useCustomersStore();
+  const { appointments } = useServicesStore();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
@@ -67,8 +69,48 @@ const CreateWorkOrderPage = () => {
   const [selectedEmployees, setSelectedEmployees] = useState<string[]>([]);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>("");
   const [extraSiteAddresses, setExtraSiteAddresses] = useState<string[]>([]);
+  
+  // Service Appointments Schedule state
+  type ServiceSchedule = {
+    id: string;
+    service: string;
+    scheduleDate: string;
+    timeSlot: string;
+    requiredEmployees: number;
+  };
+  const [serviceSchedules, setServiceSchedules] = useState<ServiceSchedule[]>([]);
+  const [termsAccepted, setTermsAccepted] = useState(false);
 
-  const serviceOptions = products.filter((p) => p.category === "Services" && p.status === "Active").map((p) => p.name);
+  // Get services from both Products (Services category) and Service Appointments
+  const productServices = products.filter((p) => p.category === "Services" && p.status === "Active");
+  const appointmentServices = appointments
+    .filter((a) => a.subject) // Only include appointments with a subject
+    .map((a) => {
+      // Parse unitPrice - remove currency symbols and commas, then convert to number
+      let parsedUnitPrice = 0;
+      if (a.unitPrice) {
+        const cleanPrice = a.unitPrice.replace(/[₹,\s]/g, '');
+        parsedUnitPrice = parseFloat(cleanPrice) || 0;
+      } else if (a.payment?.amount) {
+        parsedUnitPrice = a.payment.amount;
+      }
+      
+      return {
+        name: a.subject || "",
+        description: a.serviceDescription || "",
+        unitPrice: parsedUnitPrice,
+      };
+    });
+  
+  // Combine and deduplicate services by name
+  const allServices = [
+    ...productServices.map(p => ({ name: p.name, description: p.description, unitPrice: p.unitPrice })),
+    ...appointmentServices
+  ];
+  const uniqueServices = Array.from(
+    new Map(allServices.map(s => [s.name, s])).values()
+  );
+  const serviceOptions = uniqueServices.map(s => s.name);
   
   // Filter employees to show only Sales Executives
   const salesExecutives = employees.filter((emp) => emp.role === "Sales Executive");
@@ -110,13 +152,15 @@ const CreateWorkOrderPage = () => {
       setValue("serviceType", next[0] ?? "");
       // add as task if not already there
       if (!prev.includes(value) && !tasks.find((t) => t.title === value)) {
+        // Find the service details from combined services list
+        const service = uniqueServices.find(s => s.name === value);
         setTasks((t) => [...t, { 
           id: Date.now().toString(), 
           title: value,
-          description: "",
-          unitPrice: 0,
+          description: service?.description || "",
+          unitPrice: service?.unitPrice || 0,
           quantity: 1,
-          amount: 0,
+          amount: service?.unitPrice || 0,
           startDate: "", 
           endDate: "", 
           assignedTo: "", 
@@ -475,8 +519,8 @@ const CreateWorkOrderPage = () => {
             <h2 className="text-base font-bold text-card-foreground">Services</h2>
             <p className="text-xs text-muted-foreground mt-0.5">Services added</p>
           </div>
-          <div className="flex">
-            <div className="flex-1">
+          <div className="flex flex-row">
+            <div className="flex-1 min-w-0">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border bg-secondary/30">
@@ -548,8 +592,7 @@ const CreateWorkOrderPage = () => {
                   ))}
                 </tbody>
               </table>
-            </div>
-            <div className="w-64 border-l border-border bg-secondary/10 p-4 space-y-3">
+               <div className="w-64 flex-shrink-0  border-border bg-secondary/10 p-4 space-y-3 self-start ml-auto">
               <div className="flex justify-between items-center">
                 <span className="text-xs font-medium text-muted-foreground">Subtotal</span>
                 <span className="text-sm font-semibold text-card-foreground">
@@ -571,9 +614,175 @@ const CreateWorkOrderPage = () => {
                 </div>
               </div>
             </div>
+            </div>
+           
           </div>
         </div>
       )}
+
+      {/* Service Appointments Schedule */}
+      {tasks.length > 0 && (
+        <div className="bg-card rounded-xl card-shadow border border-border overflow-hidden">
+          <div className="px-6 py-4 border-b border-border">
+            <h2 className="text-base font-bold text-card-foreground">Service Appointments Schedule</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">Schedule service visits for this work order</p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border bg-secondary/30">
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-12">#</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Service</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Schedule Date</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Time Slot</th>
+                  <th className="text-center px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Required Employees</th>
+                </tr>
+              </thead>
+              <tbody>
+                {tasks.map((task, index) => {
+                  const schedule = serviceSchedules.find(s => s.service === task.title) || {
+                    id: task.id,
+                    service: task.title,
+                    scheduleDate: "",
+                    timeSlot: "",
+                    requiredEmployees: 1
+                  };
+                  
+                  return (
+                    <tr key={task.id} className="border-b border-border last:border-0 hover:bg-secondary/10 transition-colors">
+                      <td className="px-4 py-3 text-xs text-muted-foreground">{index + 1}</td>
+                      <td className="px-4 py-3 font-medium text-card-foreground text-sm">{task.title}</td>
+                      <td className="px-4 py-3">
+                        <input
+                          type="date"
+                          value={schedule.scheduleDate}
+                          onChange={(e) => {
+                            setServiceSchedules(prev => {
+                              const existing = prev.find(s => s.service === task.title);
+                              if (existing) {
+                                return prev.map(s => s.service === task.title ? { ...s, scheduleDate: e.target.value } : s);
+                              }
+                              return [...prev, { ...schedule, scheduleDate: e.target.value }];
+                            });
+                          }}
+                          className="w-full px-3 py-1.5 rounded-lg bg-secondary text-xs border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
+                        />
+                      </td>
+                      <td className="px-4 py-3">
+                        <select
+                          value={schedule.timeSlot}
+                          onChange={(e) => {
+                            setServiceSchedules(prev => {
+                              const existing = prev.find(s => s.service === task.title);
+                              if (existing) {
+                                return prev.map(s => s.service === task.title ? { ...s, timeSlot: e.target.value } : s);
+                              }
+                              return [...prev, { ...schedule, timeSlot: e.target.value }];
+                            });
+                          }}
+                          className="w-full px-3 py-1.5 rounded-lg bg-secondary text-xs border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
+                        >
+                          <option value="">Select time slot</option>
+                          <option value="09:00 AM - 11:00 AM">09:00 AM - 11:00 AM</option>
+                          <option value="10:00 AM - 12:00 PM">10:00 AM - 12:00 PM</option>
+                          <option value="11:00 AM - 01:00 PM">11:00 AM - 01:00 PM</option>
+                          <option value="02:00 PM - 04:00 PM">02:00 PM - 04:00 PM</option>
+                          <option value="03:00 PM - 05:00 PM">03:00 PM - 05:00 PM</option>
+                          <option value="04:00 PM - 06:00 PM">04:00 PM - 06:00 PM</option>
+                        </select>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center justify-center gap-2">
+                          <button 
+                            type="button"
+                            onClick={() => {
+                              setServiceSchedules(prev => {
+                                const existing = prev.find(s => s.service === task.title);
+                                const newCount = Math.max(1, (existing?.requiredEmployees || 1) - 1);
+                                if (existing) {
+                                  return prev.map(s => s.service === task.title ? { ...s, requiredEmployees: newCount } : s);
+                                }
+                                return [...prev, { ...schedule, requiredEmployees: newCount }];
+                              });
+                            }}
+                            className="w-6 h-6 flex items-center justify-center rounded border border-border hover:bg-secondary transition-colors"
+                          >
+                            <span className="text-xs">−</span>
+                          </button>
+                          <span className="text-xs font-semibold text-card-foreground min-w-[2rem] text-center">
+                            {schedule.requiredEmployees}
+                          </span>
+                          <button 
+                            type="button"
+                            onClick={() => {
+                              setServiceSchedules(prev => {
+                                const existing = prev.find(s => s.service === task.title);
+                                const newCount = (existing?.requiredEmployees || 1) + 1;
+                                if (existing) {
+                                  return prev.map(s => s.service === task.title ? { ...s, requiredEmployees: newCount } : s);
+                                }
+                                return [...prev, { ...schedule, requiredEmployees: newCount }];
+                              });
+                            }}
+                            className="w-6 h-6 flex items-center justify-center rounded border border-border hover:bg-secondary transition-colors"
+                          >
+                            <span className="text-xs">+</span>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Terms & Conditions */}
+      <div className="bg-card rounded-xl card-shadow border border-border overflow-hidden">
+        <div className="px-6 py-4 border-b border-border">
+          <h2 className="text-base font-bold text-card-foreground">Terms & Conditions</h2>
+        </div>
+        <div className="px-6 py-5 space-y-3">
+          <div className="space-y-2.5">
+            <div className="flex gap-3">
+              <span className="text-sm font-medium text-muted-foreground flex-shrink-0">1.</span>
+              <p className="text-sm text-muted-foreground">Services will be performed as per the scheduled appointments</p>
+            </div>
+            <div className="flex gap-3">
+              <span className="text-sm font-medium text-muted-foreground flex-shrink-0">2.</span>
+              <p className="text-sm text-muted-foreground">Customer must provide access to all areas requiring treatment</p>
+            </div>
+            <div className="flex gap-3">
+              <span className="text-sm font-medium text-muted-foreground flex-shrink-0">3.</span>
+              <p className="text-sm text-muted-foreground">Payment is due within 30 days of invoice date</p>
+            </div>
+            <div className="flex gap-3">
+              <span className="text-sm font-medium text-muted-foreground flex-shrink-0">4.</span>
+              <p className="text-sm text-muted-foreground">24-hour advance notice required for rescheduling</p>
+            </div>
+            <div className="flex gap-3">
+              <span className="text-sm font-medium text-muted-foreground flex-shrink-0">5.</span>
+              <p className="text-sm text-muted-foreground">Service warranty valid for 30 days after each treatment</p>
+            </div>
+          </div>
+          
+          <div className="pt-4 border-t border-border">
+            <label className="flex items-center gap-3 cursor-pointer group">
+              <input
+                type="checkbox"
+                checked={termsAccepted}
+                onChange={(e) => setTermsAccepted(e.target.checked)}
+                className="w-5 h-5 rounded border-2 border-border text-primary focus:ring-2 focus:ring-primary/20 cursor-pointer"
+              />
+              <span className="text-sm font-medium text-card-foreground group-hover:text-primary transition-colors">
+                I agree to the terms and conditions
+              </span>
+            </label>
+          </div>
+        </div>
+      </div>
 
 
         <div className="flex justify-end gap-3 pt-6 border-t border-border">
