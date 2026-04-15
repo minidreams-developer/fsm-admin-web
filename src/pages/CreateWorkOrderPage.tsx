@@ -324,13 +324,13 @@ const CreateWorkOrderPage = () => {
             {errors.address && <p className="text-xs text-red-500 mt-1">{errors.address.message}</p>}
           </div>
 
-          <div>
+          {/* <div>
             <label className="text-xs font-medium text-muted-foreground mb-2 block">Location</label>
             <input type="text" placeholder="e.g. Kochi, Kerala" {...register("location")} className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground" />
-          </div>
+          </div> */}
 
           <div>
-            <label className="text-xs font-medium text-muted-foreground mb-2 block">Live Location</label>
+            <label className="text-xs font-medium text-muted-foreground mb-2 block"> Location URL</label>
             <input type="text" placeholder="e.g. Google Maps link or coordinates" {...register("liveLocation")} className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground" />
           </div>
 
@@ -453,7 +453,7 @@ const CreateWorkOrderPage = () => {
 
          
 
-          <div className="md:col-span-3">
+          <div className="text-xs font-medium text-muted-foreground mb-2 block">
             <label className="text-xs font-medium text-muted-foreground mb-2 block">Assign Sales Executives</label>
             <select
               onChange={(e) => { if (e.target.value) { toggleEmployee(e.target.value); e.target.value = ""; } }}
@@ -489,14 +489,14 @@ const CreateWorkOrderPage = () => {
                     </div>
                   );
                 })}
-              </div>
+              </div>  
             )}
             
             {/* Hidden input for form compatibility */}
             <input type="hidden" {...register("assignedTech")} value={selectedEmployees.join(", ")} />
           </div>
 
-          <div className="md:col-span-3">
+          <div className="text-xs font-medium text-muted-foreground mb-2 block">
             <label className="text-xs font-medium text-muted-foreground mb-2 block">Notes</label>
             <textarea placeholder="Additional notes..." rows={3} {...register("notes")} className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground resize-none" />
           </div>

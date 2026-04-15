@@ -135,7 +135,7 @@ const ProductsPage = () => {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border">
-              {["Product ID", "Name", "Category", "Unit", "Price", "Reorder Level", "Active/Inactive", "Actions"].map((h) => (
+              {["Product ID", "Name", "Category", "Unit", "Price", "Active/Inactive", "Actions"].map((h) => (
                 <th key={h} className="text-left px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                   {h}
                 </th>
@@ -156,7 +156,6 @@ const ProductsPage = () => {
                   <td className="px-3 py-3 text-muted-foreground text-xs">{product.category}</td>
                   <td className="px-3 py-3 text-muted-foreground text-xs">{product.unitOfMeasurement}</td>
                   <td className="px-3 py-3 font-semibold text-card-foreground text-xs">₹{product.unitPrice}</td>
-                  <td className="px-3 py-3 text-muted-foreground text-xs">{product.reorderLevel}</td>
                   <td className="px-3 py-3">
                     <button
                       onClick={(e) => { e.stopPropagation(); updateProduct(product.id, { status: product.status === "Active" ? "Inactive" : "Active" }); }}
@@ -188,7 +187,7 @@ const ProductsPage = () => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={8} className="px-5 py-8 text-center text-muted-foreground">
+                  <td colSpan={7} className="px-5 py-8 text-center text-muted-foreground">
                     No products found
                   </td>
                 </tr>
