@@ -338,12 +338,7 @@ const EditWorkOrderPage = () => {
           </div>
 
           <div>
-            <label className="text-xs font-medium text-muted-foreground mb-2 block">Location</label>
-            <input type="text" placeholder="e.g. Kochi, Kerala" {...register("location")} className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground" />
-          </div>
-
-          <div>
-            <label className="text-xs font-medium text-muted-foreground mb-2 block">Live Location</label>
+            <label className="text-xs font-medium text-muted-foreground mb-2 block">Location URL</label>
             <input type="text" placeholder="e.g. Google Maps link or coordinates" {...register("liveLocation")} className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground" />
           </div>
 
@@ -353,7 +348,7 @@ const EditWorkOrderPage = () => {
             {errors.subject && <p className="text-xs text-red-500 mt-1">{errors.subject.message}</p>}
           </div>
 
-          <div className="md:col-span-3">
+          <div>
             <label className="text-xs font-medium text-muted-foreground mb-2 block">Site Address</label>
             <textarea
               {...register("siteAddress")}
@@ -363,7 +358,7 @@ const EditWorkOrderPage = () => {
             />
           </div>
 
-          <div className="md:col-span-3">
+          <div>
             <label className="text-xs font-medium text-muted-foreground mb-2 block">Billing Address</label>
             <textarea
               {...register("billingAddress")}
@@ -424,7 +419,7 @@ const EditWorkOrderPage = () => {
             </select>
           </div>
 
-          <div className="md:col-span-3">
+          <div>
             <label className="text-xs font-medium text-muted-foreground mb-2 block">Assign Sales Executives</label>
             <select
               onChange={(e) => { if (e.target.value) { toggleEmployee(e.target.value); e.target.value = ""; } }}

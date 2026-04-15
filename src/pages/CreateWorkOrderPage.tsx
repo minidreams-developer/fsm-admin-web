@@ -340,7 +340,7 @@ const CreateWorkOrderPage = () => {
             {errors.subject && <p className="text-xs text-red-500 mt-1">{errors.subject.message}</p>}
           </div>
 
-          <div className="md:col-span-3">
+          <div className="text-xs font-medium text-muted-foreground mb-2 block">
             <div className="flex items-center justify-between mb-2">
               <label className="text-xs font-medium text-muted-foreground block">Site Address</label>
               <button
@@ -378,7 +378,7 @@ const CreateWorkOrderPage = () => {
             ))}
           </div>
 
-          <div className="md:col-span-3">
+          <div className="text-xs font-medium text-muted-foreground mb-2 block">
             <div className="flex items-center justify-between gap-3 mb-2">
               <label className="text-xs font-medium text-muted-foreground block">Billing Address</label>
               <button
