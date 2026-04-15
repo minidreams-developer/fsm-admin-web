@@ -326,10 +326,20 @@ export const CustomerDetailPage = () => {
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Billing Address</p>
             <p className="text-sm font-semibold text-card-foreground">{detail.billingAddress || "—"}</p>
           </div>
-          {detail.contactPersonsDetails && (
-            <div className="space-y-2">
+          {detail.contactPersonsDetails && detail.contactPersonsDetails.length > 0 && (
+            <div className="space-y-2 md:col-span-2">
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Contact Persons</p>
-              <p className="text-sm font-semibold text-card-foreground">{detail.contactPersonsDetails}</p>
+              <div className="space-y-2">
+                {detail.contactPersonsDetails.map((contact, index) => (
+                  <div key={index} className="text-sm font-semibold text-card-foreground">
+                    <p className="font-bold">{contact.name}</p>
+                    {contact.email && <p className="text-xs text-muted-foreground">Email: {contact.email}</p>}
+                    {contact.city && <p className="text-xs text-muted-foreground">City: {contact.city}</p>}
+                    {contact.pincode && <p className="text-xs text-muted-foreground">Pincode: {contact.pincode}</p>}
+                    {contact.address && <p className="text-xs text-muted-foreground">Address: {contact.address}</p>}
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>

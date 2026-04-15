@@ -1,6 +1,6 @@
 import { useNavigate, useParams } from "react-router-dom";
 import { X, Edit2, Plus } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -80,42 +80,50 @@ const EditWorkOrderPage = () => {
   const [selectedEmployees, setSelectedEmployees] = useState<string[]>([]);
   const [serviceSchedules, setServiceSchedules] = useState<ServiceSchedule[]>([]);
   const [termsAccepted, setTermsAccepted] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
 
-  // Get services from both Products and Service Appointments
-  const productServices = products.filter((p) => p.category === "Services" && p.status === "Active");
-  const appointmentServices = appointments
-    .filter((a) => a.subject)
-    .map((a) => {
-      let parsedUnitPrice = 0;
-      if (a.unitPrice) {
-        const cleanPrice = a.unitPrice.replace(/[₹,\s]/g, '');
-        parsedUnitPrice = parseFloat(cleanPrice) || 0;
-      } else if (a.payment?.amount) {
-        parsedUnitPrice = a.payment.amount;
-      }
-      
-      return {
-        name: a.subject || "",
-        description: a.serviceDescription || "",
-        unitPrice: parsedUnitPrice,
-      };
-    });
-  
-  const allServices = [
-    ...productServices.map(p => ({ name: p.name, description: p.description, unitPrice: p.unitPrice })),
-    ...appointmentServices
-  ];
-  const uniqueServices = Array.from(
-    new Map(allServices.map(s => [s.name, s])).values()
+  // Get services from both Products and Service Appointments - memoized to prevent recalculation
+  const uniqueServices = useMemo(() => {
+    const productServices = products.filter((p) => p.category === "Services" && p.status === "Active");
+    const appointmentServices = appointments
+      .filter((a) => a.subject)
+      .map((a) => {
+        let parsedUnitPrice = 0;
+        if (a.unitPrice) {
+          const cleanPrice = a.unitPrice.replace(/[₹,\s]/g, '');
+          parsedUnitPrice = parseFloat(cleanPrice) || 0;
+        } else if (a.payment?.amount) {
+          parsedUnitPrice = a.payment.amount;
+        }
+        
+        return {
+          name: a.subject || "",
+          description: a.serviceDescription || "",
+          unitPrice: parsedUnitPrice,
+        };
+      });
+    
+    const allServices = [
+      ...productServices.map(p => ({ name: p.name, description: p.description, unitPrice: p.unitPrice })),
+      ...appointmentServices
+    ];
+    
+    return Array.from(
+      new Map(allServices.map(s => [s.name, s])).values()
+    );
+  }, [products, appointments]);
+
+  const serviceOptions = useMemo(() => uniqueServices.map(s => s.name), [uniqueServices]);
+
+  // Filter employees to show only Sales Executives - memoized
+  const salesExecutives = useMemo(() => 
+    employees.filter((emp) => emp.role === "Sales Executive"),
+    [employees]
   );
-  const serviceOptions = uniqueServices.map(s => s.name);
 
-  // Filter employees to show only Sales Executives
-  const salesExecutives = employees.filter((emp) => emp.role === "Sales Executive");
-
-  // Initialize tasks and selected services when workOrder is available
+  // Initialize tasks and selected services when workOrder is available - only once
   useEffect(() => {
-    if (workOrder) {
+    if (workOrder && !isInitialized) {
       const existingTasks = getTasksByWorkOrder(workOrder.id);
       const serviceTypes = workOrder.serviceTypes ?? (workOrder.serviceType ? [workOrder.serviceType] : []);
       setSelectedServices(serviceTypes);
@@ -148,8 +156,9 @@ const EditWorkOrderPage = () => {
       });
       
       setTasks(reconstructedTasks);
+      setIsInitialized(true);
     }
-  }, [workOrder, getTasksByWorkOrder, uniqueServices]);
+  }, [workOrder, getTasksByWorkOrder, uniqueServices, isInitialized]);
   
   useEffect(() => {
     if (!workOrder) {
@@ -185,7 +194,7 @@ const EditWorkOrderPage = () => {
     },
   });
 
-  const toggleService = (value: string) => {
+  const toggleService = useCallback((value: string) => {
     setSelectedServices((prev) => {
       const next = prev.includes(value) ? prev.filter((s) => s !== value) : [...prev, value];
       setValue("serviceType", next[0] ?? "");
@@ -215,29 +224,29 @@ const EditWorkOrderPage = () => {
       
       return next;
     });
-  };
+  }, [setValue, tasks, uniqueServices]);
 
-  const toggleEmployee = (employeeName: string) => {
+  const toggleEmployee = useCallback((employeeName: string) => {
     setSelectedEmployees((prev) => 
       prev.includes(employeeName) 
         ? prev.filter((e) => e !== employeeName) 
         : [...prev, employeeName]
     );
-  };
+  }, []);
 
-  const removeService = (value: string) => toggleService(value);
+  const removeService = useCallback((value: string) => toggleService(value), [toggleService]);
 
-  const updateTaskData = (updated: Task) => {
+  const updateTaskData = useCallback((updated: Task) => {
     setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
     setEditingTask(null);
     toast.success("Service updated");
-  };
+  }, []);
 
-  const removeTask = (id: string) => {
+  const removeTask = useCallback((id: string) => {
     setTasks((prev) => prev.filter((t) => t.id !== id));
-  };
+  }, []);
 
-  const onSubmit = async (data: WorkOrderFormData) => {
+  const onSubmit = useCallback(async (data: WorkOrderFormData) => {
     setIsSubmitting(true);
     try {
       updateWorkOrder(workOrder.id, {
@@ -283,7 +292,7 @@ const EditWorkOrderPage = () => {
     } finally {
       setIsSubmitting(false);
     }
-  };
+  }, [workOrder.id, selectedServices, selectedEmployees, tasks, updateWorkOrder, updateTask, navigate]);
 
   const statusColors: Record<TaskStatus, string> = {
     Pending: "bg-warning/10 text-warning border-warning/20",
@@ -496,81 +505,81 @@ const EditWorkOrderPage = () => {
               <h2 className="text-base font-bold text-card-foreground">Services</h2>
               <p className="text-xs text-muted-foreground mt-0.5">Services added</p>
             </div>
-            <div className="flex flex-row">
-              <div className="flex-1 min-w-0 overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-border bg-secondary/30">
-                      <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">#</th>
-                      <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Service</th>
-                      <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Description</th>
-                      <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Unit Price</th>
-                      <th className="text-center px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Quantity</th>
-                      <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Amount</th>
-                      <th className="text-center px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Action</th>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border bg-secondary/30">
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">#</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Service</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Description</th>
+                    <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Unit Price</th>
+                    <th className="text-center px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Quantity</th>
+                    <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Amount</th>
+                    <th className="text-center px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {tasks.map((task, index) => (
+                    <tr key={task.id} className="border-b border-border last:border-0 hover:bg-secondary/10 transition-colors">
+                      <td className="px-4 py-3 text-xs text-muted-foreground">{index + 1}</td>
+                      <td className="px-4 py-3 font-medium text-card-foreground text-xs">{task.title}</td>
+                      <td className="px-4 py-3 text-muted-foreground text-xs max-w-xs truncate">{task.description || "—"}</td>
+                      <td className="px-4 py-3 text-right text-card-foreground text-xs font-semibold">₹ {task.unitPrice?.toLocaleString() || 0}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center justify-center gap-2">
+                          <button 
+                            type="button"
+                            onClick={() => {
+                              const newQuantity = Math.max(1, task.quantity - 1);
+                              const newAmount = task.unitPrice * newQuantity;
+                              setTasks(prev => prev.map(t => t.id === task.id ? { ...t, quantity: newQuantity, amount: newAmount } : t));
+                            }}
+                            className="w-6 h-6 flex items-center justify-center rounded border border-border hover:bg-secondary transition-colors"
+                          >
+                            <span className="text-xs">−</span>
+                          </button>
+                          <span className="text-xs font-semibold text-card-foreground min-w-[2rem] text-center">{task.quantity || 1}</span>
+                          <button 
+                            type="button"
+                            onClick={() => {
+                              const newQuantity = task.quantity + 1;
+                              const newAmount = task.unitPrice * newQuantity;
+                              setTasks(prev => prev.map(t => t.id === task.id ? { ...t, quantity: newQuantity, amount: newAmount } : t));
+                            }}
+                            className="w-6 h-6 flex items-center justify-center rounded border border-border hover:bg-secondary transition-colors"
+                          >
+                            <span className="text-xs">+</span>
+                          </button>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-right text-card-foreground text-xs font-bold">₹ {task.amount?.toLocaleString() || 0}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center justify-center gap-1">
+                          <button 
+                            type="button"
+                            onClick={() => setEditingTask({ ...task })} 
+                            className="p-1.5 rounded-md border border-border hover:bg-secondary transition-colors" 
+                            title="Edit service"
+                          >
+                            <Edit2 className="w-3.5 h-3.5 text-muted-foreground" />
+                          </button>
+                          <button 
+                            type="button"
+                            onClick={() => removeTask(task.id)} 
+                            className="p-1.5 rounded-md border border-border hover:bg-destructive/10 transition-colors" 
+                            title="Remove service"
+                          >
+                            <X className="w-3.5 h-3.5 text-destructive" />
+                          </button>
+                        </div>
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {tasks.map((task, index) => (
-                      <tr key={task.id} className="border-b border-border last:border-0 hover:bg-secondary/10 transition-colors">
-                        <td className="px-4 py-3 text-xs text-muted-foreground">{index + 1}</td>
-                        <td className="px-4 py-3 font-medium text-card-foreground text-xs">{task.title}</td>
-                        <td className="px-4 py-3 text-muted-foreground text-xs max-w-xs truncate">{task.description || "—"}</td>
-                        <td className="px-4 py-3 text-right text-card-foreground text-xs font-semibold">₹ {task.unitPrice?.toLocaleString() || 0}</td>
-                        <td className="px-4 py-3">
-                          <div className="flex items-center justify-center gap-2">
-                            <button 
-                              type="button"
-                              onClick={() => {
-                                const newQuantity = Math.max(1, task.quantity - 1);
-                                const newAmount = task.unitPrice * newQuantity;
-                                setTasks(prev => prev.map(t => t.id === task.id ? { ...t, quantity: newQuantity, amount: newAmount } : t));
-                              }}
-                              className="w-6 h-6 flex items-center justify-center rounded border border-border hover:bg-secondary transition-colors"
-                            >
-                              <span className="text-xs">−</span>
-                            </button>
-                            <span className="text-xs font-semibold text-card-foreground min-w-[2rem] text-center">{task.quantity || 1}</span>
-                            <button 
-                              type="button"
-                              onClick={() => {
-                                const newQuantity = task.quantity + 1;
-                                const newAmount = task.unitPrice * newQuantity;
-                                setTasks(prev => prev.map(t => t.id === task.id ? { ...t, quantity: newQuantity, amount: newAmount } : t));
-                              }}
-                              className="w-6 h-6 flex items-center justify-center rounded border border-border hover:bg-secondary transition-colors"
-                            >
-                              <span className="text-xs">+</span>
-                            </button>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 text-right text-card-foreground text-xs font-bold">₹ {task.amount?.toLocaleString() || 0}</td>
-                        <td className="px-4 py-3">
-                          <div className="flex items-center justify-center gap-1">
-                            <button 
-                              type="button"
-                              onClick={() => setEditingTask({ ...task })} 
-                              className="p-1.5 rounded-md border border-border hover:bg-secondary transition-colors" 
-                              title="Edit service"
-                            >
-                              <Edit2 className="w-3.5 h-3.5 text-muted-foreground" />
-                            </button>
-                            <button 
-                              type="button"
-                              onClick={() => removeTask(task.id)} 
-                              className="p-1.5 rounded-md border border-border hover:bg-destructive/10 transition-colors" 
-                              title="Remove service"
-                            >
-                              <X className="w-3.5 h-3.5 text-destructive" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              <div className="w-64 flex-shrink-0 border-l border-border bg-secondary/10 p-4 space-y-3">
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="px-6 py-4 border-t border-border bg-secondary/10">
+              <div className="flex flex-col gap-2 max-w-sm ml-auto">
                 <div className="flex justify-between items-center">
                   <span className="text-xs font-medium text-muted-foreground">Subtotal</span>
                   <span className="text-sm font-semibold text-card-foreground">
@@ -583,7 +592,7 @@ const EditWorkOrderPage = () => {
                     ₹ {(tasks.reduce((sum, t) => sum + (t.amount || 0), 0) * 0.18).toLocaleString()}
                   </span>
                 </div>
-                <div className="pt-3 border-t border-border">
+                <div className="pt-2 border-t border-border">
                   <div className="flex justify-between items-center">
                     <span className="text-sm font-bold text-card-foreground">Total Amount</span>
                     <span className="text-lg font-bold text-primary">
