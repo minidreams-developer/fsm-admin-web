@@ -18,6 +18,7 @@ const workOrderSchema = z.object({
   phone: z.string().min(1, "Phone is required"),
   address: z.string().min(1, "Address is required"),
   email: z.string().email().optional().or(z.literal("")),
+  location: z.string().optional(),
   subject: z.string().min(1, "Subject is required"),
   serviceType: z.string().optional(),
   frequency: z.string().optional(),
@@ -320,6 +321,17 @@ const CreateWorkOrderPage = () => {
             {errors.address && <p className="text-xs text-red-500 mt-1">{errors.address.message}</p>}
           </div>
 
+          <div>
+            <label className="text-xs font-medium text-muted-foreground mb-2 block">Location</label>
+            <input type="text" placeholder="e.g. Kochi, Kerala" {...register("location")} className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground" />
+          </div>
+
+          <div>
+            <label className="text-xs font-medium text-muted-foreground mb-2 block">Subject *</label>
+            <input type="text" placeholder="Work order subject" {...register("subject")} className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground" />
+            {errors.subject && <p className="text-xs text-red-500 mt-1">{errors.subject.message}</p>}
+          </div>
+
           <div className="md:col-span-3">
             <div className="flex items-center justify-between mb-2">
               <label className="text-xs font-medium text-muted-foreground block">Site Address</label>
@@ -378,12 +390,6 @@ const CreateWorkOrderPage = () => {
               rows={2}
               className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none"
             />
-          </div>
-
-          <div>
-            <label className="text-xs font-medium text-muted-foreground mb-2 block">Subject *</label>
-            <input type="text" placeholder="Work order subject" {...register("subject")} className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground" />
-            {errors.subject && <p className="text-xs text-red-500 mt-1">{errors.subject.message}</p>}
           </div>
 
           <div>
