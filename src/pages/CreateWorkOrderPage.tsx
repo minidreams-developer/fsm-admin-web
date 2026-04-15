@@ -46,6 +46,8 @@ type Task = {
   amount: number;
   startDate: string;
   endDate: string;
+  fromTime: string;
+  toTime: string;
   assignedTo: string;
   assignedEmployees: string[];
   status: TaskStatus;
@@ -76,7 +78,7 @@ const CreateWorkOrderPage = () => {
     service: string;
     scheduleDate: string;
     timeSlot: string;
-    requiredEmployees: number;
+    assignedEmployees: string[];
   };
   const [serviceSchedules, setServiceSchedules] = useState<ServiceSchedule[]>([]);
   const [termsAccepted, setTermsAccepted] = useState(false);
@@ -162,7 +164,9 @@ const CreateWorkOrderPage = () => {
           quantity: 1,
           amount: service?.unitPrice || 0,
           startDate: "", 
-          endDate: "", 
+          endDate: "",
+          fromTime: "",
+          toTime: "",
           assignedTo: "", 
           assignedEmployees: [],
           status: "Pending"
@@ -645,7 +649,7 @@ const CreateWorkOrderPage = () => {
                     service: task.title,
                     scheduleDate: "",
                     timeSlot: "",
-                    requiredEmployees: 1
+                    assignedEmployees: []
                   };
                   
                   return (
@@ -692,42 +696,77 @@ const CreateWorkOrderPage = () => {
                         </select>
                       </td>
                       <td className="px-4 py-3">
-                        <div className="flex items-center justify-center gap-2">
-                          <button 
-                            type="button"
-                            onClick={() => {
-                              setServiceSchedules(prev => {
-                                const existing = prev.find(s => s.service === task.title);
-                                const newCount = Math.max(1, (existing?.requiredEmployees || 1) - 1);
-                                if (existing) {
-                                  return prev.map(s => s.service === task.title ? { ...s, requiredEmployees: newCount } : s);
-                                }
-                                return [...prev, { ...schedule, requiredEmployees: newCount }];
-                              });
+                        <div className="space-y-2">
+                          <select
+                            onChange={(e) => {
+                              if (e.target.value) {
+                                const empName = e.target.value;
+                                setServiceSchedules(prev => {
+                                  const existing = prev.find(s => s.service === task.title);
+                                  const currentEmployees = existing?.assignedEmployees || [];
+                                  
+                                  if (!currentEmployees.includes(empName)) {
+                                    const newEmployees = [...currentEmployees, empName];
+                                    if (existing) {
+                                      return prev.map(s => s.service === task.title ? { ...s, assignedEmployees: newEmployees } : s);
+                                    }
+                                    return [...prev, { ...schedule, assignedEmployees: newEmployees }];
+                                  }
+                                  return prev;
+                                });
+                                e.target.value = "";
+                              }
                             }}
-                            className="w-6 h-6 flex items-center justify-center rounded border border-border hover:bg-secondary transition-colors"
+                            className="w-full px-3 py-1.5 rounded-lg bg-secondary text-xs border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
+                            defaultValue=""
                           >
-                            <span className="text-xs">−</span>
-                          </button>
-                          <span className="text-xs font-semibold text-card-foreground min-w-[2rem] text-center">
-                            {schedule.requiredEmployees}
-                          </span>
-                          <button 
-                            type="button"
-                            onClick={() => {
-                              setServiceSchedules(prev => {
-                                const existing = prev.find(s => s.service === task.title);
-                                const newCount = (existing?.requiredEmployees || 1) + 1;
-                                if (existing) {
-                                  return prev.map(s => s.service === task.title ? { ...s, requiredEmployees: newCount } : s);
-                                }
-                                return [...prev, { ...schedule, requiredEmployees: newCount }];
-                              });
-                            }}
-                            className="w-6 h-6 flex items-center justify-center rounded border border-border hover:bg-secondary transition-colors"
-                          >
-                            <span className="text-xs">+</span>
-                          </button>
+                            <option value="" disabled>
+                              {employees.length === 0 ? "No employees" : "Select employees..."}
+                            </option>
+                            {employees.map((emp) => (
+                              <option 
+                                key={emp.id} 
+                                value={emp.name}
+                                disabled={schedule.assignedEmployees.includes(emp.name)}
+                              >
+                                {emp.name} — {emp.role}{schedule.assignedEmployees.includes(emp.name) ? " ✓" : ""}
+                              </option>
+                            ))}
+                          </select>
+                          
+                          {/* Selected Employees Tags */}
+                          {schedule.assignedEmployees.length > 0 && (
+                            <div className="flex flex-wrap gap-1">
+                              {schedule.assignedEmployees.map((empName) => {
+                                const emp = employees.find(e => e.name === empName);
+                                return (
+                                  <span
+                                    key={empName}
+                                    className="inline-flex items-center gap-1 px-2 py-0.5 bg-primary/10 text-primary text-xs font-medium rounded border border-primary/20"
+                                  >
+                                    {empName}
+                                    {emp && <span className="text-primary/70 text-[10px]">• {emp.role}</span>}
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setServiceSchedules(prev => {
+                                          const existing = prev.find(s => s.service === task.title);
+                                          if (existing) {
+                                            const newEmployees = existing.assignedEmployees.filter(name => name !== empName);
+                                            return prev.map(s => s.service === task.title ? { ...s, assignedEmployees: newEmployees } : s);
+                                          }
+                                          return prev;
+                                        });
+                                      }}
+                                      className="hover:bg-primary/20 rounded-full p-0.5 transition-colors"
+                                    >
+                                      <X className="w-2.5 h-2.5" />
+                                    </button>
+                                  </span>
+                                );
+                              })}
+                            </div>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -856,6 +895,26 @@ const CreateWorkOrderPage = () => {
                   readOnly
                   className="w-full px-3 py-2 rounded-lg bg-secondary/50 text-sm border border-border text-card-foreground font-bold" 
                 />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-2 block">From Time</label>
+                  <input 
+                    type="time" 
+                    value={editingTask.fromTime || ""} 
+                    onChange={(e) => setEditingTask({ ...editingTask, fromTime: e.target.value })} 
+                    className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground" 
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-2 block">To Time</label>
+                  <input 
+                    type="time" 
+                    value={editingTask.toTime || ""} 
+                    onChange={(e) => setEditingTask({ ...editingTask, toTime: e.target.value })} 
+                    className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground" 
+                  />
+                </div>
               </div>
               <div>
                 <label className="text-xs font-medium text-muted-foreground mb-2 block">Status</label>
