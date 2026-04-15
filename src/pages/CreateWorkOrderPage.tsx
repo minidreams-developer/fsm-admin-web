@@ -734,18 +734,20 @@ const CreateWorkOrderPage = () => {
                             ))}
                           </select>
                           
-                          {/* Selected Employees Tags */}
+                          {/* Selected Employees List */}
                           {schedule.assignedEmployees.length > 0 && (
-                            <div className="flex flex-wrap gap-1">
+                            <div className="space-y-1">
                               {schedule.assignedEmployees.map((empName) => {
                                 const emp = employees.find(e => e.name === empName);
                                 return (
-                                  <span
+                                  <div
                                     key={empName}
-                                    className="inline-flex items-center gap-1 px-2 py-0.5 bg-primary/10 text-primary text-xs font-medium rounded border border-primary/20"
+                                    className="flex items-center justify-between gap-2 px-2 py-1.5 bg-primary/10 text-primary text-xs font-medium rounded border border-primary/20"
                                   >
-                                    {empName}
-                                    {emp && <span className="text-primary/70 text-[10px]">• {emp.role}</span>}
+                                    <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                                      <span className="truncate">{empName}</span>
+                                      {emp && <span className="text-primary/70 text-[10px] flex-shrink-0">• {emp.role}</span>}
+                                    </div>
                                     <button
                                       type="button"
                                       onClick={() => {
@@ -758,11 +760,11 @@ const CreateWorkOrderPage = () => {
                                           return prev;
                                         });
                                       }}
-                                      className="hover:bg-primary/20 rounded-full p-0.5 transition-colors"
+                                      className="hover:bg-primary/20 rounded-full p-0.5 transition-colors flex-shrink-0"
                                     >
-                                      <X className="w-2.5 h-2.5" />
+                                      <X className="w-3 h-3" />
                                     </button>
-                                  </span>
+                                  </div>
                                 );
                               })}
                             </div>
