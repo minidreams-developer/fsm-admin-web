@@ -73,38 +73,10 @@ const EditWorkOrderPage = () => {
   
   const workOrder = workOrders.find(wo => wo.id === id);
   
-  useEffect(() => {
-    if (!workOrder) {
-      toast.error("Work order not found");
-      navigate("/projects");
-    }
-  }, [workOrder, navigate]);
-
-  if (!workOrder) return null;
-
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const existingTasks = getTasksByWorkOrder(workOrder.id);
-  const [tasks, setTasks] = useState<Task[]>(
-    existingTasks.map(t => ({
-      id: t.id,
-      title: t.title,
-      description: t.description || "",
-      unitPrice: 0,
-      quantity: 1,
-      amount: 0,
-      startDate: t.startDate || "",
-      endDate: t.endDate || "",
-      fromTime: "",
-      toTime: "",
-      assignedTo: t.assignedTo || "",
-      assignedEmployees: t.assignedEmployees || [],
-      status: t.status as TaskStatus,
-    }))
-  );
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
-  const [selectedServices, setSelectedServices] = useState<string[]>(
-    workOrder.serviceTypes ?? (workOrder.serviceType ? [workOrder.serviceType] : [])
-  );
+  const [selectedServices, setSelectedServices] = useState<string[]>([]);
   const [selectedEmployees, setSelectedEmployees] = useState<string[]>([]);
   const [serviceSchedules, setServiceSchedules] = useState<ServiceSchedule[]>([]);
   const [termsAccepted, setTermsAccepted] = useState(false);
@@ -137,6 +109,56 @@ const EditWorkOrderPage = () => {
     new Map(allServices.map(s => [s.name, s])).values()
   );
   const serviceOptions = uniqueServices.map(s => s.name);
+
+  // Filter employees to show only Sales Executives
+  const salesExecutives = employees.filter((emp) => emp.role === "Sales Executive");
+
+  // Initialize tasks and selected services when workOrder is available
+  useEffect(() => {
+    if (workOrder) {
+      const existingTasks = getTasksByWorkOrder(workOrder.id);
+      const serviceTypes = workOrder.serviceTypes ?? (workOrder.serviceType ? [workOrder.serviceType] : []);
+      setSelectedServices(serviceTypes);
+      
+      // Initialize selected employees from assignedTech
+      if (workOrder.assignedTech && workOrder.assignedTech !== "Unassigned") {
+        setSelectedEmployees(workOrder.assignedTech.split(", ").filter(Boolean));
+      }
+
+      // Reconstruct tasks with service pricing data
+      const reconstructedTasks = serviceTypes.map((serviceName, index) => {
+        const existingTask = existingTasks.find(t => t.title === serviceName);
+        const service = uniqueServices.find(s => s.name === serviceName);
+        
+        return {
+          id: existingTask?.id || `TASK-${Date.now()}-${index}`,
+          title: serviceName,
+          description: service?.description || existingTask?.description || "",
+          unitPrice: service?.unitPrice || 0,
+          quantity: 1,
+          amount: service?.unitPrice || 0,
+          startDate: existingTask?.startDate || "",
+          endDate: existingTask?.endDate || "",
+          fromTime: "",
+          toTime: "",
+          assignedTo: existingTask?.assignedTo || "",
+          assignedEmployees: existingTask?.assignedEmployees || [],
+          status: (existingTask?.status as TaskStatus) || "Pending",
+        };
+      });
+      
+      setTasks(reconstructedTasks);
+    }
+  }, [workOrder, getTasksByWorkOrder, uniqueServices]);
+  
+  useEffect(() => {
+    if (!workOrder) {
+      toast.error("Work order not found");
+      navigate("/projects");
+    }
+  }, [workOrder, navigate]);
+
+  if (!workOrder) return null;
 
   const { register, handleSubmit, formState: { errors }, setValue } = useForm<WorkOrderFormData>({
     resolver: zodResolver(workOrderSchema),
@@ -234,7 +256,7 @@ const EditWorkOrderPage = () => {
         start: data.start,
         end: data.end || data.start,
         status: data.status,
-        assignedTech: data.assignedTech || "Unassigned",
+        assignedTech: selectedEmployees.length > 0 ? selectedEmployees.join(", ") : "Unassigned",
         workOrderIncharge: data.workOrderIncharge || "",
         notes: data.notes || "",
         siteAddress: data.siteAddress || "",
@@ -394,11 +416,46 @@ const EditWorkOrderPage = () => {
           </div>
 
           <div className="md:col-span-3">
-            <label className="text-xs font-medium text-muted-foreground mb-2 block">Assign Employee</label>
-            <select {...register("assignedTech")} className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground">
-              <option value="">Unassigned</option>
-              {employees.map((e) => <option key={e.id} value={e.name}>{e.name} — {e.role}</option>)}
+            <label className="text-xs font-medium text-muted-foreground mb-2 block">Assign Sales Executives</label>
+            <select
+              onChange={(e) => { if (e.target.value) { toggleEmployee(e.target.value); e.target.value = ""; } }}
+              className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground mb-2"
+              defaultValue=""
+            >
+              <option value="" disabled>
+                {salesExecutives.length === 0 ? "No Sales Executives available" : "Select sales executives..."}
+              </option>
+              {salesExecutives.map((emp) => (
+                <option key={emp.id} value={emp.name} disabled={selectedEmployees.includes(emp.name)}>
+                  {emp.name} — {emp.role}{selectedEmployees.includes(emp.name) ? " ✓" : ""}
+                </option>
+              ))}
             </select>
+            
+            {/* Display selected employees */}
+            {selectedEmployees.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {selectedEmployees.map((empName) => {
+                  const emp = employees.find(e => e.name === empName);
+                  return (
+                    <div key={empName} className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 border border-primary/20 rounded-lg">
+                      <span className="text-xs font-medium text-primary">{empName}</span>
+                      {emp && <span className="text-xs text-primary/70">• {emp.role}</span>}
+                      <button 
+                        type="button" 
+                        onClick={() => toggleEmployee(empName)} 
+                        className="text-primary hover:text-primary/70"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            
+            {/* Hidden input for form compatibility */}
+            <input type="hidden" {...register("assignedTech")} value={selectedEmployees.join(", ")} />
           </div>
 
           <div className="md:col-span-3">
@@ -440,7 +497,7 @@ const EditWorkOrderPage = () => {
               <p className="text-xs text-muted-foreground mt-0.5">Services added</p>
             </div>
             <div className="flex flex-row">
-              <div className="flex-1 min-w-0">
+              <div className="flex-1 min-w-0 overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-border bg-secondary/30">
@@ -512,26 +569,26 @@ const EditWorkOrderPage = () => {
                     ))}
                   </tbody>
                 </table>
-                <div className="w-64 flex-shrink-0 border-border bg-secondary/10 p-4 space-y-3 self-start ml-auto">
+              </div>
+              <div className="w-64 flex-shrink-0 border-l border-border bg-secondary/10 p-4 space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs font-medium text-muted-foreground">Subtotal</span>
+                  <span className="text-sm font-semibold text-card-foreground">
+                    ₹ {tasks.reduce((sum, t) => sum + (t.amount || 0), 0).toLocaleString()}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-xs font-medium text-muted-foreground">GST (18%)</span>
+                  <span className="text-sm font-semibold text-card-foreground">
+                    ₹ {(tasks.reduce((sum, t) => sum + (t.amount || 0), 0) * 0.18).toLocaleString()}
+                  </span>
+                </div>
+                <div className="pt-3 border-t border-border">
                   <div className="flex justify-between items-center">
-                    <span className="text-xs font-medium text-muted-foreground">Subtotal</span>
-                    <span className="text-sm font-semibold text-card-foreground">
-                      ₹ {tasks.reduce((sum, t) => sum + (t.amount || 0), 0).toLocaleString()}
+                    <span className="text-sm font-bold text-card-foreground">Total Amount</span>
+                    <span className="text-lg font-bold text-primary">
+                      ₹ {(tasks.reduce((sum, t) => sum + (t.amount || 0), 0) * 1.18).toLocaleString()}
                     </span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-xs font-medium text-muted-foreground">GST (18%)</span>
-                    <span className="text-sm font-semibold text-card-foreground">
-                      ₹ {(tasks.reduce((sum, t) => sum + (t.amount || 0), 0) * 0.18).toLocaleString()}
-                    </span>
-                  </div>
-                  <div className="pt-3 border-t border-border">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm font-bold text-card-foreground">Total Amount</span>
-                      <span className="text-lg font-bold text-primary">
-                        ₹ {(tasks.reduce((sum, t) => sum + (t.amount || 0), 0) * 1.18).toLocaleString()}
-                      </span>
-                    </div>
                   </div>
                 </div>
               </div>
