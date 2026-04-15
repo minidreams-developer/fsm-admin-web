@@ -19,6 +19,7 @@ const workOrderSchema = z.object({
   address: z.string().min(1, "Address is required"),
   email: z.string().email().optional().or(z.literal("")),
   location: z.string().optional(),
+  liveLocation: z.string().optional(),
   subject: z.string().min(1, "Subject is required"),
   serviceType: z.string().optional(),
   frequency: z.string().optional(),
@@ -217,6 +218,8 @@ const CreateWorkOrderPage = () => {
         address: data.address,
         phone: data.phone,
         email: data.email || "",
+        location: data.location || "",
+        liveLocation: data.liveLocation || "",
         subject: data.subject,
         serviceType: data.serviceType || "",
         serviceTypes: selectedServices,
@@ -324,6 +327,11 @@ const CreateWorkOrderPage = () => {
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-2 block">Location</label>
             <input type="text" placeholder="e.g. Kochi, Kerala" {...register("location")} className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground" />
+          </div>
+
+          <div>
+            <label className="text-xs font-medium text-muted-foreground mb-2 block">Live Location</label>
+            <input type="text" placeholder="e.g. Google Maps link or coordinates" {...register("liveLocation")} className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground" />
           </div>
 
           <div>

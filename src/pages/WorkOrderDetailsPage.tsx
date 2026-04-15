@@ -162,7 +162,7 @@ export const WorkOrderDetailsPage = () => {
             Download PDF
           </button>
           <button
-            onClick={() => setIsEditingWorkOrder(true)}
+            onClick={() => navigate(`/edit-work-order/${id}`)}
             className="inline-flex items-center gap-2 h-10 px-4 rounded-lg border border-border bg-card hover:bg-secondary transition-colors text-sm font-semibold text-card-foreground"
           >
             <Edit2 className="w-4 h-4" />
