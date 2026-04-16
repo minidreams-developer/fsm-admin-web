@@ -22,6 +22,11 @@ export type Employee = {
   aadharNumber?: string;
   aadharDocument?: string;
   isActive?: boolean;
+  inventoryItems?: Array<{
+    itemName: string;
+    quantity: number;
+    assignedDate: string;
+  }>;
 };
 
 interface EmployeesStore {
@@ -49,6 +54,11 @@ const initialEmployees: Employee[] = [
     idleHours: 1,
     servicesCompleted: 3,
     avgServiceTime: 2.5,
+    inventoryItems: [
+      { itemName: "Cleaning Solution - 5L", quantity: 2, assignedDate: "2026-04-10" },
+      { itemName: "Microfiber Cloth Set", quantity: 5, assignedDate: "2026-04-10" },
+      { itemName: "Spray Bottle", quantity: 3, assignedDate: "2026-04-12" },
+    ],
   },
   {
     id: "EMP-1002",
@@ -67,6 +77,11 @@ const initialEmployees: Employee[] = [
     idleHours: 0.75,
     servicesCompleted: 2,
     avgServiceTime: 3.25,
+    inventoryItems: [
+      { itemName: "Vacuum Cleaner", quantity: 1, assignedDate: "2026-04-08" },
+      { itemName: "Mop & Bucket", quantity: 1, assignedDate: "2026-04-08" },
+      { itemName: "Disinfectant Spray", quantity: 4, assignedDate: "2026-04-11" },
+    ],
   },
   {
     id: "EMP-1003",
@@ -85,6 +100,10 @@ const initialEmployees: Employee[] = [
     idleHours: 1.25,
     servicesCompleted: 2,
     avgServiceTime: 2.75,
+    inventoryItems: [
+      { itemName: "Floor Cleaner - 2L", quantity: 3, assignedDate: "2026-04-09" },
+      { itemName: "Scrub Brush", quantity: 2, assignedDate: "2026-04-09" },
+    ],
   },
   {
     id: "EMP-1004",
@@ -103,8 +122,12 @@ const initialEmployees: Employee[] = [
     idleHours: 1.5,
     servicesCompleted: 1,
     avgServiceTime: 4.5,
+    inventoryItems: [
+      { itemName: "Gloves - Box of 50", quantity: 1, assignedDate: "2026-04-13" },
+      { itemName: "Trash Bags - Roll", quantity: 2, assignedDate: "2026-04-13" },
+    ],
   },
-  { id: "EMP-1005", name: "Priya Nair", phone: "9876543214", role: "Technician", branch: ["Kochi"], projects: 3, cashBalance: "₹ 1,200", performance: "90%", clockIn: "09:00 AM", clockOut: "06:00 PM", totalHours: 9, serviceHours: 7, breakHours: 1, idleHours: 1, servicesCompleted: 3, avgServiceTime: 2.3 },
+  { id: "EMP-1005", name: "Priya Nair", phone: "9876543214", role: "Technician", branch: ["Kochi"], projects: 3, cashBalance: "₹ 1,200", performance: "90%", clockIn: "09:00 AM", clockOut: "06:00 PM", totalHours: 9, serviceHours: 7, breakHours: 1, idleHours: 1, servicesCompleted: 3, avgServiceTime: 2.3, inventoryItems: [{ itemName: "Window Cleaner", quantity: 2, assignedDate: "2026-04-10" }, { itemName: "Squeegee", quantity: 1, assignedDate: "2026-04-10" }] },
   { id: "EMP-1006", name: "Suresh Babu", phone: "9876543215", role: "Senior Technician", branch: ["Calicut", "Thrissur"], projects: 4, cashBalance: "₹ 3,400", performance: "94%", clockIn: "08:45 AM", clockOut: "06:15 PM", totalHours: 9.5, serviceHours: 8, breakHours: 1, idleHours: 0.5, servicesCompleted: 4, avgServiceTime: 2 },
   { id: "EMP-1007", name: "Meena Krishnan", phone: "9876543216", role: "Technician", branch: ["Thrissur"], projects: 2, cashBalance: "₹ 800", performance: "82%", clockIn: "09:30 AM", clockOut: "05:30 PM", totalHours: 8, serviceHours: 6, breakHours: 1.5, idleHours: 0.5, servicesCompleted: 2, avgServiceTime: 3 },
   { id: "EMP-1008", name: "Rajan Thomas", phone: "9876543217", role: "Junior Technician", branch: ["Trivandrum"], projects: 1, cashBalance: "₹ 0", performance: "75%", clockIn: "10:00 AM", clockOut: "05:00 PM", totalHours: 7, serviceHours: 4, breakHours: 2, idleHours: 1, servicesCompleted: 1, avgServiceTime: 4 },

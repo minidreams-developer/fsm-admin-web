@@ -580,7 +580,7 @@ const Dashboard = () => {
           style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}
         >
           <Wrench className="w-4 h-4" />
-          Service Management
+          Service list
         </button>
         <button
           onClick={() => navigate("/projects")}
