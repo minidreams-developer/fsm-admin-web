@@ -13,6 +13,10 @@ const PaymentsPage = () => {
   const location = useLocation();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"All" | "Open" | "Scheduled" | "Completed">("All");
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
+  const [appliedFromDate, setAppliedFromDate] = useState("");
+  const [appliedToDate, setAppliedToDate] = useState("");
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [selectedWorkOrder, setSelectedWorkOrder] = useState<WorkOrder | undefined>(
@@ -27,13 +31,40 @@ const PaymentsPage = () => {
     }
   }, [location.state, workOrders]);
 
+  const handleApplyDateFilter = () => {
+    setAppliedFromDate(fromDate);
+    setAppliedToDate(toDate);
+  };
+
+  const handleResetDateFilter = () => {
+    setFromDate("");
+    setToDate("");
+    setAppliedFromDate("");
+    setAppliedToDate("");
+  };
+
   const filtered = workOrders.filter((wo) => {
     const matchStatus = statusFilter === "All" || wo.status === statusFilter;
     const matchSearch = 
       wo.subject?.toLowerCase().includes(search.toLowerCase()) ||
       wo.customer?.toLowerCase().includes(search.toLowerCase()) ||
       wo.id.toLowerCase().includes(search.toLowerCase());
-    return matchStatus && matchSearch;
+    
+    // Date filter logic
+    let matchDate = true;
+    if (appliedFromDate || appliedToDate) {
+      const woDate = new Date(wo.end || wo.start);
+      if (appliedFromDate) {
+        const from = new Date(appliedFromDate);
+        matchDate = matchDate && woDate >= from;
+      }
+      if (appliedToDate) {
+        const to = new Date(appliedToDate);
+        matchDate = matchDate && woDate <= to;
+      }
+    }
+    
+    return matchStatus && matchSearch && matchDate;
   });
 
   const stats = {
@@ -85,10 +116,49 @@ const PaymentsPage = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h2 className="text-lg sm:text-xl font-bold text-card-foreground">Payments</h2>
           <p className="text-sm text-muted-foreground">Manage payment details and work orders</p>
+        </div>
+        
+        {/* Date Filter */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-end gap-2">
+          <div className="flex gap-2 w-full sm:w-auto">
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">From Date</label>
+              <input
+                type="date"
+                value={fromDate}
+                onChange={(e) => setFromDate(e.target.value)}
+                className="w-full sm:w-36 px-3 py-2 rounded-lg bg-secondary text-xs border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">To Date</label>
+              <input
+                type="date"
+                value={toDate}
+                onChange={(e) => setToDate(e.target.value)}
+                className="w-full sm:w-36 px-3 py-2 rounded-lg bg-secondary text-xs border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
+              />
+            </div>
+          </div>
+          <div className="flex gap-2 w-full sm:w-auto">
+            <button
+              onClick={handleApplyDateFilter}
+              className="flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs font-semibold text-white hover:opacity-90 transition-all"
+              style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}
+            >
+              Apply
+            </button>
+            <button
+              onClick={handleResetDateFilter}
+              className="flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs font-semibold border border-border text-card-foreground hover:bg-secondary transition-colors"
+            >
+              Reset
+            </button>
+          </div>
         </div>
       </div>
 

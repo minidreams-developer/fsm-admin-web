@@ -277,7 +277,6 @@ export function CustomerFormModal({ open, mode, customer, prefill, onClose, onSa
               <textarea
                 value={form.siteAddress}
                 onChange={(e) => setField("siteAddress", e.target.value)}
-                onChange={(e) => setField("siteAddress", e.target.value)}
                 placeholder="e.g. 12 MG Road, Kochi"
                 rows={2}
                 className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none"
@@ -442,28 +441,28 @@ export function CustomerFormModal({ open, mode, customer, prefill, onClose, onSa
                     setField("contactPersonsDetails", updated);
                   };
                   return (
-                    <>
-                      <div key={`name-${idx}`}>
+                    <div key={`contact-${idx}`} className="contents">
+                      <div>
                         <label className="text-xs text-muted-foreground mb-1 block">Name</label>
                         <input value={cp.name} onChange={e => update("name", e.target.value)} placeholder="e.g. John" className="w-full px-2.5 py-2 rounded-lg bg-secondary border border-border text-xs text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20" />
                       </div>
-                      <div key={`email-${idx}`}>
+                      <div>
                         <label className="text-xs text-muted-foreground mb-1 block">Email</label>
                         <input value={cp.email} onChange={e => update("email", e.target.value)} placeholder="e.g. john@email.com" className="w-full px-2.5 py-2 rounded-lg bg-secondary border border-border text-xs text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20" />
                       </div>
-                      <div key={`city-${idx}`}>
+                      <div>
                         <label className="text-xs text-muted-foreground mb-1 block">City</label>
                         <input value={cp.city} onChange={e => update("city", e.target.value)} placeholder="e.g. Kochi" className="w-full px-2.5 py-2 rounded-lg bg-secondary border border-border text-xs text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20" />
                       </div>
-                      <div key={`pincode-${idx}`}>
+                      <div>
                         <label className="text-xs text-muted-foreground mb-1 block">Pincode</label>
                         <input value={cp.pincode} onChange={e => update("pincode", e.target.value)} placeholder="e.g. 682001" className="w-full px-2.5 py-2 rounded-lg bg-secondary border border-border text-xs text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20" />
                       </div>
-                      <div key={`address-${idx}`} className="sm:col-span-2">
+                      <div className="sm:col-span-2">
                         <label className="text-xs text-muted-foreground mb-1 block">Address</label>
                         <input value={cp.address} onChange={e => update("address", e.target.value)} placeholder="e.g. 12 MG Road" className="w-full px-2.5 py-2 rounded-lg bg-secondary border border-border text-xs text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20" />
                       </div>
-                    </>
+                    </div>
                   );
                 })}
               </div>

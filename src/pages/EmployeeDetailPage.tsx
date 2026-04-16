@@ -258,7 +258,7 @@ export const EmployeeDetailPage = () => {
             className={`flex items-center gap-2 px-6 py-4 text-sm font-semibold transition-colors ${activeTab === "inventory" ? "text-primary border-b-2 border-primary" : "text-muted-foreground hover:text-foreground"}`}
           >
             <Package className="w-4 h-4" />
-            Inventory Items Assigned ({employeeInventoryItems.length})
+            Inventory Items Assigned ({(employee.inventoryItems?.length || 0) + employeeInventoryItems.length})
           </button>
         </div>
 
@@ -315,33 +315,62 @@ export const EmployeeDetailPage = () => {
           )}
 
           {activeTab === "inventory" && (
-            filteredInventory.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-6">No inventory items allocated.</p>
-            ) : (
-              <div className="space-y-3">
-                {filteredInventory.map((item) => (
-                  <div key={item.id} className="p-4 rounded-lg bg-secondary/30 border border-border">
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex-1">
-                        <p className="font-semibold text-card-foreground">{item.name}</p>
-                        <p className="text-xs text-muted-foreground">Branch: {item.branch}</p>
+            <>
+              {/* Dummy Inventory Items from Employee Record */}
+              {employee.inventoryItems && employee.inventoryItems.length > 0 && (
+                <div className="mb-6">
+                  <h3 className="text-sm font-semibold text-card-foreground mb-3">Assigned Items</h3>
+                  <div className="space-y-3">
+                    {employee.inventoryItems.map((item, idx) => (
+                      <div key={idx} className="p-4 rounded-lg bg-secondary/30 border border-border">
+                        <div className="flex items-start justify-between mb-2">
+                          <div className="flex-1">
+                            <p className="font-semibold text-card-foreground">{item.itemName}</p>
+                            <p className="text-xs text-muted-foreground">Quantity: {item.quantity}</p>
+                          </div>
+                          <StatusBadge label="Assigned" variant="success" />
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Assigned on: {new Date(item.assignedDate).toLocaleDateString()}
+                        </p>
                       </div>
-                      <StatusBadge label={item.status} variant={item.status === "OK" ? "success" : item.status === "Low" ? "warning" : "destructive"} />
-                    </div>
-                    <div className="grid grid-cols-3 gap-2 text-xs">
-                      <div><p className="text-muted-foreground">Allocated</p><p className="font-semibold text-primary">{item.allocatedQuantity} {item.unit}</p></div>
-                      <div><p className="text-muted-foreground">Available Stock</p><p className="font-semibold text-card-foreground">{item.stock} {item.unit}</p></div>
-                      <div><p className="text-muted-foreground">Unit</p><p className="font-semibold text-card-foreground">{item.unit}</p></div>
-                    </div>
-                    {item.allocatedAt && (
-                      <p className="text-xs text-muted-foreground mt-2">
-                        Allocated on: {new Date(item.allocatedAt).toLocaleDateString()}
-                      </p>
-                    )}
+                    ))}
                   </div>
-                ))}
-              </div>
-            )
+                </div>
+              )}
+
+              {/* Inventory from Store Allocations */}
+              {filteredInventory.length === 0 && (!employee.inventoryItems || employee.inventoryItems.length === 0) ? (
+                <p className="text-sm text-muted-foreground text-center py-6">No inventory items allocated.</p>
+              ) : filteredInventory.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-semibold text-card-foreground mb-3">Stock Allocations</h3>
+                  <div className="space-y-3">
+                    {filteredInventory.map((item) => (
+                      <div key={item.id} className="p-4 rounded-lg bg-secondary/30 border border-border">
+                        <div className="flex items-start justify-between mb-2">
+                          <div className="flex-1">
+                            <p className="font-semibold text-card-foreground">{item.name}</p>
+                            <p className="text-xs text-muted-foreground">Branch: {item.branch}</p>
+                          </div>
+                          <StatusBadge label={item.status} variant={item.status === "OK" ? "success" : item.status === "Low" ? "warning" : "destructive"} />
+                        </div>
+                        <div className="grid grid-cols-3 gap-2 text-xs">
+                          <div><p className="text-muted-foreground">Allocated</p><p className="font-semibold text-primary">{item.allocatedQuantity} {item.unit}</p></div>
+                          <div><p className="text-muted-foreground">Available Stock</p><p className="font-semibold text-card-foreground">{item.stock} {item.unit}</p></div>
+                          <div><p className="text-muted-foreground">Unit</p><p className="font-semibold text-card-foreground">{item.unit}</p></div>
+                        </div>
+                        {item.allocatedAt && (
+                          <p className="text-xs text-muted-foreground mt-2">
+                            Allocated on: {new Date(item.allocatedAt).toLocaleDateString()}
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>

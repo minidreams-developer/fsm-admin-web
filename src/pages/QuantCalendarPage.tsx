@@ -329,12 +329,18 @@ const DroppableTimeSlot = ({
     e.preventDefault();
     e.stopPropagation();
     
+    // Disable dragging while resizing
     setIsResizing(true);
     setResizeStartX(e.clientX);
     setResizeStartWidth(cardRef.current.offsetWidth);
     
     if (onResizeStart) {
       onResizeStart(job.id, job.duration);
+    }
+    
+    // Add pointer-events-none to the card to prevent drag interference
+    if (cardRef.current) {
+      cardRef.current.style.pointerEvents = 'none';
     }
   };
 
@@ -362,6 +368,11 @@ const DroppableTimeSlot = ({
       if (!job) return;
       
       setIsResizing(false);
+      
+      // Re-enable pointer events on the card
+      if (cardRef.current) {
+        cardRef.current.style.pointerEvents = 'auto';
+      }
       
       if (onResizeEnd && resizePreview !== null) {
         onResizeEnd(job.id, resizePreview);
@@ -405,15 +416,23 @@ const DroppableTimeSlot = ({
           {...(isResizing ? {} : listeners)}
           {...(isResizing ? {} : attributes)}
           onClick={(e) => e.stopPropagation()}
+          onPointerDown={(e) => {
+            // If clicking on the resize handle area, don't start dragging
+            const target = e.target as HTMLElement;
+            if (target.closest('[data-resize-handle]')) {
+              e.stopPropagation();
+            }
+          }}
           className={`group absolute rounded-lg p-2 border-2 shadow-md transition-all ${
-            isResizing ? 'cursor-ew-resize' : 'cursor-move hover:shadow-lg'
+            isResizing ? 'cursor-ew-resize select-none' : 'cursor-move hover:shadow-lg'
           } ${priorityBgColors[priority]} ${isDragging ? 'opacity-50' : ''}`}
           style={{ 
             width: `calc(${displayDuration * 100}% - 4px)`,
             left: '2px',
             top: '4px',
             bottom: '4px',
-            zIndex: isDragging || isResizing ? 50 : 10
+            zIndex: isDragging || isResizing ? 50 : 10,
+            userSelect: isResizing ? 'none' : 'auto'
           }}
         >
           {/* Remove button */}
@@ -430,11 +449,19 @@ const DroppableTimeSlot = ({
           
           {/* Resize handle */}
           <div
+            data-resize-handle="true"
             onMouseDown={handleResizeMouseDown}
-            className="absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize hover:bg-primary/30 transition-colors group-hover:bg-primary/20"
+            onPointerDown={(e) => {
+              e.stopPropagation();
+            }}
+            onClick={(e) => {
+              e.stopPropagation();
+            }}
+            className="absolute right-0 top-0 bottom-0 w-3 cursor-ew-resize hover:bg-primary/40 transition-colors z-30 flex items-center justify-center"
+            style={{ touchAction: 'none' }}
             title="Drag to resize duration"
           >
-            <div className="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-primary/50 rounded-l" />
+            <div className="w-1 h-12 bg-primary/60 rounded group-hover:bg-primary/80 transition-colors pointer-events-none" />
           </div>
           
           <p className="text-xs font-bold truncate pr-2">{workOrder.id}</p>

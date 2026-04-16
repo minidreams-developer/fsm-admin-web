@@ -1,6 +1,6 @@
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { X, Edit2, Plus } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -10,7 +10,6 @@ import { useProjectsStore } from "@/store/projectsStore";
 import { useTasksStore } from "@/store/tasksStore";
 import { useProductsStore } from "@/store/productsStore";
 import { useEmployeesStore } from "@/store/employeesStore";
-import { useCustomersStore } from "@/store/customersStore";
 import { useServicesStore } from "@/store/servicesStore";
 
 const workOrderSchema = z.object({
@@ -55,111 +54,155 @@ type Task = {
   status: TaskStatus;
 };
 
-const CreateWorkOrderPage = () => {
+type ServiceSchedule = {
+  id: string;
+  service: string;
+  scheduleDate: string;
+  timeSlot: string;
+  assignedEmployees: string[];
+};
+
+const EditWorkOrderPage = () => {
   const navigate = useNavigate();
-  const location = useLocation();
-  const { addWorkOrder, getNextWorkOrderId } = useProjectsStore();
-  const { addTask } = useTasksStore();
+  const { id } = useParams<{ id: string }>();
+  const { workOrders, updateWorkOrder } = useProjectsStore();
+  const { getTasksByWorkOrder, updateTask } = useTasksStore();
   const { products } = useProductsStore();
   const { employees } = useEmployeesStore();
-  const { customers } = useCustomersStore();
   const { appointments } = useServicesStore();
+  
+  const workOrder = workOrders.find(wo => wo.id === id);
+  
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
-  const [selectedServices, setSelectedServices] = useState<string[]>(
-    (location.state as any)?.leadData?.services ?? []
-  );
+  const [selectedServices, setSelectedServices] = useState<string[]>([]);
   const [selectedEmployees, setSelectedEmployees] = useState<string[]>([]);
-  const [selectedCustomerId, setSelectedCustomerId] = useState<string>("");
-  const [extraSiteAddresses, setExtraSiteAddresses] = useState<string[]>([]);
-  
-  // Service Appointments Schedule state
-  type ServiceSchedule = {
-    id: string;
-    service: string;
-    scheduleDate: string;
-    timeSlot: string;
-    assignedEmployees: string[];
-  };
   const [serviceSchedules, setServiceSchedules] = useState<ServiceSchedule[]>([]);
   const [termsAccepted, setTermsAccepted] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
 
-  // Get services from both Products (Services category) and Service Appointments
-  const productServices = products.filter((p) => p.category === "Services" && p.status === "Active");
-  const appointmentServices = appointments
-    .filter((a) => a.subject) // Only include appointments with a subject
-    .map((a) => {
-      // Parse unitPrice - remove currency symbols and commas, then convert to number
-      let parsedUnitPrice = 0;
-      if (a.unitPrice) {
-        const cleanPrice = a.unitPrice.replace(/[₹,\s]/g, '');
-        parsedUnitPrice = parseFloat(cleanPrice) || 0;
-      } else if (a.payment?.amount) {
-        parsedUnitPrice = a.payment.amount;
-      }
-      
-      return {
-        name: a.subject || "",
-        description: a.serviceDescription || "",
-        unitPrice: parsedUnitPrice,
-      };
-    });
-  
-  // Combine and deduplicate services by name
-  const allServices = [
-    ...productServices.map(p => ({ name: p.name, description: p.description, unitPrice: p.unitPrice })),
-    ...appointmentServices
-  ];
-  const uniqueServices = Array.from(
-    new Map(allServices.map(s => [s.name, s])).values()
+  // Get services from both Products and Service Appointments - memoized to prevent recalculation
+  const uniqueServices = useMemo(() => {
+    const productServices = products.filter((p) => p.category === "Services" && p.status === "Active");
+    const appointmentServices = appointments
+      .filter((a) => a.subject)
+      .map((a) => {
+        let parsedUnitPrice = 0;
+        if (a.unitPrice) {
+          const cleanPrice = a.unitPrice.replace(/[₹,\s]/g, '');
+          parsedUnitPrice = parseFloat(cleanPrice) || 0;
+        } else if (a.payment?.amount) {
+          parsedUnitPrice = a.payment.amount;
+        }
+        
+        return {
+          name: a.subject || "",
+          description: a.serviceDescription || "",
+          unitPrice: parsedUnitPrice,
+        };
+      });
+    
+    const allServices = [
+      ...productServices.map(p => ({ name: p.name, description: p.description, unitPrice: p.unitPrice })),
+      ...appointmentServices
+    ];
+    
+    return Array.from(
+      new Map(allServices.map(s => [s.name, s])).values()
+    );
+  }, [products, appointments]);
+
+  const serviceOptions = useMemo(() => uniqueServices.map(s => s.name), [uniqueServices]);
+
+  // Filter employees to show only Sales Executives - memoized
+  const salesExecutives = useMemo(() => 
+    employees.filter((emp) => emp.role === "Sales Executive"),
+    [employees]
   );
-  const serviceOptions = uniqueServices.map(s => s.name);
-  
-  // Filter employees to show only Sales Executives
-  const salesExecutives = employees.filter((emp) => emp.role === "Sales Executive");
 
-  const handleCustomerSelect = (customerId: string) => {
-    setSelectedCustomerId(customerId);
-    const customer = customers.find(c => c.id === customerId);
-    if (customer) {
-      const fullName = `${customer.firstName} ${customer.lastName}`.trim();
-      setValue("customer", fullName);
-      setValue("phone", customer.mobile || customer.landline || "");
-      setValue("email", customer.emailAddress || "");
-      setValue("address", customer.siteAddress || customer.billingAddress || "");
-      setValue("siteAddress", customer.siteAddress || "", { shouldValidate: true, shouldDirty: true });
-      setValue("billingAddress", customer.billingAddress || "", { shouldValidate: true, shouldDirty: true });
+  // Initialize tasks and selected services when workOrder is available - only once
+  useEffect(() => {
+    if (workOrder && !isInitialized) {
+      const existingTasks = getTasksByWorkOrder(workOrder.id);
+      const serviceTypes = workOrder.serviceTypes ?? (workOrder.serviceType ? [workOrder.serviceType] : []);
+      setSelectedServices(serviceTypes);
+      
+      // Initialize selected employees from assignedTech
+      if (workOrder.assignedTech && workOrder.assignedTech !== "Unassigned") {
+        setSelectedEmployees(workOrder.assignedTech.split(", ").filter(Boolean));
+      }
+
+      // Reconstruct tasks with service pricing data
+      const reconstructedTasks = serviceTypes.map((serviceName, index) => {
+        const existingTask = existingTasks.find(t => t.title === serviceName);
+        const service = uniqueServices.find(s => s.name === serviceName);
+        
+        return {
+          id: existingTask?.id || `TASK-${Date.now()}-${index}`,
+          title: serviceName,
+          description: service?.description || existingTask?.description || "",
+          unitPrice: service?.unitPrice || 0,
+          quantity: 1,
+          amount: service?.unitPrice || 0,
+          startDate: existingTask?.startDate || "",
+          endDate: existingTask?.endDate || "",
+          fromTime: "",
+          toTime: "",
+          assignedTo: existingTask?.assignedTo || "",
+          assignedEmployees: existingTask?.assignedEmployees || [],
+          status: (existingTask?.status as TaskStatus) || "Pending",
+        };
+      });
+      
+      setTasks(reconstructedTasks);
+      setIsInitialized(true);
     }
-  };
+  }, [workOrder, getTasksByWorkOrder, uniqueServices, isInitialized]);
+  
+  useEffect(() => {
+    if (!workOrder) {
+      toast.error("Work order not found");
+      navigate("/projects");
+    }
+  }, [workOrder, navigate]);
 
-  const leadData = (location.state as any)?.leadData;
+  if (!workOrder) return null;
 
   const { register, handleSubmit, formState: { errors }, setValue } = useForm<WorkOrderFormData>({
     resolver: zodResolver(workOrderSchema),
     defaultValues: {
-      customer: leadData?.name || "",
-      phone: leadData?.phone || "",
-      address: leadData?.address || "",
-      subject: leadData?.services?.join(", ") || "",
-      serviceType: leadData?.services?.[0] || "",
-      status: "Authorization Pending",
-      start: new Date().toISOString().split("T")[0],
-      siteAddress: "",
-      billingAddress: "",
+      customer: workOrder.customer,
+      phone: workOrder.phone,
+      address: workOrder.address,
+      email: workOrder.email,
+      location: workOrder.location || "",
+      liveLocation: workOrder.liveLocation || "",
+      subject: workOrder.subject,
+      serviceType: workOrder.serviceType,
+      frequency: workOrder.frequency,
+      totalValue: workOrder.totalValue.replace(/[₹,\s]/g, ""),
+      paidAmount: workOrder.paidAmount.replace(/[₹,\s]/g, ""),
+      start: workOrder.start,
+      end: workOrder.end,
+      status: workOrder.status,
+      assignedTech: workOrder.assignedTech,
+      workOrderIncharge: workOrder.workOrderIncharge || "",
+      notes: workOrder.notes,
+      siteAddress: workOrder.siteAddress || "",
+      billingAddress: workOrder.billingAddress || "",
     },
   });
 
-  const toggleService = (value: string) => {
+  const toggleService = useCallback((value: string) => {
     setSelectedServices((prev) => {
       const next = prev.includes(value) ? prev.filter((s) => s !== value) : [...prev, value];
       setValue("serviceType", next[0] ?? "");
-      // add as task if not already there
+      
       if (!prev.includes(value) && !tasks.find((t) => t.title === value)) {
-        // Find the service details from combined services list
         const service = uniqueServices.find(s => s.name === value);
         setTasks((t) => [...t, { 
-          id: Date.now().toString(), 
+          id: `TASK-${Date.now()}`, 
           title: value,
           description: service?.description || "",
           unitPrice: service?.unitPrice || 0,
@@ -174,49 +217,42 @@ const CreateWorkOrderPage = () => {
           status: "Pending"
         }]);
       }
+      
       if (prev.includes(value)) {
         setTasks((t) => t.filter((task) => task.title !== value));
       }
+      
       return next;
     });
-  };
+  }, [setValue, tasks, uniqueServices]);
 
-  const toggleEmployee = (employeeName: string) => {
+  const toggleEmployee = useCallback((employeeName: string) => {
     setSelectedEmployees((prev) => 
       prev.includes(employeeName) 
         ? prev.filter((e) => e !== employeeName) 
         : [...prev, employeeName]
     );
-  };
+  }, []);
 
-  const removeService = (value: string) => toggleService(value);
+  const removeService = useCallback((value: string) => toggleService(value), [toggleService]);
 
-  const updateTask = (updated: Task) => {
+  const updateTaskData = useCallback((updated: Task) => {
     setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
     setEditingTask(null);
     toast.success("Service updated");
-  };
+  }, []);
 
-  const removeTask = (id: string) => {
+  const removeTask = useCallback((id: string) => {
     setTasks((prev) => prev.filter((t) => t.id !== id));
-  };
+  }, []);
 
-  const onSubmit = async (data: WorkOrderFormData) => {
+  const onSubmit = useCallback(async (data: WorkOrderFormData) => {
     setIsSubmitting(true);
     try {
-      const workOrderId = getNextWorkOrderId();
-      
-      // Combine all site addresses
-      const allSiteAddresses = [
-        data.siteAddress || data.address,
-        ...extraSiteAddresses.filter(addr => addr.trim())
-      ].filter(Boolean).join(" | ");
-      
-      addWorkOrder({
-        id: workOrderId,
+      updateWorkOrder(workOrder.id, {
         customer: data.customer,
-        address: data.address,
         phone: data.phone,
+        address: data.address,
         email: data.email || "",
         location: data.location || "",
         liveLocation: data.liveLocation || "",
@@ -232,31 +268,31 @@ const CreateWorkOrderPage = () => {
         assignedTech: selectedEmployees.length > 0 ? selectedEmployees.join(", ") : "Unassigned",
         workOrderIncharge: data.workOrderIncharge || "",
         notes: data.notes || "",
-        siteAddress: allSiteAddresses,
-        billingAddress: data.billingAddress || data.address,
-        nextService: "Unassigned",
+        siteAddress: data.siteAddress || "",
+        billingAddress: data.billingAddress || "",
       });
-      tasks.forEach((t, i) => {
-        addTask({
-          id: `TASK-${Date.now()}-${i}`,
-          workOrderId,
+      
+      // Update tasks
+      tasks.forEach((t) => {
+        updateTask(t.id, {
           title: t.title,
-          description: "",
+          description: t.description,
           startDate: t.startDate,
           endDate: t.endDate,
           assignedTo: t.assignedEmployees.length > 0 ? t.assignedEmployees.join(", ") : t.assignedTo,
-          assignedEmployees: t.assignedEmployees.length > 0 ? t.assignedEmployees : (t.assignedTo ? [t.assignedTo] : []),
+          assignedEmployees: t.assignedEmployees,
           status: t.status,
         });
       });
-      toast.success("Work Order created successfully!");
+      
+      toast.success("Work Order updated successfully!");
       navigate("/projects");
     } catch {
-      toast.error("Failed to create work order");
+      toast.error("Failed to update work order");
     } finally {
       setIsSubmitting(false);
     }
-  };
+  }, [workOrder.id, selectedServices, selectedEmployees, tasks, updateWorkOrder, updateTask, navigate]);
 
   const statusColors: Record<TaskStatus, string> = {
     Pending: "bg-warning/10 text-warning border-warning/20",
@@ -268,8 +304,8 @@ const CreateWorkOrderPage = () => {
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-start justify-between gap-4 mb-8">
         <div className="flex-1">
-          <h1 className="text-3xl font-bold text-card-foreground">Create New Work Order</h1>
-          <p className="text-sm text-muted-foreground mt-2">Fill in the details to create a new work order</p>
+          <h1 className="text-3xl font-bold text-card-foreground">Edit Work Order</h1>
+          <p className="text-sm text-muted-foreground mt-2">Update work order details - {workOrder.id}</p>
         </div>
         <button onClick={() => navigate("/projects")} className="p-2 hover:bg-secondary rounded-lg transition-colors flex-shrink-0">
           <X className="w-6 h-6 text-muted-foreground" />
@@ -280,30 +316,7 @@ const CreateWorkOrderPage = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-2 block">Customer Name *</label>
-            <select
-              value={selectedCustomerId}
-              onChange={(e) => {
-                if (e.target.value) {
-                  handleCustomerSelect(e.target.value);
-                } else {
-                  setSelectedCustomerId("");
-                  setValue("customer", "");
-                  setValue("phone", "");
-                  setValue("email", "");
-                  setValue("address", "");
-                }
-              }}
-              className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
-            >
-              <option value="">Select customer...</option>
-              {customers.map((customer) => (
-                <option key={customer.id} value={customer.id}>
-                  {customer.firstName} {customer.lastName} — {customer.mobile || customer.landline}
-                </option>
-              ))}
-            </select>
-            {/* Hidden input for form validation */}
-            <input type="hidden" {...register("customer")} />
+            <input type="text" {...register("customer")} className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground" />
             {errors.customer && <p className="text-xs text-red-500 mt-1">{errors.customer.message}</p>}
           </div>
 
@@ -324,13 +337,8 @@ const CreateWorkOrderPage = () => {
             {errors.address && <p className="text-xs text-red-500 mt-1">{errors.address.message}</p>}
           </div>
 
-          {/* <div>
-            <label className="text-xs font-medium text-muted-foreground mb-2 block">Location</label>
-            <input type="text" placeholder="e.g. Kochi, Kerala" {...register("location")} className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground" />
-          </div> */}
-
           <div>
-            <label className="text-xs font-medium text-muted-foreground mb-2 block"> Location URL</label>
+            <label className="text-xs font-medium text-muted-foreground mb-2 block">Location URL</label>
             <input type="text" placeholder="e.g. Google Maps link or coordinates" {...register("liveLocation")} className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground" />
           </div>
 
@@ -340,58 +348,18 @@ const CreateWorkOrderPage = () => {
             {errors.subject && <p className="text-xs text-red-500 mt-1">{errors.subject.message}</p>}
           </div>
 
-          <div className="text-xs font-medium text-muted-foreground mb-2 block">
-            <div className="flex items-center justify-between mb-2">
-              <label className="text-xs font-medium text-muted-foreground block">Site Address</label>
-              <button
-                type="button"
-                onClick={() => setExtraSiteAddresses(prev => [...prev, ""])}
-                className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:opacity-80 transition-opacity"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                Add
-              </button>
-            </div>
+          <div>
+            <label className="text-xs font-medium text-muted-foreground mb-2 block">Site Address</label>
             <textarea
               {...register("siteAddress")}
               placeholder="e.g. 12 MG Road, Kochi"
               rows={2}
               className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none"
             />
-            {extraSiteAddresses.map((addr, idx) => (
-              <div key={idx} className="relative mt-2">
-                <textarea
-                  value={addr}
-                  onChange={(e) => setExtraSiteAddresses(prev => prev.map((a, i) => i === idx ? e.target.value : a))}
-                  placeholder={`e.g. Site Address ${idx + 2}`}
-                  rows={2}
-                  className="w-full px-3 py-2.5 pr-9 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none"
-                />
-                <button
-                  type="button"
-                  onClick={() => setExtraSiteAddresses(prev => prev.filter((_, i) => i !== idx))}
-                  className="absolute top-2.5 right-2.5 p-0.5 hover:bg-destructive/10 rounded transition-colors"
-                >
-                  <X className="w-3.5 h-3.5 text-muted-foreground hover:text-destructive" />
-                </button>
-              </div>
-            ))}
           </div>
 
-          <div className="text-xs font-medium text-muted-foreground mb-2 block">
-            <div className="flex items-center justify-between gap-3 mb-2">
-              <label className="text-xs font-medium text-muted-foreground block">Billing Address</label>
-              <button
-                type="button"
-                onClick={() => {
-                  const siteAddr = document.querySelector<HTMLTextAreaElement>('textarea[name="siteAddress"]')?.value || "";
-                  setValue("billingAddress", siteAddr);
-                }}
-                className="text-xs font-semibold text-primary hover:opacity-80 transition-opacity"
-              >
-                Same as Site Address
-              </button>
-            </div>
+          <div>
+            <label className="text-xs font-medium text-muted-foreground mb-2 block">Billing Address</label>
             <textarea
               {...register("billingAddress")}
               placeholder="e.g. 12 MG Road, Kochi"
@@ -451,9 +419,7 @@ const CreateWorkOrderPage = () => {
             </select>
           </div>
 
-         
-
-          <div className="text-xs font-medium text-muted-foreground mb-2 block">
+          <div>
             <label className="text-xs font-medium text-muted-foreground mb-2 block">Assign Sales Executives</label>
             <select
               onChange={(e) => { if (e.target.value) { toggleEmployee(e.target.value); e.target.value = ""; } }}
@@ -489,19 +455,19 @@ const CreateWorkOrderPage = () => {
                     </div>
                   );
                 })}
-              </div>  
+              </div>
             )}
             
             {/* Hidden input for form compatibility */}
             <input type="hidden" {...register("assignedTech")} value={selectedEmployees.join(", ")} />
           </div>
 
-          <div className="text-xs font-medium text-muted-foreground mb-2 block">
+          <div className="md:col-span-3">
             <label className="text-xs font-medium text-muted-foreground mb-2 block">Notes</label>
             <textarea placeholder="Additional notes..." rows={3} {...register("notes")} className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground resize-none" />
           </div>
 
-           <div className="md:col-span-3">
+          <div className="md:col-span-3">
             <label className="text-xs font-medium text-muted-foreground mb-2 block">Service Type</label>
             <select
               onChange={(e) => { if (e.target.value) { toggleService(e.target.value); e.target.value = ""; } }}
@@ -523,22 +489,18 @@ const CreateWorkOrderPage = () => {
                 ))}
               </div>
             )}
-            {/* hidden input to satisfy react-hook-form */}
             <input type="hidden" {...register("serviceType")} />
           </div>
-
-
-         
         </div>
-         {/* Services Section */}
-      {tasks.length > 0 && (
-        <div className="bg-card rounded-xl card-shadow border border-border overflow-hidden">
-          <div className="px-6 py-4 border-b border-border">
-            <h2 className="text-base font-bold text-card-foreground">Services</h2>
-            <p className="text-xs text-muted-foreground mt-0.5">Services added</p>
-          </div>
-          <div className="flex flex-row">
-            <div className="flex-1 min-w-0">
+
+        {/* Services Section */}
+        {tasks.length > 0 && (
+          <div className="bg-card rounded-xl card-shadow border border-border overflow-hidden">
+            <div className="px-6 py-4 border-b border-border">
+              <h2 className="text-base font-bold text-card-foreground">Services</h2>
+              <p className="text-xs text-muted-foreground mt-0.5">Services added</p>
+            </div>
+            <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border bg-secondary/30">
@@ -610,245 +572,243 @@ const CreateWorkOrderPage = () => {
                   ))}
                 </tbody>
               </table>
-               <div className="w-64 flex-shrink-0  border-border bg-secondary/10 p-4 space-y-3 self-start ml-auto">
-              <div className="flex justify-between items-center">
-                <span className="text-xs font-medium text-muted-foreground">Subtotal</span>
-                <span className="text-sm font-semibold text-card-foreground">
-                  ₹ {tasks.reduce((sum, t) => sum + (t.amount || 0), 0).toLocaleString()}
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-xs font-medium text-muted-foreground">GST (18%)</span>
-                <span className="text-sm font-semibold text-card-foreground">
-                  ₹ {(tasks.reduce((sum, t) => sum + (t.amount || 0), 0) * 0.18).toLocaleString()}
-                </span>
-              </div>
-              <div className="pt-3 border-t border-border">
+            </div>
+            <div className="px-6 py-4 border-t border-border bg-secondary/10">
+              <div className="flex flex-col gap-2 max-w-sm ml-auto">
                 <div className="flex justify-between items-center">
-                  <span className="text-sm font-bold text-card-foreground">Total Amount</span>
-                  <span className="text-lg font-bold text-primary">
-                    ₹ {(tasks.reduce((sum, t) => sum + (t.amount || 0), 0) * 1.18).toLocaleString()}
+                  <span className="text-xs font-medium text-muted-foreground">Subtotal</span>
+                  <span className="text-sm font-semibold text-card-foreground">
+                    ₹ {tasks.reduce((sum, t) => sum + (t.amount || 0), 0).toLocaleString()}
                   </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-xs font-medium text-muted-foreground">GST (18%)</span>
+                  <span className="text-sm font-semibold text-card-foreground">
+                    ₹ {(tasks.reduce((sum, t) => sum + (t.amount || 0), 0) * 0.18).toLocaleString()}
+                  </span>
+                </div>
+                <div className="pt-2 border-t border-border">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-bold text-card-foreground">Total Amount</span>
+                    <span className="text-lg font-bold text-primary">
+                      ₹ {(tasks.reduce((sum, t) => sum + (t.amount || 0), 0) * 1.18).toLocaleString()}
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
-            </div>
-           
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Service Appointments Schedule */}
-      {tasks.length > 0 && (
-        <div className="bg-card rounded-xl card-shadow border border-border overflow-hidden">
-          <div className="px-6 py-4 border-b border-border">
-            <h2 className="text-base font-bold text-card-foreground">Service Appointments Schedule</h2>
-            <p className="text-xs text-muted-foreground mt-0.5">Schedule service visits for this work order</p>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border bg-secondary/30">
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-12">#</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Service</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Schedule Date</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Time Slot</th>
-                  <th className="text-center px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Required Employees</th>
-                </tr>
-              </thead>
-              <tbody>
-                {tasks.map((task, index) => {
-                  const schedule = serviceSchedules.find(s => s.service === task.title) || {
-                    id: task.id,
-                    service: task.title,
-                    scheduleDate: "",
-                    timeSlot: "",
-                    assignedEmployees: []
-                  };
-                  
-                  return (
-                    <tr key={task.id} className="border-b border-border last:border-0 hover:bg-secondary/10 transition-colors">
-                      <td className="px-4 py-3 text-xs text-muted-foreground">{index + 1}</td>
-                      <td className="px-4 py-3 font-medium text-card-foreground text-sm">{task.title}</td>
-                      <td className="px-4 py-3">
-                        <input
-                          type="date"
-                          value={schedule.scheduleDate}
-                          onChange={(e) => {
-                            setServiceSchedules(prev => {
-                              const existing = prev.find(s => s.service === task.title);
-                              if (existing) {
-                                return prev.map(s => s.service === task.title ? { ...s, scheduleDate: e.target.value } : s);
-                              }
-                              return [...prev, { ...schedule, scheduleDate: e.target.value }];
-                            });
-                          }}
-                          className="w-full px-3 py-1.5 rounded-lg bg-secondary text-xs border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
-                        />
-                      </td>
-                      <td className="px-4 py-3">
-                        <select
-                          value={schedule.timeSlot}
-                          onChange={(e) => {
-                            setServiceSchedules(prev => {
-                              const existing = prev.find(s => s.service === task.title);
-                              if (existing) {
-                                return prev.map(s => s.service === task.title ? { ...s, timeSlot: e.target.value } : s);
-                              }
-                              return [...prev, { ...schedule, timeSlot: e.target.value }];
-                            });
-                          }}
-                          className="w-full px-3 py-1.5 rounded-lg bg-secondary text-xs border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
-                        >
-                          <option value="">Select time slot</option>
-                          <option value="09:00 AM - 11:00 AM">09:00 AM - 11:00 AM</option>
-                          <option value="10:00 AM - 12:00 PM">10:00 AM - 12:00 PM</option>
-                          <option value="11:00 AM - 01:00 PM">11:00 AM - 01:00 PM</option>
-                          <option value="02:00 PM - 04:00 PM">02:00 PM - 04:00 PM</option>
-                          <option value="03:00 PM - 05:00 PM">03:00 PM - 05:00 PM</option>
-                          <option value="04:00 PM - 06:00 PM">04:00 PM - 06:00 PM</option>
-                        </select>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="space-y-2">
-                          <select
+        {/* Service Appointments Schedule */}
+        {tasks.length > 0 && (
+          <div className="bg-card rounded-xl card-shadow border border-border overflow-hidden">
+            <div className="px-6 py-4 border-b border-border">
+              <h2 className="text-base font-bold text-card-foreground">Service Appointments Schedule</h2>
+              <p className="text-xs text-muted-foreground mt-0.5">Schedule service visits for this work order</p>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border bg-secondary/30">
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-12">#</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Service</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Schedule Date</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Time Slot</th>
+                    <th className="text-center px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Required Employees</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {tasks.map((task, index) => {
+                    const schedule = serviceSchedules.find(s => s.service === task.title) || {
+                      id: task.id,
+                      service: task.title,
+                      scheduleDate: "",
+                      timeSlot: "",
+                      assignedEmployees: []
+                    };
+                    
+                    return (
+                      <tr key={task.id} className="border-b border-border last:border-0 hover:bg-secondary/10 transition-colors">
+                        <td className="px-4 py-3 text-xs text-muted-foreground">{index + 1}</td>
+                        <td className="px-4 py-3 font-medium text-card-foreground text-sm">{task.title}</td>
+                        <td className="px-4 py-3">
+                          <input
+                            type="date"
+                            value={schedule.scheduleDate}
                             onChange={(e) => {
-                              if (e.target.value) {
-                                const empName = e.target.value;
-                                setServiceSchedules(prev => {
-                                  const existing = prev.find(s => s.service === task.title);
-                                  const currentEmployees = existing?.assignedEmployees || [];
-                                  
-                                  if (!currentEmployees.includes(empName)) {
-                                    const newEmployees = [...currentEmployees, empName];
-                                    if (existing) {
-                                      return prev.map(s => s.service === task.title ? { ...s, assignedEmployees: newEmployees } : s);
-                                    }
-                                    return [...prev, { ...schedule, assignedEmployees: newEmployees }];
-                                  }
-                                  return prev;
-                                });
-                                e.target.value = "";
-                              }
+                              setServiceSchedules(prev => {
+                                const existing = prev.find(s => s.service === task.title);
+                                if (existing) {
+                                  return prev.map(s => s.service === task.title ? { ...s, scheduleDate: e.target.value } : s);
+                                }
+                                return [...prev, { ...schedule, scheduleDate: e.target.value }];
+                              });
                             }}
                             className="w-full px-3 py-1.5 rounded-lg bg-secondary text-xs border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
-                            defaultValue=""
+                          />
+                        </td>
+                        <td className="px-4 py-3">
+                          <select
+                            value={schedule.timeSlot}
+                            onChange={(e) => {
+                              setServiceSchedules(prev => {
+                                const existing = prev.find(s => s.service === task.title);
+                                if (existing) {
+                                  return prev.map(s => s.service === task.title ? { ...s, timeSlot: e.target.value } : s);
+                                }
+                                return [...prev, { ...schedule, timeSlot: e.target.value }];
+                              });
+                            }}
+                            className="w-full px-3 py-1.5 rounded-lg bg-secondary text-xs border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
                           >
-                            <option value="" disabled>
-                              {employees.length === 0 ? "No employees" : "Select employees..."}
-                            </option>
-                            {employees.map((emp) => (
-                              <option 
-                                key={emp.id} 
-                                value={emp.name}
-                                disabled={schedule.assignedEmployees.includes(emp.name)}
-                              >
-                                {emp.name} — {emp.role}{schedule.assignedEmployees.includes(emp.name) ? " ✓" : ""}
-                              </option>
-                            ))}
+                            <option value="">Select time slot</option>
+                            <option value="09:00 AM - 11:00 AM">09:00 AM - 11:00 AM</option>
+                            <option value="10:00 AM - 12:00 PM">10:00 AM - 12:00 PM</option>
+                            <option value="11:00 AM - 01:00 PM">11:00 AM - 01:00 PM</option>
+                            <option value="02:00 PM - 04:00 PM">02:00 PM - 04:00 PM</option>
+                            <option value="03:00 PM - 05:00 PM">03:00 PM - 05:00 PM</option>
+                            <option value="04:00 PM - 06:00 PM">04:00 PM - 06:00 PM</option>
                           </select>
-                          
-                          {/* Selected Employees List */}
-                          {schedule.assignedEmployees.length > 0 && (
-                            <div className="space-y-1">
-                              {schedule.assignedEmployees.map((empName) => {
-                                const emp = employees.find(e => e.name === empName);
-                                return (
-                                  <div
-                                    key={empName}
-                                    className="flex items-center justify-between gap-2 px-2 py-1.5 bg-primary/10 text-primary text-xs font-medium rounded border border-primary/20"
-                                  >
-                                    <div className="flex items-center gap-1.5 flex-1 min-w-0">
-                                      <span className="truncate">{empName}</span>
-                                      {emp && <span className="text-primary/70 text-[10px] flex-shrink-0">• {emp.role}</span>}
-                                    </div>
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        setServiceSchedules(prev => {
-                                          const existing = prev.find(s => s.service === task.title);
-                                          if (existing) {
-                                            const newEmployees = existing.assignedEmployees.filter(name => name !== empName);
-                                            return prev.map(s => s.service === task.title ? { ...s, assignedEmployees: newEmployees } : s);
-                                          }
-                                          return prev;
-                                        });
-                                      }}
-                                      className="hover:bg-primary/20 rounded-full p-0.5 transition-colors flex-shrink-0"
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="space-y-2">
+                            <select
+                              onChange={(e) => {
+                                if (e.target.value) {
+                                  const empName = e.target.value;
+                                  setServiceSchedules(prev => {
+                                    const existing = prev.find(s => s.service === task.title);
+                                    const currentEmployees = existing?.assignedEmployees || [];
+                                    
+                                    if (!currentEmployees.includes(empName)) {
+                                      const newEmployees = [...currentEmployees, empName];
+                                      if (existing) {
+                                        return prev.map(s => s.service === task.title ? { ...s, assignedEmployees: newEmployees } : s);
+                                      }
+                                      return [...prev, { ...schedule, assignedEmployees: newEmployees }];
+                                    }
+                                    return prev;
+                                  });
+                                  e.target.value = "";
+                                }
+                              }}
+                              className="w-full px-3 py-1.5 rounded-lg bg-secondary text-xs border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
+                              defaultValue=""
+                            >
+                              <option value="" disabled>
+                                {employees.length === 0 ? "No employees" : "Select employees..."}
+                              </option>
+                              {employees.map((emp) => (
+                                <option 
+                                  key={emp.id} 
+                                  value={emp.name}
+                                  disabled={schedule.assignedEmployees.includes(emp.name)}
+                                >
+                                  {emp.name} — {emp.role}{schedule.assignedEmployees.includes(emp.name) ? " ✓" : ""}
+                                </option>
+                              ))}
+                            </select>
+                            
+                            {/* Selected Employees List */}
+                            {schedule.assignedEmployees.length > 0 && (
+                              <div className="space-y-1">
+                                {schedule.assignedEmployees.map((empName) => {
+                                  const emp = employees.find(e => e.name === empName);
+                                  return (
+                                    <div
+                                      key={empName}
+                                      className="flex items-center justify-between gap-2 px-2 py-1.5 bg-primary/10 text-primary text-xs font-medium rounded border border-primary/20"
                                     >
-                                      <X className="w-3 h-3" />
-                                    </button>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                                      <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                                        <span className="truncate">{empName}</span>
+                                        {emp && <span className="text-primary/70 text-[10px] flex-shrink-0">• {emp.role}</span>}
+                                      </div>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setServiceSchedules(prev => {
+                                            const existing = prev.find(s => s.service === task.title);
+                                            if (existing) {
+                                              const newEmployees = existing.assignedEmployees.filter(name => name !== empName);
+                                              return prev.map(s => s.service === task.title ? { ...s, assignedEmployees: newEmployees } : s);
+                                            }
+                                            return prev;
+                                          });
+                                        }}
+                                        className="hover:bg-primary/20 rounded-full p-0.5 transition-colors flex-shrink-0"
+                                      >
+                                        <X className="w-3 h-3" />
+                                      </button>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Terms & Conditions */}
-      <div className="bg-card rounded-xl card-shadow border border-border overflow-hidden">
-        <div className="px-6 py-4 border-b border-border">
-          <h2 className="text-base font-bold text-card-foreground">Terms & Conditions</h2>
-        </div>
-        <div className="px-6 py-5 space-y-3">
-          <div className="space-y-2.5">
-            <div className="flex gap-3">
-              <span className="text-sm font-medium text-muted-foreground flex-shrink-0">1.</span>
-              <p className="text-sm text-muted-foreground">Services will be performed as per the scheduled appointments</p>
+        {/* Terms & Conditions */}
+        <div className="bg-card rounded-xl card-shadow border border-border overflow-hidden">
+          <div className="px-6 py-4 border-b border-border">
+            <h2 className="text-base font-bold text-card-foreground">Terms & Conditions</h2>
+          </div>
+          <div className="px-6 py-5 space-y-3">
+            <div className="space-y-2.5">
+              <div className="flex gap-3">
+                <span className="text-sm font-medium text-muted-foreground flex-shrink-0">1.</span>
+                <p className="text-sm text-muted-foreground">Services will be performed as per the scheduled appointments</p>
+              </div>
+              <div className="flex gap-3">
+                <span className="text-sm font-medium text-muted-foreground flex-shrink-0">2.</span>
+                <p className="text-sm text-muted-foreground">Customer must provide access to all areas requiring treatment</p>
+              </div>
+              <div className="flex gap-3">
+                <span className="text-sm font-medium text-muted-foreground flex-shrink-0">3.</span>
+                <p className="text-sm text-muted-foreground">Payment is due within 30 days of invoice date</p>
+              </div>
+              <div className="flex gap-3">
+                <span className="text-sm font-medium text-muted-foreground flex-shrink-0">4.</span>
+                <p className="text-sm text-muted-foreground">24-hour advance notice required for rescheduling</p>
+              </div>
+              <div className="flex gap-3">
+                <span className="text-sm font-medium text-muted-foreground flex-shrink-0">5.</span>
+                <p className="text-sm text-muted-foreground">Service warranty valid for 30 days after each treatment</p>
+              </div>
             </div>
-            <div className="flex gap-3">
-              <span className="text-sm font-medium text-muted-foreground flex-shrink-0">2.</span>
-              <p className="text-sm text-muted-foreground">Customer must provide access to all areas requiring treatment</p>
-            </div>
-            <div className="flex gap-3">
-              <span className="text-sm font-medium text-muted-foreground flex-shrink-0">3.</span>
-              <p className="text-sm text-muted-foreground">Payment is due within 30 days of invoice date</p>
-            </div>
-            <div className="flex gap-3">
-              <span className="text-sm font-medium text-muted-foreground flex-shrink-0">4.</span>
-              <p className="text-sm text-muted-foreground">24-hour advance notice required for rescheduling</p>
-            </div>
-            <div className="flex gap-3">
-              <span className="text-sm font-medium text-muted-foreground flex-shrink-0">5.</span>
-              <p className="text-sm text-muted-foreground">Service warranty valid for 30 days after each treatment</p>
+            
+            <div className="pt-4 border-t border-border">
+              <label className="flex items-center gap-3 cursor-pointer group">
+                <input
+                  type="checkbox"
+                  checked={termsAccepted}
+                  onChange={(e) => setTermsAccepted(e.target.checked)}
+                  className="w-5 h-5 rounded border-2 border-border text-primary focus:ring-2 focus:ring-primary/20 cursor-pointer"
+                />
+                <span className="text-sm font-medium text-card-foreground group-hover:text-primary transition-colors">
+                  I agree to the terms and conditions
+                </span>
+              </label>
             </div>
           </div>
-          
-          <div className="pt-4 border-t border-border">
-            <label className="flex items-center gap-3 cursor-pointer group">
-              <input
-                type="checkbox"
-                checked={termsAccepted}
-                onChange={(e) => setTermsAccepted(e.target.checked)}
-                className="w-5 h-5 rounded border-2 border-border text-primary focus:ring-2 focus:ring-primary/20 cursor-pointer"
-              />
-              <span className="text-sm font-medium text-card-foreground group-hover:text-primary transition-colors">
-                I agree to the terms and conditions
-              </span>
-            </label>
-          </div>
         </div>
-      </div>
-
 
         <div className="flex justify-end gap-3 pt-6 border-t border-border">
           <button type="button" onClick={() => navigate("/projects")} className="px-6 py-2.5 border border-border text-card-foreground text-sm font-medium hover:text-primary transition-colors rounded-lg">Cancel</button>
           <button type="submit" disabled={isSubmitting} className="px-6 py-2.5 text-white text-sm font-medium rounded-lg hover:opacity-90 transition-all disabled:opacity-50" style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}>
-            {isSubmitting ? "Creating..." : "Create Work Order"}
+            {isSubmitting ? "Updating..." : "Update Work Order"}
           </button>
         </div>
       </form>
 
-     
       {/* Edit Service Modal */}
       {editingTask && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75">
@@ -942,7 +902,7 @@ const CreateWorkOrderPage = () => {
               </div>
               <div className="flex gap-3 pt-4 border-t border-border">
                 <button onClick={() => setEditingTask(null)} className="flex-1 h-10 border border-border text-card-foreground text-sm font-medium hover:text-primary transition-colors rounded-lg">Cancel</button>
-                <button onClick={() => updateTask(editingTask)} className="flex-1 h-10 text-white text-sm font-medium rounded-lg hover:opacity-90 transition-all" style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}>Update Service</button>
+                <button onClick={() => updateTaskData(editingTask)} className="flex-1 h-10 text-white text-sm font-medium rounded-lg hover:opacity-90 transition-all" style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}>Update Service</button>
               </div>
             </div>
           </div>
@@ -953,4 +913,4 @@ const CreateWorkOrderPage = () => {
   );
 };
 
-export default CreateWorkOrderPage;
+export default EditWorkOrderPage;

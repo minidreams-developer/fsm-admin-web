@@ -114,7 +114,7 @@ const ServiceManagementPage = () => {
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-lg sm:text-xl font-bold text-card-foreground">Service Management</h2>
+          <h2 className="text-lg sm:text-xl font-bold text-card-foreground">Service list</h2>
           <p className="text-sm text-muted-foreground">Manage service appointments and tasks</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-2">

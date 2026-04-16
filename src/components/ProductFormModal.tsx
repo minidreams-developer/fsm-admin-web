@@ -22,7 +22,6 @@ const LABELS = {
   description: "Description",
   unitOfMeasurement: "Unit of Measurement",
   unitPrice: "Unit Price (₹)",
-  reorderLevel: "Reorder Level",
   supplierName: "Supplier Name",
   supplierContact: "Supplier Contact",
   sku: "SKU/Code",
@@ -87,10 +86,6 @@ export function ProductFormModal({ open, mode, product, onClose, onSaved }: Prop
     }
     if (form.unitPrice <= 0) {
       toast.error(`${LABELS.unitPrice} must be greater than 0`);
-      return;
-    }
-    if (form.reorderLevel < 0) {
-      toast.error(`${LABELS.reorderLevel} cannot be negative`);
       return;
     }
 
@@ -224,13 +219,11 @@ export function ProductFormModal({ open, mode, product, onClose, onSaved }: Prop
             </div>
 
             <div>
-              <label className="text-xs font-medium text-muted-foreground mb-2 block">{LABELS.reorderLevel}</label>
+              <label className="text-xs font-medium text-muted-foreground mb-2 block">{LABELS.sku}</label>
               <input
-                value={form.reorderLevel}
-                onChange={(e) => setField("reorderLevel", Number(e.target.value))}
-                placeholder="0"
-                type="number"
-                min="0"
+                value={form.sku}
+                onChange={(e) => setField("sku", e.target.value)}
+                placeholder="Enter SKU/Code"
                 className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
               />
             </div>

@@ -57,12 +57,12 @@ export function ProductDetailsModal({ open, product, onClose }: Props) {
               <p className="text-sm text-card-foreground">₹{product.unitPrice}</p>
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground mb-2 block">Reorder Level</label>
-              <p className="text-sm text-card-foreground">{product.reorderLevel}</p>
-            </div>
-            <div>
               <label className="text-xs font-medium text-muted-foreground mb-2 block">SKU</label>
               <p className="text-sm text-card-foreground">{product.sku}</p>
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-2 block">Created Date</label>
+              <p className="text-sm text-card-foreground">{product.createdAt}</p>
             </div>
             <div className="md:col-span-2">
               <label className="text-xs font-medium text-muted-foreground mb-2 block">Supplier Name</label>
@@ -71,10 +71,6 @@ export function ProductDetailsModal({ open, product, onClose }: Props) {
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-2 block">Supplier Contact</label>
               <p className="text-sm text-card-foreground">{product.supplierContact}</p>
-            </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground mb-2 block">Created Date</label>
-              <p className="text-sm text-card-foreground">{product.createdAt}</p>
             </div>
             {product.notes && (
               <div className="md:col-span-2">

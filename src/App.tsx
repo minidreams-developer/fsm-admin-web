@@ -21,6 +21,7 @@ import LoginPage from "./pages/LoginPage";
 import NotFound from "./pages/NotFound";
 import ProjectsPage from "./pages/ProjectsPage";
 import CreateWorkOrderPage from "./pages/CreateWorkOrderPage";
+import EditWorkOrderPage from "./pages/EditWorkOrderPage";
 import CreateLeadPage from "./pages/CreateLeadPage";
 import { LeadDetailPage } from "./pages/LeadDetailPage";
 import { WorkOrderDetailsPage } from "./pages/WorkOrderDetailsPage";
@@ -52,6 +53,7 @@ const App = () => (
               <Route path="/leads/:id" element={<LeadDetailPage />} />
               <Route path="/projects" element={<ProjectsPage />} />
               <Route path="/create-work-order" element={<CreateWorkOrderPage />} />
+              <Route path="/edit-work-order/:id" element={<EditWorkOrderPage />} />
               <Route path="/work-order/:id" element={<WorkOrderDetailsPage />} />
               <Route path="/service/:id" element={<ServiceDetailPage />} />
               <Route path="/services" element={<ServicesPage />} />

@@ -162,7 +162,7 @@ export const WorkOrderDetailsPage = () => {
             Download PDF
           </button>
           <button
-            onClick={() => setIsEditingWorkOrder(true)}
+            onClick={() => navigate(`/edit-work-order/${id}`)}
             className="inline-flex items-center gap-2 h-10 px-4 rounded-lg border border-border bg-card hover:bg-secondary transition-colors text-sm font-semibold text-card-foreground"
           >
             <Edit2 className="w-4 h-4" />
@@ -210,16 +210,28 @@ export const WorkOrderDetailsPage = () => {
           </div>
 
           {/* Frequency */}
-          <div className="space-y-2">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Frequency</p>
-            <p className="text-lg font-bold text-card-foreground">{workOrder.frequency}</p>
-          </div>
+          {workOrder.frequency && (
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Frequency</p>
+              <p className="text-lg font-bold text-card-foreground">{workOrder.frequency}</p>
+            </div>
+          )}
 
           {/* Work Order Incharge */}
-          <div className="space-y-2">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Work Order Incharge</p>
-            <p className="text-lg font-bold text-primary">{workOrder.assignedTech}</p>
-          </div>
+          {workOrder.workOrderIncharge && (
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Work Order Incharge</p>
+              <p className="text-lg font-bold text-primary">{workOrder.workOrderIncharge}</p>
+            </div>
+          )}
+
+          {/* Assigned Tech / Sales Executives */}
+          {workOrder.assignedTech && workOrder.assignedTech !== "Unassigned" && (
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Assigned Sales Executives</p>
+              <p className="text-lg font-bold text-primary">{workOrder.assignedTech}</p>
+            </div>
+          )}
         </div>
 
         {/* Contact & Location Section */}
@@ -238,9 +250,29 @@ export const WorkOrderDetailsPage = () => {
               <Mail className="w-5 h-5 text-primary flex-shrink-0 mt-1" />
               <div>
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Email</p>
-                <p className="text-sm font-medium text-card-foreground">{workOrder.email}</p>
+                <p className="text-sm font-medium text-card-foreground">{workOrder.email || "—"}</p>
               </div>
             </div>
+
+            {workOrder.location && (
+              <div className="flex items-start gap-3">
+                <MapPin className="w-5 h-5 text-primary flex-shrink-0 mt-1" />
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Location</p>
+                  <p className="text-sm font-medium text-card-foreground">{workOrder.location}</p>
+                </div>
+              </div>
+            )}
+
+            {workOrder.liveLocation && (
+              <div className="flex items-start gap-3">
+                <MapPin className="w-5 h-5 text-success flex-shrink-0 mt-1" />
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Live Location</p>
+                  <p className="text-sm font-medium text-card-foreground break-all">{workOrder.liveLocation}</p>
+                </div>
+              </div>
+            )}
 
             <div className="flex items-start gap-3 md:col-span-2">
               <MapPin className="w-5 h-5 text-primary flex-shrink-0 mt-1" />
@@ -249,6 +281,16 @@ export const WorkOrderDetailsPage = () => {
                 <p className="text-sm font-medium text-card-foreground">{workOrder.siteAddress || workOrder.address}</p>
               </div>
             </div>
+
+            {workOrder.billingAddress && (
+              <div className="flex items-start gap-3 md:col-span-2">
+                <MapPin className="w-5 h-5 text-warning flex-shrink-0 mt-1" />
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Billing Address</p>
+                  <p className="text-sm font-medium text-card-foreground">{workOrder.billingAddress}</p>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
