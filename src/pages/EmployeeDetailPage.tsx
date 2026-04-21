@@ -20,11 +20,37 @@ export const EmployeeDetailPage = () => {
   const [showEdit, setShowEdit] = useState(false);
   const [projectFilter, setProjectFilter] = useState<"All" | "Open" | "Scheduled" | "Completed">("All");
   const [inventoryFilter, setInventoryFilter] = useState<"All" | "OK" | "Low" | "Critical">("All");
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
 
   const employee = id ? getEmployee(id) : null;
   const isActive = employee?.isActive !== false;
   const assignedProjects = workOrders.filter(wo => wo.assignedTech === employee?.name && wo.status !== "Completed");
-  const filteredProjects = projectFilter === "All" ? workOrders.filter(wo => wo.assignedTech === employee?.name) : workOrders.filter(wo => wo.assignedTech === employee?.name && wo.status === projectFilter);
+  
+  // Apply date filter to projects
+  let filteredProjects = projectFilter === "All" 
+    ? workOrders.filter(wo => wo.assignedTech === employee?.name) 
+    : workOrders.filter(wo => wo.assignedTech === employee?.name && wo.status === projectFilter);
+  
+  // Apply date range filter
+  if (fromDate || toDate) {
+    filteredProjects = filteredProjects.filter(wo => {
+      const woDate = new Date(wo.end || wo.start);
+      let matchDate = true;
+      
+      if (fromDate) {
+        const from = new Date(fromDate);
+        matchDate = matchDate && woDate >= from;
+      }
+      
+      if (toDate) {
+        const to = new Date(toDate);
+        matchDate = matchDate && woDate <= to;
+      }
+      
+      return matchDate;
+    });
+  }
   
   // Get actual allocated inventory for this employee
   const employeeInventoryItems = employee?.id 
@@ -83,27 +109,67 @@ export const EmployeeDetailPage = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex items-center gap-3">
-        <button
-          type="button"
-          onClick={() => navigate("/employees")}
-          className="inline-flex items-center gap-2 h-10 px-4 rounded-lg border border-border bg-card hover:bg-secondary transition-colors text-sm font-semibold text-card-foreground"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Back
-        </button>
-        <div className="flex-1">
-          <h2 className="text-lg sm:text-xl font-bold text-card-foreground">{employee.name}</h2>
-          <p className="text-sm text-muted-foreground">{employee.id}</p>
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => navigate("/employees")}
+            className="inline-flex items-center gap-2 h-10 px-4 rounded-lg border border-border bg-card hover:bg-secondary transition-colors text-sm font-semibold text-card-foreground"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back
+          </button>
+          <div>
+            <h2 className="text-lg sm:text-xl font-bold text-card-foreground">{employee.name}</h2>
+            <p className="text-sm text-muted-foreground">{employee.id}</p>
+          </div>
         </div>
-        <button
-          type="button"
-          onClick={() => setShowEdit(true)}
-          className="h-10 px-4 inline-flex items-center gap-2 rounded-lg border border-border bg-card hover:bg-secondary transition-colors text-sm font-semibold text-card-foreground"
-        >
-          <Edit2 className="w-4 h-4" />
-          Edit
-        </button>
+        
+        <div className="flex items-center gap-2">
+          {/* Date Filter */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+            <div className="flex gap-2">
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">From Date</label>
+                <input
+                  type="date"
+                  value={fromDate}
+                  onChange={(e) => setFromDate(e.target.value)}
+                  className="w-full sm:w-36 px-3 py-2 rounded-lg bg-secondary text-xs border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">To Date</label>
+                <input
+                  type="date"
+                  value={toDate}
+                  onChange={(e) => setToDate(e.target.value)}
+                  className="w-full sm:w-36 px-3 py-2 rounded-lg bg-secondary text-xs border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
+                />
+              </div>
+            </div>
+            {(fromDate || toDate) && (
+              <button
+                onClick={() => {
+                  setFromDate("");
+                  setToDate("");
+                }}
+                className="h-10 px-4 rounded-lg text-xs font-semibold border border-border text-card-foreground hover:bg-secondary transition-colors mt-5"
+              >
+                Reset
+              </button>
+            )}
+          </div>
+          
+          <button
+            type="button"
+            onClick={() => setShowEdit(true)}
+            className="h-10 px-4 inline-flex items-center gap-2 rounded-lg border border-border bg-card hover:bg-secondary transition-colors text-sm font-semibold text-card-foreground"
+          >
+            <Edit2 className="w-4 h-4" />
+            Edit
+          </button>
+        </div>
       </div>
 
       <div className="bg-card rounded-xl p-8 card-shadow border border-border">

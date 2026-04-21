@@ -29,6 +29,7 @@ export type Customer = {
   paymentTerms: string;
   billingAddress: string;
   siteAddress: string;
+  locationUrl?: string;
   contactPersonsDetails: ContactPerson[];
   customerDocuments: CustomerDocument[];
 };
