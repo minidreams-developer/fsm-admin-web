@@ -32,6 +32,7 @@ const ProjectsPage = () => {
   const [appliedEnd, setAppliedEnd] = useState("");
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [convertedLeadName, setConvertedLeadName] = useState("");
+  const [selectedProjects, setSelectedProjects] = useState<string[]>([]);
 
   useEffect(() => {
     const convertLeadId = searchParams.get("convertLeadId");
@@ -83,6 +84,25 @@ const ProjectsPage = () => {
     const total = parseInt(project.totalValue.replace(/[₹,\s]/g, ""));
     const paid = parseInt(project.paidAmount.replace(/[₹,\s]/g, ""));
     return Math.round((paid / total) * 100);
+  };
+
+  const toggleSelectProject = (id: string) => {
+    setSelectedProjects(prev => 
+      prev.includes(id) ? prev.filter(pid => pid !== id) : [...prev, id]
+    );
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedProjects.length === filtered.length) {
+      setSelectedProjects([]);
+    } else {
+      setSelectedProjects(filtered.map(wo => wo.id));
+    }
+  };
+
+  const handleBulkAssign = () => {
+    // Navigate to bulk assign page with selected project IDs
+    navigate(`/bulk-assign?ids=${selectedProjects.join(',')}`);
   };
 
   const handleExportToExcel = () => {
@@ -349,6 +369,7 @@ const ProjectsPage = () => {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border">
+              <th className="text-left px-3 py-3 w-12"></th>
               {["Work Order ID", "Customer", "Services", "Start Date", "End Date", "Status"].map((h) => (
                 <th key={h} className="text-left px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">{h}</th>
               ))}
@@ -356,15 +377,23 @@ const ProjectsPage = () => {
           </thead>
           <tbody>
             {filtered.map((project) => (
-              <tr key={project.id} onClick={() => navigate(`/work-order/${project.id}`)} className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors cursor-pointer">
-                <td className="px-3 py-3">
+              <tr key={project.id} className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors">
+                <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
+                  <input
+                    type="checkbox"
+                    checked={selectedProjects.includes(project.id)}
+                    onChange={() => toggleSelectProject(project.id)}
+                    className="w-4 h-4 rounded border-border text-primary focus:ring-2 focus:ring-primary/20 cursor-pointer accent-primary"
+                  />
+                </td>
+                <td className="px-3 py-3 cursor-pointer" onClick={() => navigate(`/work-order/${project.id}`)}>
                   <div className="font-semibold text-primary text-xs">{project.id}</div>
                 </td>
-                <td className="px-3 py-3">
+                <td className="px-3 py-3 cursor-pointer" onClick={() => navigate(`/work-order/${project.id}`)}>
                   <div className="font-semibold text-card-foreground text-xs">{project.customer}</div>
                   <div className="text-xs text-muted-foreground truncate">{project.address}</div>
                 </td>
-                <td className="px-3 py-3">
+                <td className="px-3 py-3 cursor-pointer" onClick={() => navigate(`/work-order/${project.id}`)}>
                   {(() => {
                     const count = project.serviceTypes?.length
                       ? project.serviceTypes.length
@@ -377,15 +406,43 @@ const ProjectsPage = () => {
                     );
                   })()}
                 </td>
-                <td className="px-3 py-3 text-xs text-muted-foreground">{project.start || "—"}</td>
-                <td className="px-3 py-3 text-xs text-muted-foreground">{project.end || "—"}</td>
-                <td className="px-3 py-3">
+                <td className="px-3 py-3 text-xs text-muted-foreground cursor-pointer" onClick={() => navigate(`/work-order/${project.id}`)}>{project.start || "—"}</td>
+                <td className="px-3 py-3 text-xs text-muted-foreground cursor-pointer" onClick={() => navigate(`/work-order/${project.id}`)}>{project.end || "—"}</td>
+                <td className="px-3 py-3 cursor-pointer" onClick={() => navigate(`/work-order/${project.id}`)}>
                   <StatusBadge label={project.status} variant={statusMap[project.status as keyof typeof statusMap] || "neutral"} />
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
+
+        {/* Bulk Assign Button - Shows at bottom right when items are selected */}
+        {selectedProjects.length > 0 && (
+          <div className="border-t border-border bg-secondary/30 px-4 py-3 flex items-center justify-end gap-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center">
+                <span className="text-xs font-bold text-primary">{selectedProjects.length}</span>
+              </div>
+              <span className="text-sm font-medium text-card-foreground">
+                {selectedProjects.length} selected
+              </span>
+            </div>
+            <button
+              onClick={() => setSelectedProjects([])}
+              className="px-3 py-2 rounded-lg text-sm font-medium border border-border text-muted-foreground hover:text-card-foreground hover:border-primary/30 transition-colors"
+            >
+              Clear
+            </button>
+            <button
+              onClick={handleBulkAssign}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white hover:opacity-90 shadow-[0px_5px_12px_rgba(39,47,158,0.2)] transition-all"
+              style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}
+            >
+              <User className="w-4 h-4" />
+              Bulk Assign
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -32,6 +32,7 @@ import RolesPage from "./pages/RolesPage";
 import QuantCalendarPage from "./pages/QuantCalendarPage";
 import TaskManagementPage from "./pages/TaskManagementPage";
 import WorkOrderSignaturePage from "./pages/WorkOrderSignaturePage";
+import BulkAssignPage from "./pages/BulkAssignPage";
 
 const queryClient = new QueryClient();
 
@@ -52,6 +53,7 @@ const App = () => (
               <Route path="/leads/new" element={<CreateLeadPage />} />
               <Route path="/leads/:id" element={<LeadDetailPage />} />
               <Route path="/projects" element={<ProjectsPage />} />
+              <Route path="/bulk-assign" element={<BulkAssignPage />} />
               <Route path="/create-work-order" element={<CreateWorkOrderPage />} />
               <Route path="/edit-work-order/:id" element={<EditWorkOrderPage />} />
               <Route path="/work-order/:id" element={<WorkOrderDetailsPage />} />

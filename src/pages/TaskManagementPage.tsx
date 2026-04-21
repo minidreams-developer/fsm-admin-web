@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Search, Edit2, Trash2, ChevronLeft, ChevronRight, ChevronDown, X } from "lucide-react";
+import { Plus, Search, Edit2, Trash2, ChevronLeft, ChevronRight, ChevronDown, X, Upload, File } from "lucide-react";
 import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import { useTasksStore, type Task } from "@/store/tasksStore";
@@ -41,7 +41,7 @@ function EmployeeMultiSelect({ options, selected, onChange }: { options: string[
   );
 }
 
-const emptyForm = { title: "", description: "", workOrderId: "", startDate: "", endDate: "", assignedEmployees: [] as string[], status: "Pending" as TaskStatus };
+const emptyForm = { title: "", description: "", workOrderId: "", startDate: "", endDate: "", assignedEmployees: [] as string[], status: "Pending" as TaskStatus, attachments: [] as File[] };
 
 const TaskManagementPage = () => {
   const { tasks, addTask, updateTask, deleteTask, getNextTaskId } = useTasksStore();
@@ -67,7 +67,28 @@ const TaskManagementPage = () => {
   const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   const openCreate = () => { setEditingTask(null); setForm({ ...emptyForm }); setShowModal(true); };
-  const openEdit = (t: Task) => { setEditingTask(t); setForm({ title: t.title, description: t.description, workOrderId: t.workOrderId, startDate: t.startDate, endDate: t.endDate, assignedEmployees: t.assignedEmployees || [t.assignedTo], status: t.status }); setShowModal(true); };
+  const openEdit = (t: Task) => { setEditingTask(t); setForm({ title: t.title, description: t.description, workOrderId: t.workOrderId, startDate: t.startDate, endDate: t.endDate, assignedEmployees: t.assignedEmployees || [t.assignedTo], status: t.status, attachments: [] }); setShowModal(true); };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    // Validate file size (max 10MB per file)
+    const maxSize = 10 * 1024 * 1024;
+    const invalidFiles = files.filter(f => f.size > maxSize);
+    if (invalidFiles.length > 0) {
+      toast.error(`Some files exceed 10MB limit: ${invalidFiles.map(f => f.name).join(", ")}`);
+      return;
+    }
+
+    setForm(f => ({ ...f, attachments: [...f.attachments, ...files] }));
+    toast.success(`Added ${files.length} file${files.length !== 1 ? 's' : ''}`);
+  };
+
+  const removeFile = (index: number) => {
+    setForm(f => ({ ...f, attachments: f.attachments.filter((_, i) => i !== index) }));
+    toast.info("File removed");
+  };
 
   const handleSave = () => {
     if (!form.title.trim()) { toast.error("Title is required"); return; }
@@ -286,6 +307,45 @@ const TaskManagementPage = () => {
                 <select value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value as TaskStatus }))} className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20">
                   {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Attachments</label>
+                <div className="space-y-2">
+                  <label className="flex items-center justify-center gap-2 w-full px-4 py-3 rounded-lg bg-secondary border-2 border-dashed border-border cursor-pointer hover:border-primary/50 hover:bg-secondary/80 transition-colors">
+                    <Upload className="w-4 h-4 text-muted-foreground" />
+                    <span className="text-sm text-muted-foreground">Click to upload files</span>
+                    <input
+                      type="file"
+                      multiple
+                      onChange={handleFileChange}
+                      className="hidden"
+                      accept="*/*"
+                    />
+                  </label>
+                  {form.attachments.length > 0 && (
+                    <div className="space-y-2">
+                      {form.attachments.map((file, index) => (
+                        <div key={index} className="flex items-center justify-between gap-2 px-3 py-2 bg-primary/5 border border-primary/20 rounded-lg">
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                            <File className="w-4 h-4 text-primary flex-shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-medium text-card-foreground truncate">{file.name}</p>
+                              <p className="text-[10px] text-muted-foreground">{(file.size / 1024).toFixed(1)} KB</p>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => removeFile(index)}
+                            className="p-1 hover:bg-destructive/10 rounded transition-colors flex-shrink-0"
+                          >
+                            <X className="w-3.5 h-3.5 text-destructive" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <p className="text-[10px] text-muted-foreground">Max file size: 10MB per file</p>
+                </div>
               </div>
             </div>
             <div className="flex gap-3 p-6 border-t border-border flex-shrink-0">
