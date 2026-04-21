@@ -116,49 +116,47 @@ const PaymentsPage = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-lg sm:text-xl font-bold text-card-foreground">Payments</h2>
           <p className="text-sm text-muted-foreground">Manage payment details and work orders</p>
         </div>
         
-        {/* Date Filter */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-end gap-2">
-          <div className="flex gap-2 w-full sm:w-auto">
-            <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1 block">From Date</label>
-              <input
-                type="date"
-                value={fromDate}
-                onChange={(e) => setFromDate(e.target.value)}
-                className="w-full sm:w-36 px-3 py-2 rounded-lg bg-secondary text-xs border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1 block">To Date</label>
-              <input
-                type="date"
-                value={toDate}
-                onChange={(e) => setToDate(e.target.value)}
-                className="w-full sm:w-36 px-3 py-2 rounded-lg bg-secondary text-xs border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
-              />
-            </div>
+        {/* Date Filter - Top Right Corner */}
+        <div className="flex flex-wrap items-end gap-2">
+          <div>
+            <label className="text-xs font-medium text-muted-foreground mb-1 block">From</label>
+            <input
+              type="date"
+              value={fromDate}
+              onChange={(e) => setFromDate(e.target.value)}
+              className="w-full sm:w-36 px-3 py-2 rounded-lg bg-secondary text-xs border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
+            />
           </div>
-          <div className="flex gap-2 w-full sm:w-auto">
-            <button
-              onClick={handleApplyDateFilter}
-              className="flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs font-semibold text-white hover:opacity-90 transition-all"
-              style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}
-            >
-              Apply
-            </button>
+          <div>
+            <label className="text-xs font-medium text-muted-foreground mb-1 block">To</label>
+            <input
+              type="date"
+              value={toDate}
+              onChange={(e) => setToDate(e.target.value)}
+              className="w-full sm:w-36 px-3 py-2 rounded-lg bg-secondary text-xs border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
+            />
+          </div>
+          <button
+            onClick={handleApplyDateFilter}
+            className="px-4 py-2 rounded-lg text-xs font-semibold text-white hover:opacity-90 transition-all"
+            style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}
+          >
+            Apply
+          </button>
+          {(appliedFromDate || appliedToDate) && (
             <button
               onClick={handleResetDateFilter}
-              className="flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs font-semibold border border-border text-card-foreground hover:bg-secondary transition-colors"
+              className="px-4 py-2 rounded-lg text-xs font-semibold border border-border text-card-foreground hover:bg-secondary transition-colors"
             >
               Reset
             </button>
-          </div>
+          )}
         </div>
       </div>
 

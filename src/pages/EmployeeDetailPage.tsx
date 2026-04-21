@@ -20,8 +20,22 @@ export const EmployeeDetailPage = () => {
   const [showEdit, setShowEdit] = useState(false);
   const [projectFilter, setProjectFilter] = useState<"All" | "Open" | "Scheduled" | "Completed">("All");
   const [inventoryFilter, setInventoryFilter] = useState<"All" | "OK" | "Low" | "Critical">("All");
-  const [fromDate, setFromDate] = useState("");
-  const [toDate, setToDate] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [appliedFrom, setAppliedFrom] = useState("");
+  const [appliedTo, setAppliedTo] = useState("");
+
+  const applyDateFilter = () => {
+    setAppliedFrom(dateFrom);
+    setAppliedTo(dateTo);
+  };
+
+  const resetDateFilter = () => {
+    setDateFrom("");
+    setDateTo("");
+    setAppliedFrom("");
+    setAppliedTo("");
+  };
 
   const employee = id ? getEmployee(id) : null;
   const isActive = employee?.isActive !== false;
@@ -33,18 +47,18 @@ export const EmployeeDetailPage = () => {
     : workOrders.filter(wo => wo.assignedTech === employee?.name && wo.status === projectFilter);
   
   // Apply date range filter
-  if (fromDate || toDate) {
+  if (appliedFrom || appliedTo) {
     filteredProjects = filteredProjects.filter(wo => {
       const woDate = new Date(wo.end || wo.start);
       let matchDate = true;
       
-      if (fromDate) {
-        const from = new Date(fromDate);
+      if (appliedFrom) {
+        const from = new Date(appliedFrom);
         matchDate = matchDate && woDate >= from;
       }
       
-      if (toDate) {
-        const to = new Date(toDate);
+      if (appliedTo) {
+        const to = new Date(appliedTo);
         matchDate = matchDate && woDate <= to;
       }
       
@@ -126,39 +140,39 @@ export const EmployeeDetailPage = () => {
         </div>
         
         <div className="flex items-center gap-2">
-          {/* Date Filter */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
-            <div className="flex gap-2">
-              <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1 block">From Date</label>
-                <input
-                  type="date"
-                  value={fromDate}
-                  onChange={(e) => setFromDate(e.target.value)}
-                  className="w-full sm:w-36 px-3 py-2 rounded-lg bg-secondary text-xs border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1 block">To Date</label>
-                <input
-                  type="date"
-                  value={toDate}
-                  onChange={(e) => setToDate(e.target.value)}
-                  className="w-full sm:w-36 px-3 py-2 rounded-lg bg-secondary text-xs border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
-                />
-              </div>
-            </div>
-            {(fromDate || toDate) && (
+          {/* Date Filter - Same as Dashboard */}
+          <div className="flex items-center gap-2 bg-card border border-border rounded-xl px-3 py-2 shadow-sm">
+            <span className="text-xs text-muted-foreground">From :</span>
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={e => setDateFrom(e.target.value)}
+              className="bg-transparent text-xs text-card-foreground focus:outline-none w-[120px]"
+            />
+            <span className="text-xs text-muted-foreground">To :</span>
+            <input
+              type="date"
+              value={dateTo}
+              min={dateFrom}
+              onChange={e => setDateTo(e.target.value)}
+              className="bg-transparent text-xs text-card-foreground focus:outline-none w-[120px]"
+            />
+            <div className="flex items-center gap-1.5 ml-1 pl-2 border-l border-border">
               <button
-                onClick={() => {
-                  setFromDate("");
-                  setToDate("");
-                }}
-                className="h-10 px-4 rounded-lg text-xs font-semibold border border-border text-card-foreground hover:bg-secondary transition-colors mt-5"
+                onClick={applyDateFilter}
+                disabled={!dateFrom && !dateTo}
+                className="px-3 py-1 rounded-lg text-xs font-semibold text-white transition-all hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
+                style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}
+              >
+                Apply
+              </button>
+              <button
+                onClick={resetDateFilter}
+                className="px-3 py-1 rounded-lg text-xs font-semibold border border-border text-muted-foreground hover:text-card-foreground hover:bg-secondary transition-colors"
               >
                 Reset
               </button>
-            )}
+            </div>
           </div>
           
           <button

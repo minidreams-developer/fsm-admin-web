@@ -1,21 +1,65 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Calendar, User, CheckCircle, Clock, AlertCircle, FileText, Edit2, Download } from "lucide-react";
+import { ArrowLeft, Calendar, User, CheckCircle, Clock, AlertCircle, FileText, Edit2, Download, Gauge, Image as ImageIcon } from "lucide-react";
 import { useState, useRef } from "react";
 import { useServicesStore } from "@/store/servicesStore";
+import { useTasksStore } from "@/store/tasksStore";
 import { StatusBadge } from "@/components/StatusBadge";
 import { ServiceFormModal } from "@/components/ServiceFormModal";
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { toast } from "sonner";
 
+// Dummy odometer data with images
+const dummyOdometerReadings = [
+  { 
+    id: 1, 
+    date: "2026-02-01", 
+    fromKm: 12450, 
+    toKm: 12485, 
+    distance: 35, 
+    vehicle: "Van-01",
+    fromImage: "/placeholder.svg",
+    toImage: "/placeholder.svg"
+  },
+];
+
+// Dummy workplace images
+const workplaceImages = {
+  before: "/placeholder.svg",
+  after: "/placeholder.svg"
+};
+
 export const ServiceDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { appointments } = useServicesStore();
+  const { getTask } = useTasksStore();
   const [isEditing, setIsEditing] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
 
-  const service = appointments.find(apt => apt.id === id);
+  // Check if this is a task (from work order) or a service appointment
+  const isTask = id?.startsWith("TASK-");
+  const task = isTask && id ? getTask(id) : null;
+  const appointment = !isTask ? appointments.find(apt => apt.id === id) : null;
+
+  // Create a unified service object from either task or appointment
+  const service = task ? {
+    id: task.id,
+    subject: task.title,
+    serviceDescription: task.description,
+    status: task.status,
+    date: task.startDate,
+    time: "—",
+    employeeName: task.assignedTo,
+    technicians: task.assignedEmployees,
+    workOrderId: task.workOrderId,
+    refNo: task.id,
+    instructions: "",
+    warrantyPeriod: "",
+    salesExecutive: "",
+    inTime: "",
+    outTime: "",
+  } : appointment;
 
   const handleDownloadPDF = async () => {
     if (!contentRef.current || !service) return;
@@ -157,13 +201,15 @@ export const ServiceDetailPage = () => {
             <Download className="w-4 h-4" />
             Download PDF
           </button>
-          <button
-            onClick={() => setIsEditing(true)}
-            className="inline-flex items-center gap-2 h-10 px-4 rounded-lg border border-border bg-card hover:bg-secondary transition-colors text-sm font-semibold text-card-foreground"
-          >
-            <Edit2 className="w-4 h-4" />
-            Edit
-          </button>
+          {!isTask && (
+            <button
+              onClick={() => setIsEditing(true)}
+              className="inline-flex items-center gap-2 h-10 px-4 rounded-lg border border-border bg-card hover:bg-secondary transition-colors text-sm font-semibold text-card-foreground"
+            >
+              <Edit2 className="w-4 h-4" />
+              Edit
+            </button>
+          )}
         </div>
       </div>
 
@@ -313,7 +359,7 @@ export const ServiceDetailPage = () => {
 
         {/* Instructions Section */}
         {service.instructions && (
-          <div>
+          <div className={isTask ? "mb-8 pb-8 border-b border-border" : ""}>
             <h3 className="text-lg font-bold text-card-foreground mb-3 flex items-center gap-2">
               <FileText className="w-5 h-5" />
               Instructions
@@ -323,15 +369,179 @@ export const ServiceDetailPage = () => {
             </div>
           </div>
         )}
+
+        {/* Show Odometer, Before/After, and Signature ONLY for tasks (from work orders) */}
+        {isTask && (
+          <>
+            {/* Odometer Readings Section */}
+            <div className="mb-8 pb-8 border-b border-border">
+              <h3 className="text-lg font-bold text-card-foreground mb-4 flex items-center gap-2">
+                <Gauge className="w-5 h-5" />
+                Odometer Readings
+              </h3>
+              <div className="space-y-4">
+                {dummyOdometerReadings.map((reading) => (
+                  <div 
+                    key={reading.id} 
+                    className="bg-secondary/30 rounded-lg p-4 border border-border hover:border-primary/30 transition-all"
+                  >
+                    {/* Header Info */}
+                    <div className="flex items-center justify-between flex-wrap gap-4 mb-4 pb-4 border-b border-border">
+                      <div className="flex items-center gap-6">
+                        <div>
+                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Date</p>
+                          <p className="text-sm font-bold text-card-foreground mt-1">{reading.date}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Vehicle</p>
+                          <p className="text-sm font-bold text-primary mt-1">{reading.vehicle}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-6">
+                        <div>
+                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">From</p>
+                          <p className="text-sm font-bold text-card-foreground mt-1">{reading.fromKm.toLocaleString()} km</p>
+                        </div>
+                        <div className="text-muted-foreground">→</div>
+                        <div>
+                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">To</p>
+                          <p className="text-sm font-bold text-card-foreground mt-1">{reading.toKm.toLocaleString()} km</p>
+                        </div>
+                        <div className="bg-primary/10 rounded-lg px-3 py-2 border border-primary/20">
+                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Distance</p>
+                          <p className="text-sm font-bold text-primary mt-1">{reading.distance} km</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Odometer Images */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* From Image */}
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <ImageIcon className="w-4 h-4 text-primary" />
+                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">From Odometer</p>
+                        </div>
+                        <div className="relative aspect-video bg-secondary rounded-lg overflow-hidden border border-border group">
+                          <img 
+                            src={reading.fromImage} 
+                            alt={`From odometer - ${reading.fromKm} km`}
+                            className="w-full h-full object-cover"
+                          />
+                          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <p className="text-white text-sm font-semibold">{reading.fromKm.toLocaleString()} km</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* To Image */}
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <ImageIcon className="w-4 h-4 text-primary" />
+                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">To Odometer</p>
+                        </div>
+                        <div className="relative aspect-video bg-secondary rounded-lg overflow-hidden border border-border group">
+                          <img 
+                            src={reading.toImage} 
+                            alt={`To odometer - ${reading.toKm} km`}
+                            className="w-full h-full object-cover"
+                          />
+                          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <p className="text-white text-sm font-semibold">{reading.toKm.toLocaleString()} km</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Before & After Working Place Images Section */}
+            <div className="mb-8 pb-8 border-b border-border">
+              <h3 className="text-lg font-bold text-card-foreground mb-4 flex items-center gap-2">
+                <ImageIcon className="w-5 h-5" />
+                Before & After Working Place
+              </h3>
+              <div className="bg-secondary/30 rounded-lg p-4 border border-border">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Before Image */}
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Before Work</p>
+                    </div>
+                    <div className="relative aspect-video bg-secondary rounded-lg overflow-hidden border border-border group">
+                      <img 
+                        src={workplaceImages.before} 
+                        alt="Before work"
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <p className="text-white text-sm font-semibold">Before Work</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* After Image */}
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">After Work</p>
+                    </div>
+                    <div className="relative aspect-video bg-secondary rounded-lg overflow-hidden border border-border group">
+                      <img 
+                        src={workplaceImages.after} 
+                        alt="After work"
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <p className="text-white text-sm font-semibold">After Work</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Customer Signature Section */}
+            <div>
+              <h3 className="text-lg font-bold text-card-foreground mb-4 flex items-center gap-2">
+                <FileText className="w-5 h-5" />
+                Customer Signature
+              </h3>
+              <div className="bg-secondary/30 rounded-lg p-6 border border-border">
+                <div className="mb-4">
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Customer signature confirming service completion and satisfaction.
+                  </p>
+                </div>
+                <div className="bg-white rounded-lg border-2 border-dashed border-border p-8 flex items-center justify-center min-h-[150px]">
+                  <div className="text-center">
+                    <div className="mb-3">
+                      <svg className="w-16 h-16 mx-auto text-muted-foreground/30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                      </svg>
+                    </div>
+                    <p className="text-sm font-medium text-muted-foreground">No signature available</p>
+                    <p className="text-xs text-muted-foreground mt-1">Signature will appear here once customer signs</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
       </div>
 
-      {/* Edit Modal */}
-      <ServiceFormModal
-        open={isEditing}
-        mode="edit"
-        appointment={service}
-        onClose={() => setIsEditing(false)}
-      />
+      {/* Edit Modal - Only for appointments */}
+      {!isTask && appointment && (
+        <ServiceFormModal
+          open={isEditing}
+          mode="edit"
+          appointment={appointment}
+          onClose={() => setIsEditing(false)}
+        />
+      )}
     </div>
   );
 };

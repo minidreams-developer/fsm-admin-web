@@ -433,7 +433,7 @@ export const WorkOrderDetailsPage = () => {
               <div 
                 key={task.id} 
                 className="bg-secondary/30 rounded-lg p-4 border border-border hover:border-primary/30 transition-all cursor-pointer"
-                onClick={() => navigate(`/service/${task.id}`)}
+                onClick={() => navigate(`/service/${task.id}?from=workorder`)}
               >
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex-1">
