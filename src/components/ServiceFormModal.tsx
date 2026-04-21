@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { createPortal } from "react-dom";
-import { X } from "lucide-react";
+import { X, Camera } from "lucide-react";
 import { toast } from "sonner";
 import { useServicesStore, type ServiceAppointment } from "@/store/servicesStore";
 
@@ -12,10 +12,9 @@ type Props = {
   mode?: "create" | "edit";
 };
 
-const employees = ["Safeeq", "Rajesh", "Arun"];
-
 export function ServiceFormModal({ open, onClose, onSaved, appointment, mode = "create" }: Props) {
   const { addAppointment, updateAppointment, getNextAppointmentId } = useServicesStore();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [form, setForm] = useState<Partial<ServiceAppointment>>({
     subject: "",
@@ -64,6 +63,14 @@ export function ServiceFormModal({ open, onClose, onSaved, appointment, mode = "
 
   const setField = <K extends keyof ServiceAppointment>(key: K, value: ServiceAppointment[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => setField("profilePhoto", reader.result as string);
+    reader.readAsDataURL(file);
   };
 
   const save = () => {
@@ -136,19 +143,53 @@ export function ServiceFormModal({ open, onClose, onSaved, appointment, mode = "
         </div>
 
         {/* Content */}
-        <div className="overflow-y-auto flex-1 p-6 space-y-4 min-h-0">
+        <div className="overflow-y-auto flex-1 p-6 space-y-6 min-h-0">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Profile Photo */}
+            <div className="md:col-span-2 flex flex-col items-center gap-3">
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                className="relative w-24 h-24 rounded-full bg-secondary border-2 border-dashed border-border cursor-pointer hover:border-primary/50 transition-colors flex items-center justify-center overflow-hidden"
+              >
+                {form.profilePhoto ? (
+                  <img src={form.profilePhoto} alt="Profile" className="w-full h-full object-cover" />
+                ) : (
+                  <div className="flex flex-col items-center gap-1">
+                    <Camera className="w-6 h-6 text-muted-foreground" />
+                    <span className="text-[10px] text-muted-foreground">Upload</span>
+                  </div>
+                )}
+                <div className="absolute inset-0 bg-black/20 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center rounded-full">
+                  <Camera className="w-5 h-5 text-white" />
+                </div>
+              </div>
+              <input ref={fileInputRef} type="file" accept="image/*" onChange={handlePhotoChange} className="hidden" />
+              {form.profilePhoto && (
+                <button type="button" onClick={() => setField("profilePhoto", undefined)} className="text-xs text-destructive hover:opacity-80 transition-opacity">Remove photo</button>
+              )}
+            </div>
+
             <div>
-              <label className="text-xs font-medium text-muted-foreground mb-2 block">Subject *</label>
+              <label className="text-xs font-medium text-muted-foreground mb-2 block">Service Name</label>
               <input
                 type="text"
                 value={form.subject || ""}
                 onChange={(e) => setField("subject", e.target.value)}
-                placeholder="Service subject"
+                placeholder="Enter Service Name"
                 className="w-full px-3 py-2 rounded-lg bg-secondary text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 border border-border"
               />
             </div>
-            <div>
+             <div className="md:col-span-2">
+              <label className="text-xs font-medium text-muted-foreground mb-2 block">Service Description</label>
+              <textarea
+                value={form.serviceDescription || ""}
+                onChange={(e) => setField("serviceDescription", e.target.value)}
+                placeholder="Describe the service..."
+                rows={3}
+                className="w-full px-3 py-2 rounded-lg bg-secondary text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 border border-border resize-none"
+              />
+            </div>
+            {/* <div>
               <label className="text-xs font-medium text-muted-foreground mb-2 block">Employee *</label>
               <select
                 value={form.employeeName || ""}
@@ -160,20 +201,20 @@ export function ServiceFormModal({ open, onClose, onSaved, appointment, mode = "
                   <option key={emp} value={emp}>{emp}</option>
                 ))}
               </select>
-            </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground mb-2 block">Status</label>
-              <select
-                value={form.status || "Scheduled"}
-                onChange={(e) => setField("status", e.target.value as ServiceAppointment["status"])}
-                className="w-full px-3 py-2 rounded-lg bg-secondary text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 border border-border"
-              >
-                <option value="Scheduled">Scheduled</option>
-                <option value="In Progress">In Progress</option>
-                <option value="Completed">Completed</option>
-                <option value="Cancelled">Cancelled</option>
-              </select>
-            </div>
+            </div> */}
+              {/* <div>
+                <label className="text-xs font-medium text-muted-foreground mb-2 block">Status</label>
+                <select
+                  value={form.status || "Scheduled"}
+                  onChange={(e) => setField("status", e.target.value as ServiceAppointment["status"])}
+                  className="w-full px-3 py-2 rounded-lg bg-secondary text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 border border-border"
+                >
+                  <option value="Scheduled">Scheduled</option>
+                  <option value="In Progress">In Progress</option>
+                  <option value="Completed">Completed</option>
+                  <option value="Cancelled">Cancelled</option>
+                </select>
+              </div> */}
             {/* <div>
               <label className="text-xs font-medium text-muted-foreground mb-2 block">Date *</label>
               <input
@@ -183,7 +224,7 @@ export function ServiceFormModal({ open, onClose, onSaved, appointment, mode = "
                 className="w-full px-3 py-2 rounded-lg bg-secondary text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 border border-border"
               />
             </div> */}
-            <div>
+            {/* <div>
               <label className="text-xs font-medium text-muted-foreground mb-2 block">Time *</label>
               <input
                 type="time"
@@ -211,7 +252,7 @@ export function ServiceFormModal({ open, onClose, onSaved, appointment, mode = "
                 placeholder="3 Months"
                 className="w-full px-3 py-2 rounded-lg bg-secondary text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 border border-border"
               />
-            </div>
+            </div> */}
 
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-2 block">Unit Price (₹)</label>
@@ -278,16 +319,7 @@ export function ServiceFormModal({ open, onClose, onSaved, appointment, mode = "
                 </div>
               </>
             )}
-            <div className="md:col-span-2">
-              <label className="text-xs font-medium text-muted-foreground mb-2 block">Service Description</label>
-              <textarea
-                value={form.serviceDescription || ""}
-                onChange={(e) => setField("serviceDescription", e.target.value)}
-                placeholder="Describe the service..."
-                rows={3}
-                className="w-full px-3 py-2 rounded-lg bg-secondary text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 border border-border resize-none"
-              />
-            </div>
+           
           </div>
         </div>
 
