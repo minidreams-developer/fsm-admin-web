@@ -26,6 +26,7 @@ const menuItems = [
 
 const inventoryMenuItems = [
   { label: "Inventory", path: "/inventory" },
+  { label: "History", path: "/inventory/history" },
   { label: "Allocate Stock", path: "/inventory/allocate" },
   { label: "Branches", path: "/branches" },
   { label: "Products", path: "/products" },
@@ -42,7 +43,7 @@ export const AppSidebar: FC<AppSidebarProps> = ({ className, onNavigate, collaps
   const navigate = useNavigate();
   const [expandedMenu, setExpandedMenu] = useState<string | null>(null);
 
-  const isInventoryActive = ["/inventory", "/inventory/allocate", "/branches", "/products"].includes(location.pathname);
+  const isInventoryActive = ["/inventory", "/inventory/history", "/inventory/allocate", "/branches", "/products"].includes(location.pathname);
 
   // Auto-expand inventory menu if on an inventory page
   if (isInventoryActive && expandedMenu !== "inventory") {

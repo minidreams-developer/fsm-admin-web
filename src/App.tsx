@@ -12,6 +12,7 @@ import ServiceManagementPage from "./pages/ServiceManagementPage";
 import PaymentsPage from "./pages/PaymentsPage";
 import ReportsPage from "./pages/ReportsPage";
 import InventoryPage from "./pages/InventoryPage";
+import InventoryHistoryPage from "./pages/InventoryHistoryPage";
 import StockAllocationPage from "./pages/StockAllocationPage";
 import EmployeesPage from "./pages/EmployeesPage";
 import { EmployeeDetailPage } from "./pages/EmployeeDetailPage";
@@ -63,6 +64,7 @@ const App = () => (
               <Route path="/payments" element={<PaymentsPage />} />
               <Route path="/reports" element={<ReportsPage />} />
               <Route path="/inventory" element={<InventoryPage />} />
+              <Route path="/inventory/history" element={<InventoryHistoryPage />} />
               <Route path="/inventory/allocate" element={<StockAllocationPage />} />
               <Route path="/employees" element={<EmployeesPage />} />
               <Route path="/employees/:id" element={<EmployeeDetailPage />} />
