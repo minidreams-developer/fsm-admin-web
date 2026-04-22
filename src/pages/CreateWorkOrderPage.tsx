@@ -6,6 +6,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
+import Select from "react-select";
 import { useProjectsStore } from "@/store/projectsStore";
 import { useTasksStore } from "@/store/tasksStore";
 import { useProductsStore } from "@/store/productsStore";
@@ -117,8 +118,72 @@ const CreateWorkOrderPage = () => {
   );
   const serviceOptions = uniqueServices.map(s => s.name);
   
+  // Prepare customer options for React Select
+  const customerOptions = customers.map((customer) => ({
+    value: customer.id,
+    label: `${customer.firstName} ${customer.lastName} — ${customer.mobile || customer.landline}`,
+    customer: customer,
+  }));
+
   // Filter employees to show only Sales Executives
   const salesExecutives = employees.filter((emp) => emp.role === "Sales Executive");
+
+  // Custom styles for React Select to match the theme
+  const customSelectStyles = {
+    control: (base: any, state: any) => ({
+      ...base,
+      backgroundColor: 'hsl(var(--secondary))',
+      borderColor: state.isFocused ? 'hsl(var(--primary) / 0.2)' : 'hsl(var(--border))',
+      borderRadius: '0.5rem',
+      minHeight: '38px',
+      boxShadow: state.isFocused ? '0 0 0 2px hsl(var(--primary) / 0.2)' : 'none',
+      '&:hover': {
+        borderColor: 'hsl(var(--border))',
+      },
+    }),
+    menu: (base: any) => ({
+      ...base,
+      backgroundColor: 'hsl(var(--card))',
+      border: '1px solid hsl(var(--border))',
+      borderRadius: '0.5rem',
+      boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+      zIndex: 9999,
+    }),
+    option: (base: any, state: any) => ({
+      ...base,
+      backgroundColor: state.isSelected
+        ? 'hsl(var(--primary))'
+        : state.isFocused
+        ? 'hsl(var(--secondary))'
+        : 'transparent',
+      color: state.isSelected ? 'white' : 'hsl(var(--card-foreground))',
+      fontSize: '0.875rem',
+      cursor: 'pointer',
+      '&:active': {
+        backgroundColor: 'hsl(var(--primary) / 0.9)',
+      },
+    }),
+    input: (base: any) => ({
+      ...base,
+      color: 'hsl(var(--card-foreground))',
+      fontSize: '0.875rem',
+    }),
+    placeholder: (base: any) => ({
+      ...base,
+      color: 'hsl(var(--muted-foreground))',
+      fontSize: '0.875rem',
+    }),
+    singleValue: (base: any) => ({
+      ...base,
+      color: 'hsl(var(--card-foreground))',
+      fontSize: '0.875rem',
+    }),
+    noOptionsMessage: (base: any) => ({
+      ...base,
+      color: 'hsl(var(--muted-foreground))',
+      fontSize: '0.875rem',
+    }),
+  };
 
   const handleCustomerSelect = (customerId: string) => {
     setSelectedCustomerId(customerId);
@@ -282,28 +347,28 @@ const CreateWorkOrderPage = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-2 block">Customer Name *</label>
-            <select
-              value={selectedCustomerId}
-              onChange={(e) => {
-                if (e.target.value) {
-                  handleCustomerSelect(e.target.value);
+            <Select
+              options={customerOptions}
+              value={customerOptions.find(opt => opt.value === selectedCustomerId) || null}
+              onChange={(option) => {
+                if (option) {
+                  handleCustomerSelect(option.value);
                 } else {
                   setSelectedCustomerId("");
                   setValue("customer", "");
                   setValue("phone", "");
                   setValue("email", "");
                   setValue("address", "");
+                  setValue("siteAddress", "");
+                  setValue("billingAddress", "");
                 }
               }}
-              className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
-            >
-              <option value="">Select customer...</option>
-              {customers.map((customer) => (
-                <option key={customer.id} value={customer.id}>
-                  {customer.firstName} {customer.lastName} — {customer.mobile || customer.landline}
-                </option>
-              ))}
-            </select>
+              styles={customSelectStyles}
+              placeholder="Search or select customer..."
+              isClearable
+              isSearchable
+              noOptionsMessage={() => "No customers found"}
+            />
             {/* Hidden input for form validation */}
             <input type="hidden" {...register("customer")} />
             {errors.customer && <p className="text-xs text-red-500 mt-1">{errors.customer.message}</p>}
