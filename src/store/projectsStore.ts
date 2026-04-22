@@ -21,6 +21,8 @@ export type WorkOrder = {
   id: string;
   customer: string;
   address: string;
+  location?: string;
+  liveLocation?: string;
   siteAddress?: string;
   billingAddress?: string;
   workOrderDateTime?: string;
