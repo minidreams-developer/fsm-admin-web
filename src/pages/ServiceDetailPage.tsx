@@ -505,7 +505,7 @@ export const ServiceDetailPage = () => {
             </div>
 
             {/* Customer Signature Section */}
-            <div>
+            <div className="mb-8 pb-8 border-b border-border">
               <h3 className="text-lg font-bold text-card-foreground mb-4 flex items-center gap-2">
                 <FileText className="w-5 h-5" />
                 Customer Signature
@@ -525,6 +525,32 @@ export const ServiceDetailPage = () => {
                     </div>
                     <p className="text-sm font-medium text-muted-foreground">No signature available</p>
                     <p className="text-xs text-muted-foreground mt-1">Signature will appear here once customer signs</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Sales Executive Signature Section */}
+            <div>
+              <h3 className="text-lg font-bold text-card-foreground mb-4 flex items-center gap-2">
+                <User className="w-5 h-5" />
+                Sales Executive Signature
+              </h3>
+              <div className="bg-secondary/30 rounded-lg p-6 border border-border">
+                <div className="mb-4">
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Sales executive signature confirming service delivery and documentation.
+                  </p>
+                </div>
+                <div className="bg-white rounded-lg border-2 border-dashed border-border p-8 flex items-center justify-center min-h-[150px]">
+                  <div className="text-center">
+                    <div className="mb-3">
+                      <svg className="w-16 h-16 mx-auto text-muted-foreground/30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                      </svg>
+                    </div>
+                    <p className="text-sm font-medium text-muted-foreground">No signature available</p>
+                    <p className="text-xs text-muted-foreground mt-1">Signature will appear here once sales executive signs</p>
                   </div>
                 </div>
               </div>

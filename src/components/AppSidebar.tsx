@@ -14,7 +14,7 @@ const menuItems = [
   { label: "Employees", icon: UserCog, path: "/employees" },
   { label: "Enquiries", icon: Users, path: "/leads" },
   { label: "Service list", icon: Wrench, path: "/service-management" },
-  { label: " Qant Calendar", icon: CalendarDays, path: "/quant-calendar" },
+  { label: " Gant Calendar", icon: CalendarDays, path: "/quant-calendar" },
   // { label: "Service Appointments", icon: Wrench, path: "/services" },
   
   { label: "Work Orders", icon: FolderKanban, path: "/projects" },
