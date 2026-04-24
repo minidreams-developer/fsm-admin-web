@@ -512,7 +512,12 @@ const QuantCalendarPage = () => {
   
   // Filter states
   const [selectedBranch, setSelectedBranch] = useState<string>("all");
-  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [fromDate, setFromDate] = useState(new Date());
+  const [toDate, setToDate] = useState(() => {
+    const date = new Date();
+    date.setDate(date.getDate() + 7); // Default to 7 days from today
+    return date;
+  });
   const [viewMode, setViewMode] = useState<ViewMode>("day");
   const [selectedEmployee, setSelectedEmployee] = useState<string>("all");
   const [selectedService, setSelectedService] = useState<string>("all");
@@ -568,9 +573,10 @@ const QuantCalendarPage = () => {
       const randomStartTime = 6 + Math.floor(Math.random() * 12); // Random time between 6 AM and 5 PM
       const duration = Math.random() > 0.5 ? 2 : 3; // Random duration of 2 or 3 hours
       
-      // Generate random date within current week/month
-      const baseDate = new Date(selectedDate);
-      const daysOffset = Math.floor(Math.random() * 7); // Random day within a week
+      // Generate random date within from and to date range
+      const baseDate = new Date(fromDate);
+      const daysDiff = Math.floor((toDate.getTime() - fromDate.getTime()) / (1000 * 60 * 60 * 24));
+      const daysOffset = Math.floor(Math.random() * (daysDiff + 1));
       baseDate.setDate(baseDate.getDate() + daysOffset);
       
       dummySchedule.push({
@@ -610,38 +616,24 @@ const QuantCalendarPage = () => {
     return Array.from(serviceSet).sort();
   }, [workOrders]);
   
-  // Get date range based on view mode
+  // Get date range based on from and to dates
   const getDateRange = () => {
-    const start = new Date(selectedDate);
-    const end = new Date(selectedDate);
+    const start = new Date(fromDate);
+    const end = new Date(toDate);
     
-    if (viewMode === "day") {
+    // Ensure fromDate is not after toDate
+    if (start > end) {
       return [start];
-    } else if (viewMode === "week") {
-      // Get start of week (Sunday)
-      const dayOfWeek = start.getDay();
-      start.setDate(start.getDate() - dayOfWeek);
-      end.setDate(start.getDate() + 6);
-      
-      const dates = [];
-      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-        dates.push(new Date(d));
-      }
-      return dates;
-    } else { // month
-      start.setDate(1);
-      end.setMonth(end.getMonth() + 1);
-      end.setDate(0);
-      
-      const dates = [];
-      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-        dates.push(new Date(d));
-      }
-      return dates;
     }
+    
+    const dates = [];
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+      dates.push(new Date(d));
+    }
+    return dates;
   };
   
-  const dateRange = useMemo(() => getDateRange(), [selectedDate, viewMode]);
+  const dateRange = useMemo(() => getDateRange(), [fromDate, toDate]);
   
   // Filter schedule by date range
   const filteredSchedule = useMemo(() => {
@@ -727,19 +719,29 @@ const QuantCalendarPage = () => {
   
   // Handle date navigation
   const handlePreviousDay = () => {
-    const newDate = new Date(selectedDate);
-    newDate.setDate(newDate.getDate() - 1);
-    setSelectedDate(newDate);
+    const newFromDate = new Date(fromDate);
+    newFromDate.setDate(newFromDate.getDate() - 1);
+    const newToDate = new Date(toDate);
+    newToDate.setDate(newToDate.getDate() - 1);
+    setFromDate(newFromDate);
+    setToDate(newToDate);
   };
   
   const handleNextDay = () => {
-    const newDate = new Date(selectedDate);
-    newDate.setDate(newDate.getDate() + 1);
-    setSelectedDate(newDate);
+    const newFromDate = new Date(fromDate);
+    newFromDate.setDate(newFromDate.getDate() + 1);
+    const newToDate = new Date(toDate);
+    newToDate.setDate(newToDate.getDate() + 1);
+    setFromDate(newFromDate);
+    setToDate(newToDate);
   };
   
   const handleToday = () => {
-    setSelectedDate(new Date());
+    const today = new Date();
+    const nextWeek = new Date();
+    nextWeek.setDate(nextWeek.getDate() + 7);
+    setFromDate(today);
+    setToDate(nextWeek);
   };
 
   const handleDragStart = (event: DragStartEvent) => {
@@ -928,7 +930,7 @@ const QuantCalendarPage = () => {
       const duration = 2;
       let bestEmployee: any = null;
       let bestTime = -1;
-      let bestDate = selectedDate.toISOString().split('T')[0];
+      let bestDate = fromDate.toISOString().split('T')[0];
 
       for (const emp of employees) {
         const empJobs = newSchedule.filter(s => s.employeeId === emp.id && s.date === bestDate);
@@ -1018,29 +1020,79 @@ const QuantCalendarPage = () => {
             </SelectContent>
           </Select>
           
-          {/* Date Picker */}
+          {/* Date Range Pickers */}
           <div className="flex items-center gap-2">
             <button onClick={handlePreviousDay} className="p-2 hover:bg-secondary rounded-lg border border-border transition-colors">
               <ChevronLeft className="w-4 h-4" />
             </button>
+            
+            {/* From Date */}
             <Popover>
               <PopoverTrigger asChild>
                 <button className="flex items-center gap-2 border border-border rounded-lg px-3 py-2 hover:bg-secondary transition-colors">
                   <CalendarIcon className="w-4 h-4" />
-                  <span className="text-sm font-medium min-w-[120px] text-left">
-                    {format(selectedDate, "MMM dd, yyyy")}
-                  </span>
+                  <div className="text-left">
+                    <div className="text-[10px] text-muted-foreground">From</div>
+                    <span className="text-sm font-medium">
+                      {format(fromDate, "MMM dd, yyyy")}
+                    </span>
+                  </div>
                 </button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="start">
                 <Calendar
                   mode="single"
-                  selected={selectedDate}
-                  onSelect={(date) => date && setSelectedDate(date)}
+                  selected={fromDate}
+                  onSelect={(date) => {
+                    if (date) {
+                      setFromDate(date);
+                      // Ensure toDate is not before fromDate
+                      if (date > toDate) {
+                        const newToDate = new Date(date);
+                        newToDate.setDate(newToDate.getDate() + 7);
+                        setToDate(newToDate);
+                      }
+                    }
+                  }}
                   initialFocus
                 />
               </PopoverContent>
             </Popover>
+            
+            {/* To Date */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <button className="flex items-center gap-2 border border-border rounded-lg px-3 py-2 hover:bg-secondary transition-colors">
+                  <CalendarIcon className="w-4 h-4" />
+                  <div className="text-left">
+                    <div className="text-[10px] text-muted-foreground">To</div>
+                    <span className="text-sm font-medium">
+                      {format(toDate, "MMM dd, yyyy")}
+                    </span>
+                  </div>
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={toDate}
+                  onSelect={(date) => {
+                    if (date) {
+                      setToDate(date);
+                      // Ensure fromDate is not after toDate
+                      if (date < fromDate) {
+                        const newFromDate = new Date(date);
+                        newFromDate.setDate(newFromDate.getDate() - 7);
+                        setFromDate(newFromDate);
+                      }
+                    }
+                  }}
+                  initialFocus
+                  disabled={(date) => date < fromDate}
+                />
+              </PopoverContent>
+            </Popover>
+            
             <button onClick={handleNextDay} className="p-2 hover:bg-secondary rounded-lg border border-border transition-colors">
               <ChevronRight className="w-4 h-4" />
             </button>
@@ -1102,9 +1154,10 @@ const QuantCalendarPage = () => {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <span className="text-lg font-semibold">
-            {viewMode === "day" && selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
-            {viewMode === "week" && `Week of ${dateRange[0].toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${dateRange[dateRange.length - 1].toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`}
-            {viewMode === "month" && selectedDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+            {dateRange.length === 1 
+              ? dateRange[0].toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
+              : `${dateRange[0].toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${dateRange[dateRange.length - 1].toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
+            }
           </span>
         </div>
         
@@ -1308,7 +1361,8 @@ const QuantCalendarPage = () => {
                       {branchEmployees
                         .filter(emp => emp.name.toLowerCase().includes(searchEmployee.toLowerCase()))
                         .map(emp => {
-                          const empJobs = getEmployeeJobs(emp.id, selectedDate.toISOString().split('T')[0]);
+                          const currentDate = dateRange[0].toISOString().split('T')[0];
+                          const empJobs = getEmployeeJobs(emp.id, currentDate);
                           return (
                             <div key={emp.id} className="grid border-b border-border hover:bg-secondary/10" style={{ gridTemplateColumns: "200px repeat(15, 1fr)" }}>
                               {/* Employee Info */}
@@ -1327,19 +1381,20 @@ const QuantCalendarPage = () => {
 
                               {/* Time Slots */}
                               {timeSlots.map(hour => {
-                                const job = filteredSchedule.find(s => s.employeeId === emp.id && s.startTime === hour && s.date === selectedDate.toISOString().split('T')[0]);
+                                const currentDate = dateRange[0].toISOString().split('T')[0];
+                                const job = filteredSchedule.find(s => s.employeeId === emp.id && s.startTime === hour && s.date === currentDate);
                                 const wo = job ? workOrders.find(w => w.id === job.workOrderId) : null;
                                 const service = job?.serviceId ? getTasksByWorkOrder(job.workOrderId).find(s => s.id === job.serviceId) : null;
                                 const isOver = activeDropZone?.employeeId === emp.id && 
                                               activeDropZone?.timeSlot === hour && 
-                                              activeDropZone?.date === selectedDate.toISOString().split('T')[0];
+                                              activeDropZone?.date === currentDate;
 
                                 return (
                                   <DroppableTimeSlot
                                     key={hour}
                                     employeeId={emp.id}
                                     timeSlot={hour}
-                                    date={selectedDate.toISOString().split('T')[0]}
+                                    date={currentDate}
                                     job={job}
                                     workOrder={wo}
                                     service={service}
