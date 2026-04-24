@@ -410,16 +410,7 @@ const CreateWorkOrderPage = () => {
                <div className="text-xs font-medium text-muted-foreground mb-2 block">
             <div className="flex items-center justify-between gap-3 mb-2">
               <label className="text-xs font-medium text-muted-foreground block">Billing Address</label>
-              <button
-                type="button"
-                onClick={() => {
-                  const siteAddr = document.querySelector<HTMLTextAreaElement>('textarea[name="siteAddress"]')?.value || "";
-                  setValue("billingAddress", siteAddr);
-                }}
-                className="text-xs font-semibold text-primary hover:opacity-80 transition-opacity"
-              >
-                Same as Site Address
-              </button>
+            
             </div>
             <textarea
               {...register("billingAddress")}

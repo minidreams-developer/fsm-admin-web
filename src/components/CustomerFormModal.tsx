@@ -314,13 +314,7 @@ export function CustomerFormModal({ open, mode, customer, prefill, onClose, onSa
             <div className="md:col-span-2">
               <div className="flex items-center justify-between gap-3 mb-2">
                 <label className="text-xs font-medium text-muted-foreground block">{LABELS.billingAddress}</label>
-                <button
-                  type="button"
-                  onClick={() => setField("billingAddress", form.siteAddress)}
-                  className="text-xs font-semibold text-primary hover:opacity-80 transition-opacity"
-                >
-                  Same as Site Address
-                </button>
+                
               </div>
               <textarea
                 value={form.billingAddress}
