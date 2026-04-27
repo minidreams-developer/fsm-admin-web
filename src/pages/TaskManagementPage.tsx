@@ -7,14 +7,14 @@ import { useEmployeesStore } from "@/store/employeesStore";
 import { StatusBadge } from "@/components/StatusBadge";
 
 const PAGE_SIZE = 10;
-const STATUSES = ["Pending", "In Progress", "Completed", "Overdue"] as const;
-const MANUAL_STATUSES = ["Pending", "In Progress", "Completed"] as const; // Statuses that can be manually set
+const STATUSES = ["Pending",  "Completed", "Overdue"] as const;
+const MANUAL_STATUSES = ["Pending",  "Completed","Overdue"] as const; // Statuses that can be manually set
 
 type TaskStatus = typeof STATUSES[number];
 
 const statusVariant: Record<TaskStatus, "warning" | "info" | "success" | "error"> = {
   "Pending": "warning",
-  "In Progress": "info",
+  
   "Completed": "success",
   "Overdue": "error",
 };

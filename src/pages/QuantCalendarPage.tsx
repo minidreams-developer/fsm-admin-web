@@ -256,10 +256,33 @@ const DraggableServiceCard = ({ service, workOrder }: any) => {
     return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
   };
 
+  // Format time from HH:MM format
+  const formatTimeFromHHMM = (timeStr: string) => {
+    if (!timeStr) return null;
+    const [hours, minutes] = timeStr.split(':');
+    const hour = parseInt(hours);
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+    return `${displayHour}:${minutes} ${ampm}`;
+  };
+
   // Use service dates or fallback to work order dates
   const startDate = service.startDate || workOrder.start;
   const endDate = service.endDate || workOrder.end;
+  
+  // Check for service-specific times first, then fallback to work order time
+  const serviceFromTime = service.fromTime ? formatTimeFromHHMM(service.fromTime) : null;
+  const serviceToTime = service.toTime ? formatTimeFromHHMM(service.toTime) : null;
   const workOrderTime = workOrder.workOrderDateTime ? formatTime(workOrder.workOrderDateTime) : null;
+  
+  // Determine which time to display - always show something
+  const displayTime = serviceFromTime && serviceToTime 
+    ? `${serviceFromTime} - ${serviceToTime}` 
+    : serviceFromTime 
+    ? serviceFromTime 
+    : workOrderTime
+    ? workOrderTime
+    : "9:00 AM"; // Default fallback time
 
   return (
     <div
@@ -285,22 +308,21 @@ const DraggableServiceCard = ({ service, workOrder }: any) => {
       <div className="space-y-0.5 mb-1">
         {startDate && (
           <div className="flex items-center gap-1">
-            <span className="text-[9px] text-muted-foreground font-medium">Start:</span>
-            <span className="text-[10px] text-card-foreground">{formatDate(startDate)}</span>
+            <CalendarIcon className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+            <span className="text-[10px] text-card-foreground font-medium">{formatDate(startDate)}</span>
+            {endDate && startDate !== endDate && (
+              <>
+                <span className="text-[9px] text-muted-foreground">→</span>
+                <span className="text-[10px] text-card-foreground font-medium">{formatDate(endDate)}</span>
+              </>
+            )}
           </div>
         )}
-        {endDate && (
-          <div className="flex items-center gap-1">
-            <span className="text-[9px] text-muted-foreground font-medium">End:</span>
-            <span className="text-[10px] text-card-foreground">{formatDate(endDate)}</span>
-          </div>
-        )}
-        {workOrderTime && (
-          <div className="flex items-center gap-1">
-            <span className="text-[9px] text-muted-foreground font-medium">Time:</span>
-            <span className="text-[10px] text-card-foreground font-semibold">{workOrderTime}</span>
-          </div>
-        )}
+        {/* Always show time */}
+        <div className="flex items-center gap-1">
+          <Clock className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+          <span className="text-[10px] text-card-foreground font-semibold text-primary">{displayTime}</span>
+        </div>
       </div>
       
       {service.assignedTo && (
