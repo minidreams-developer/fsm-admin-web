@@ -242,6 +242,25 @@ const DraggableServiceCard = ({ service, workOrder }: any) => {
     data: dragData,
   });
 
+  // Format date
+  const formatDate = (dateStr: string) => {
+    if (!dateStr) return null;
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  };
+
+  // Format time from datetime
+  const formatTime = (dateTimeStr: string) => {
+    if (!dateTimeStr) return null;
+    const date = new Date(dateTimeStr);
+    return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+  };
+
+  // Use service dates or fallback to work order dates
+  const startDate = service.startDate || workOrder.start;
+  const endDate = service.endDate || workOrder.end;
+  const workOrderTime = workOrder.workOrderDateTime ? formatTime(workOrder.workOrderDateTime) : null;
+
   return (
     <div
       ref={setNodeRef}
@@ -261,6 +280,29 @@ const DraggableServiceCard = ({ service, workOrder }: any) => {
           {service.status}
         </span>
       </div>
+      
+      {/* Date and Time Display */}
+      <div className="space-y-0.5 mb-1">
+        {startDate && (
+          <div className="flex items-center gap-1">
+            <span className="text-[9px] text-muted-foreground font-medium">Start:</span>
+            <span className="text-[10px] text-card-foreground">{formatDate(startDate)}</span>
+          </div>
+        )}
+        {endDate && (
+          <div className="flex items-center gap-1">
+            <span className="text-[9px] text-muted-foreground font-medium">End:</span>
+            <span className="text-[10px] text-card-foreground">{formatDate(endDate)}</span>
+          </div>
+        )}
+        {workOrderTime && (
+          <div className="flex items-center gap-1">
+            <span className="text-[9px] text-muted-foreground font-medium">Time:</span>
+            <span className="text-[10px] text-card-foreground font-semibold">{workOrderTime}</span>
+          </div>
+        )}
+      </div>
+      
       {service.assignedTo && (
         <p className="text-[10px] text-muted-foreground">Assigned: {service.assignedTo}</p>
       )}
@@ -498,6 +540,34 @@ const getPriority = (wo: any): Priority => {
   return "LOW";
 };
 
+const getWorkOrderStatus = (wo: any): string => {
+  // Check if work order has explicit status
+  if (wo.status === "Completed") return "Completed";
+  if (wo.status === "Cancelled") return "Cancelled";
+  
+  // Determine status based on work order date
+  if (wo.workOrderDateTime) {
+    const woDate = new Date(wo.workOrderDateTime);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    woDate.setHours(0, 0, 0, 0);
+    
+    if (woDate < today) {
+      // Past date - check if it's completed or missed
+      return wo.status === "Completed" ? "Completed" : "Missed";
+    } else if (woDate.getTime() === today.getTime()) {
+      // Today - ongoing
+      return "Ongoing";
+    } else {
+      // Future date - upcoming
+      return "Upcoming";
+    }
+  }
+  
+  // Default to upcoming if no date
+  return "Upcoming";
+};
+
 const priorityBgColors: Record<Priority, string> = {
   LOW: "bg-green-100 border-green-300 text-green-900",
   MEDIUM: "bg-yellow-100 border-yellow-300 text-yellow-900",
@@ -521,6 +591,8 @@ const QuantCalendarPage = () => {
   const [viewMode, setViewMode] = useState<ViewMode>("day");
   const [selectedEmployee, setSelectedEmployee] = useState<string>("all");
   const [selectedService, setSelectedService] = useState<string>("all");
+  const [selectedStatus, setSelectedStatus] = useState<string>("all");
+  const [selectedCaptain, setSelectedCaptain] = useState<string>("all");
   const [searchText, setSearchText] = useState("");
   const [searchEmployee, setSearchEmployee] = useState("");
   const [selectedWorkOrder, setSelectedWorkOrder] = useState<any | null>(null);
@@ -606,6 +678,17 @@ const QuantCalendarPage = () => {
     return Array.from(branchSet).sort();
   }, [employees]);
   
+  // Get unique captains
+  const captains = useMemo(() => {
+    const captainSet = new Set<string>();
+    employees.forEach(emp => {
+      if (emp.captain) {
+        captainSet.add(emp.captain);
+      }
+    });
+    return Array.from(captainSet).sort();
+  }, [employees]);
+  
   // Get unique service types
   const serviceTypes = useMemo(() => {
     const serviceSet = new Set<string>();
@@ -674,6 +757,11 @@ const QuantCalendarPage = () => {
       filteredEmployees = filteredEmployees.filter(emp => emp.id === selectedEmployee);
     }
     
+    // Filter by captain
+    if (selectedCaptain !== "all") {
+      filteredEmployees = filteredEmployees.filter(emp => emp.captain === selectedCaptain);
+    }
+    
     // Group by branch
     filteredEmployees.forEach(emp => {
       emp.branch.forEach(b => {
@@ -685,7 +773,7 @@ const QuantCalendarPage = () => {
     });
     
     return grouped;
-  }, [employees, selectedBranch, selectedEmployee]);
+  }, [employees, selectedBranch, selectedEmployee, selectedCaptain]);
 
   // Filter work orders
   const filteredWorkOrders = useMemo(() => {
@@ -706,9 +794,13 @@ const QuantCalendarPage = () => {
       const matchesService = selectedService === "all" || 
                             wo.serviceType.split('(')[0].trim() === selectedService;
       
-      return matchesSearch && matchesService;
+      // Status filter
+      const woStatus = getWorkOrderStatus(wo);
+      const matchesStatus = selectedStatus === "all" || woStatus === selectedStatus;
+      
+      return matchesSearch && matchesService && matchesStatus;
     });
-  }, [workOrders, searchText, filteredSchedule, selectedService, getTasksByWorkOrder]);
+  }, [workOrders, searchText, filteredSchedule, selectedService, selectedStatus, getTasksByWorkOrder]);
 
   const getEmployeeJobs = (employeeId: string, date?: string) => {
     if (date) {
@@ -1126,6 +1218,19 @@ const QuantCalendarPage = () => {
             </SelectContent>
           </Select>
           
+          {/* Captain Filter */}
+          <Select value={selectedCaptain} onValueChange={setSelectedCaptain}>
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="Select Captain" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Captains</SelectItem>
+              {captains.map(captain => (
+                <SelectItem key={captain} value={captain}>{captain}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          
           {/* Service Type Filter */}
           <Select value={selectedService} onValueChange={setSelectedService}>
             <SelectTrigger className="w-[200px]">
@@ -1136,6 +1241,21 @@ const QuantCalendarPage = () => {
               {serviceTypes.map(service => (
                 <SelectItem key={service} value={service}>{service}</SelectItem>
               ))}
+            </SelectContent>
+          </Select>
+          
+          {/* Status Filter */}
+          <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="Select Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="Ongoing">Ongoing</SelectItem>
+              <SelectItem value="Upcoming">Upcoming</SelectItem>
+              <SelectItem value="Missed">Missed</SelectItem>
+              <SelectItem value="Cancelled">Cancelled</SelectItem>
+              <SelectItem value="Completed">Completed</SelectItem>
             </SelectContent>
           </Select>
           
@@ -1205,6 +1325,16 @@ const QuantCalendarPage = () => {
               const services = getTasksByWorkOrder(wo.id);
               const hasServices = services.length > 0;
               const isSelected = selectedWorkOrder?.id === wo.id;
+              const woStatus = getWorkOrderStatus(wo);
+              
+              // Status badge colors
+              const statusColors: Record<string, string> = {
+                "Ongoing": "bg-blue-100 text-blue-800",
+                "Upcoming": "bg-purple-100 text-purple-800",
+                "Missed": "bg-red-100 text-red-800",
+                "Cancelled": "bg-gray-100 text-gray-800",
+                "Completed": "bg-green-100 text-green-800",
+              };
               
               // Count how many unique services have been scheduled at least once
               const scheduledServiceIds = new Set(
@@ -1222,8 +1352,12 @@ const QuantCalendarPage = () => {
                     onClick={() => hasServices && handleWorkOrderClick(wo)}
                   >
                     <div className="flex items-start justify-between mb-1">
-                      <div className="flex items-center gap-2 flex-1">
+                      <div className="flex items-center gap-2 flex-1 flex-wrap">
                         <p className="text-xs font-bold">{wo.id}</p>
+                        {/* Status Badge */}
+                        <span className={`text-[9px] px-1.5 py-0.5 rounded font-semibold ${statusColors[woStatus] || 'bg-gray-100 text-gray-800'}`}>
+                          {woStatus}
+                        </span>
                         {!hasServices && (
                           <span className="text-[9px] px-1.5 py-0.5 rounded bg-gray-200 text-gray-600">No Services</span>
                         )}
@@ -1375,6 +1509,9 @@ const QuantCalendarPage = () => {
                                 <div className="flex-1 min-w-0">
                                   <p className="text-sm font-semibold truncate">{emp.name}</p>
                                   <p className="text-xs text-muted-foreground">{emp.role}</p>
+                                  {emp.captain && (
+                                    <p className="text-[10px] text-muted-foreground">Captain: {emp.captain}</p>
+                                  )}
                                   <p className="text-xs font-semibold text-primary">{empJobs.length}/3</p>
                                 </div>
                               </div>
@@ -1460,6 +1597,9 @@ const QuantCalendarPage = () => {
                               <div className="flex-1 min-w-0">
                                 <p className="text-sm font-semibold truncate">{emp.name}</p>
                                 <p className="text-xs text-muted-foreground">{emp.role}</p>
+                                {emp.captain && (
+                                  <p className="text-[10px] text-muted-foreground">Captain: {emp.captain}</p>
+                                )}
                               </div>
                             </div>
 

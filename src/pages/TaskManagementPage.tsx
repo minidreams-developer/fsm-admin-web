@@ -7,14 +7,39 @@ import { useEmployeesStore } from "@/store/employeesStore";
 import { StatusBadge } from "@/components/StatusBadge";
 
 const PAGE_SIZE = 10;
-const STATUSES = ["Pending", "In Progress", "Completed"] as const;
+const STATUSES = ["Pending", "In Progress", "Completed", "Overdue"] as const;
+const MANUAL_STATUSES = ["Pending", "In Progress", "Completed"] as const; // Statuses that can be manually set
 
 type TaskStatus = typeof STATUSES[number];
 
-const statusVariant: Record<TaskStatus, "warning" | "info" | "success"> = {
+const statusVariant: Record<TaskStatus, "warning" | "info" | "success" | "error"> = {
   "Pending": "warning",
   "In Progress": "info",
   "Completed": "success",
+  "Overdue": "error",
+};
+
+// Helper function to determine if a task is overdue
+const getTaskStatus = (task: Task): TaskStatus => {
+  // If task is already completed, return completed
+  if (task.status === "Completed") {
+    return "Completed";
+  }
+  
+  // Check if task is overdue based on end date
+  if (task.endDate) {
+    const endDate = new Date(task.endDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    endDate.setHours(0, 0, 0, 0);
+    
+    if (endDate < today) {
+      return "Overdue";
+    }
+  }
+  
+  // Return the task's current status
+  return task.status;
 };
 
 function EmployeeMultiSelect({ options, selected, onChange }: { options: string[]; selected: string[]; onChange: (v: string[]) => void }) {
@@ -59,7 +84,8 @@ const TaskManagementPage = () => {
 
   const filtered = tasks.filter(t => {
     const matchSearch = t.title.toLowerCase().includes(search.toLowerCase()) || t.assignedEmployees?.join(", ").toLowerCase().includes(search.toLowerCase());
-    const matchStatus = statusFilter === "All" || t.status === statusFilter;
+    const taskStatus = getTaskStatus(t);
+    const matchStatus = statusFilter === "All" || taskStatus === statusFilter;
     return matchSearch && matchStatus;
   });
 
@@ -153,7 +179,9 @@ const TaskManagementPage = () => {
             <tbody>
               {paginated.length === 0 ? (
                 <tr><td colSpan={7} className="px-3 py-8 text-center text-xs text-muted-foreground">No tasks found.</td></tr>
-              ) : paginated.map(t => (
+              ) : paginated.map(t => {
+                const taskStatus = getTaskStatus(t);
+                return (
                 <tr key={t.id} onClick={() => setSelectedTask(t)} className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors cursor-pointer">
                   <td className="px-3 py-2.5 font-semibold text-primary text-xs">{t.id}</td>
                   <td className="px-3 py-2.5">
@@ -169,7 +197,7 @@ const TaskManagementPage = () => {
                   </td>
                   <td className="px-3 py-2.5 text-xs text-muted-foreground">{t.startDate}</td>
                   <td className="px-3 py-2.5 text-xs text-muted-foreground">{t.endDate}</td>
-                  <td className="px-3 py-2.5"><StatusBadge label={t.status} variant={statusVariant[t.status]} /></td>
+                  <td className="px-3 py-2.5"><StatusBadge label={taskStatus} variant={statusVariant[taskStatus]} /></td>
                   <td className="px-3 py-2.5">
                     <div className="flex items-center gap-1.5">
                       <button onClick={(e) => { e.stopPropagation(); openEdit(t); }} className="p-1.5 rounded-lg border border-border hover:bg-secondary transition-colors" title="Edit">
@@ -181,7 +209,7 @@ const TaskManagementPage = () => {
                     </div>
                   </td>
                 </tr>
-              ))}
+              )})}
             </tbody>
           </table>
         </div>
@@ -253,7 +281,7 @@ const TaskManagementPage = () => {
               </div>
               <div>
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Status</p>
-                <StatusBadge label={selectedTask.status} variant={statusVariant[selectedTask.status]} />
+                <StatusBadge label={getTaskStatus(selectedTask)} variant={statusVariant[getTaskStatus(selectedTask)]} />
               </div>
             </div>
             <div className="flex gap-3 p-6 border-t border-border">
@@ -305,7 +333,7 @@ const TaskManagementPage = () => {
               <div>
                 <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Status</label>
                 <select value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value as TaskStatus }))} className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20">
-                  {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+                  {MANUAL_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
               </div>
               <div>
