@@ -11,6 +11,7 @@ const statusMap = {
   "Authorization Pending": "warning",
   Ongoing: "success",
   Upcoming: "info",
+  Overdue: "error",
   Missed: "destructive",
   Cancelled: "neutral",
   Completed: "neutral",
@@ -24,7 +25,7 @@ const ProjectsPage = () => {
   const { getLead, updateLead } = useLeadsStore();
   const [search, setSearch] = useState("");
   const [dateFilter, setDateFilter] = useState<"All" | "Due Today">("All");
-  const [statusFilter, setStatusFilter] = useState<"All" | "Authorization Pending" | "Ongoing" | "Upcoming" | "Missed" | "Cancelled" | "Completed" | "Converted">("All");
+  const [statusFilter, setStatusFilter] = useState<"All" | "Authorization Pending" | "Ongoing" | "Upcoming" | "Overdue" | "Missed" | "Cancelled" | "Completed" | "Converted">("All");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [showDateFilter, setShowDateFilter] = useState(false);
@@ -353,7 +354,7 @@ const ProjectsPage = () => {
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          {(["All", "Authorization Pending", "Ongoing", "Upcoming", "Missed", "Cancelled", "Completed", "Converted"] as const).map((s) => (
+          {(["All", "Authorization Pending", "Ongoing", "Upcoming", "Overdue", "Missed", "Cancelled", "Completed", "Converted"] as const).map((s) => (
             <button key={s} type="button" onClick={() => setStatusFilter(s)}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap ${statusFilter === s ? "text-white shadow-[0px_5px_12px_rgba(39,47,158,0.2)]" : "bg-card border border-border text-muted-foreground hover:text-card-foreground"}`}
               style={statusFilter === s ? { background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" } : {}}

@@ -28,7 +28,7 @@ const workOrderSchema = z.object({
   paidAmount: z.string().optional(),
   start: z.string().min(1, "Start date is required"),
   end: z.string().optional(),
-  status: z.enum(["Authorization Pending", "Ongoing", "Upcoming", "Missed", "Cancelled", "Completed", "Converted"]),
+  status: z.enum(["Authorization Pending", "Ongoing", "Upcoming", "Missed", "Cancelled", "Completed", "Converted", "Overdue"]),
   assignedTech: z.string().optional(),
   workOrderIncharge: z.string().optional(),
   notes: z.string().optional(),
@@ -560,6 +560,7 @@ const EditWorkOrderPage = () => {
               <option value="Authorization Pending">Authorization Pending</option>
               <option value="Ongoing">Ongoing</option>
               <option value="Upcoming">Upcoming</option>
+              <option value="Overdue">Overdue</option>
               <option value="Missed">Missed</option>
               <option value="Cancelled">Cancelled</option>
               <option value="Completed">Completed</option>
