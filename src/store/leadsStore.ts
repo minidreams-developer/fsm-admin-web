@@ -21,6 +21,7 @@ export type Lead = {
   notes: string;
   status: LeadStatus;
   date: string;
+  isViewed?: boolean;
   quoteIsViewed: boolean;
   quoteViewedAt: string | null;
   quoteAmount?: number;
