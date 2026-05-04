@@ -466,11 +466,11 @@ const LeadsPage = () => {
                     <div className="flex items-center gap-1.5">
                       <span className="font-medium text-card-foreground text-xs">{l.name}</span>
                       <button
-                        onClick={(e) => { e.stopPropagation(); setSelectedLeadForDetails(l); setShowDetailsModal(true); updateLead(l.id, { isViewed: true }); }}
+                        onClick={(e) => { e.stopPropagation(); setSelectedLeadForDetails(l); setShowDetailsModal(true); }}
                         className="inline-flex items-center justify-center w-5 h-5 rounded hover:bg-secondary transition-colors flex-shrink-0"
                         title="View details"
                       >
-                        <Eye className={`w-3.5 h-3.5 transition-colors ${l.isViewed ? "text-green-500" : "text-muted-foreground hover:text-primary"}`} />
+                        <Eye className="w-3.5 h-3.5 text-muted-foreground hover:text-primary" />
                       </button>
                     </div>
                   </td>

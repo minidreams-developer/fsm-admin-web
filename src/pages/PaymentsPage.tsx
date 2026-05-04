@@ -8,6 +8,13 @@ import { useLocation } from "react-router-dom";
 
 const statusMap = { "Open": "warning", "Scheduled": "info", "Completed": "success" } as const;
 
+// Map work order statuses to payment statuses
+const getPaymentStatus = (wo: WorkOrder): "Open" | "Scheduled" | "Completed" => {
+  if (wo.status === "Completed" || wo.status === "Converted") return "Completed";
+  if (wo.status === "Ongoing" || wo.status === "Upcoming") return "Scheduled";
+  return "Open"; // Authorization Pending, Missed, Cancelled, Overdue
+};
+
 const PaymentsPage = () => {
   const { workOrders } = useProjectsStore();
   const location = useLocation();
@@ -44,7 +51,8 @@ const PaymentsPage = () => {
   };
 
   const filtered = workOrders.filter((wo) => {
-    const matchStatus = statusFilter === "All" || wo.status === statusFilter;
+    const paymentStatus = getPaymentStatus(wo);
+    const matchStatus = statusFilter === "All" || paymentStatus === statusFilter;
     const matchSearch = 
       wo.subject?.toLowerCase().includes(search.toLowerCase()) ||
       wo.customer?.toLowerCase().includes(search.toLowerCase()) ||
@@ -68,14 +76,18 @@ const PaymentsPage = () => {
   });
 
   const stats = {
-    totalRevenue: workOrders.reduce((sum, w) => sum + (parseFloat(w.totalValue?.replace(/[₹,]/g, '') || '0')), 0),
-    pendingPayment: workOrders.filter(w => w.status !== "Completed").length,
-    toCollect: workOrders.filter(w => w.status === "Open").length,
+    totalRevenue: workOrders.reduce((sum, w) => sum + (parseFloat(w.totalValue?.replace(/[₹,\s]/g, '') || '0')), 0),
+    pendingPayment: workOrders.reduce((sum, w) => {
+      const total = parseFloat(w.totalValue?.replace(/[₹,\s]/g, '') || '0');
+      const paid = parseFloat(w.paidAmount?.replace(/[₹,\s]/g, '') || '0');
+      return sum + Math.max(0, total - paid);
+    }, 0),
+    toCollect: workOrders.filter(w => getPaymentStatus(w) === "Open").length,
   };
 
   const getBalancePayment = (workOrder: WorkOrder) => {
-    const total = parseFloat(workOrder.totalValue?.replace(/[₹,]/g, '') || '0');
-    const paid = parseFloat(workOrder.paidAmount?.replace(/[₹,]/g, '') || '0');
+    const total = parseFloat(workOrder.totalValue?.replace(/[₹,\s]/g, '') || '0');
+    const paid = parseFloat(workOrder.paidAmount?.replace(/[₹,\s]/g, '') || '0');
     return Math.max(0, total - paid);
   };
 
@@ -180,7 +192,7 @@ const PaymentsPage = () => {
               </div>
               <p className="text-xs font-medium text-orange-700">Total Pending Payment</p>
             </div>
-            <p className="text-2xl font-bold text-orange-900">₹{(stats.pendingPayment * 50000).toLocaleString()}.00</p>
+            <p className="text-2xl font-bold text-orange-900">₹{stats.pendingPayment.toLocaleString()}.00</p>
           </div>
           <div className="bg-red-50 rounded-xl p-4 border border-red-200">
             <div className="flex items-center gap-2 mb-2">
@@ -203,7 +215,7 @@ const PaymentsPage = () => {
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-sm font-semibold text-card-foreground">Work Orders</h3>
               </div>
-              <div className="relative">
+              <div className="relative mb-3">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <input 
                   value={search} 
@@ -211,6 +223,28 @@ const PaymentsPage = () => {
                   placeholder="Search Work Orders" 
                   className="w-full pl-9 pr-4 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20" 
                 />
+              </div>
+              {/* Status Filter Tabs */}
+              <div className="flex gap-1.5 flex-wrap">
+                {(["All", "Open", "Scheduled", "Completed"] as const).map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => setStatusFilter(s)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap ${
+                      statusFilter === s
+                        ? "text-white shadow-[0px_5px_12px_rgba(39,47,158,0.2)]"
+                        : "bg-secondary border border-border text-muted-foreground hover:text-card-foreground"
+                    }`}
+                    style={statusFilter === s ? { background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" } : {}}
+                  >
+                    {s}
+                    {s !== "All" && (
+                      <span className="ml-1.5 text-[10px] opacity-80">
+                        ({workOrders.filter(w => getPaymentStatus(w) === s).length})
+                      </span>
+                    )}
+                  </button>
+                ))}
               </div>
             </div>
             <div className="space-y-2 p-3 max-h-[600px] overflow-y-auto">
@@ -226,7 +260,7 @@ const PaymentsPage = () => {
                 >
                   <div className="flex items-start justify-between mb-1">
                     <p className="font-semibold text-sm text-card-foreground">{wo.subject}</p>
-                    <StatusBadge label={wo.status} variant={statusMap[wo.status as keyof typeof statusMap] || "neutral"} />
+                    <StatusBadge label={getPaymentStatus(wo)} variant={statusMap[getPaymentStatus(wo)]} />
                   </div>
                   <p className="text-xs text-muted-foreground mb-2">{wo.id}</p>
                   <div className="flex items-center justify-between">
