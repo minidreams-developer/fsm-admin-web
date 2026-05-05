@@ -10,6 +10,7 @@ export type Lead = {
   name: string;
   phone: string;
   address: string;
+  addresses?: { id: string; address: string; city?: string; pincode?: string }[];
   services: string[];
   amount: number | null;
   expectedDateTime?: string;
@@ -20,6 +21,7 @@ export type Lead = {
   notes: string;
   status: LeadStatus;
   date: string;
+  isViewed?: boolean;
   quoteIsViewed: boolean;
   quoteViewedAt: string | null;
   quoteAmount?: number;

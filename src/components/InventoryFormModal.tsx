@@ -40,11 +40,16 @@ export function InventoryFormModal({ open, mode, item, onClose, onSaved }: Props
     reorder: 0,
     status: "OK",
   });
+  
+  const [restockQuantity, setRestockQuantity] = useState<number>(0);
+  const [currentStock, setCurrentStock] = useState<number>(0);
 
   useEffect(() => {
     if (!open) return;
     if (mode === "edit" && item) {
       setForm(item);
+      setCurrentStock(item.stock);
+      setRestockQuantity(0);
       return;
     }
     setForm({
@@ -56,10 +61,26 @@ export function InventoryFormModal({ open, mode, item, onClose, onSaved }: Props
       reorder: 0,
       status: "OK",
     });
+    setCurrentStock(0);
+    setRestockQuantity(0);
   }, [open, mode, item]);
 
   const setField = <K extends keyof InventoryItem>(key: K, value: InventoryItem[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const handleProductChange = (productName: string) => {
+    setField("name", productName);
+    
+    // Find the selected product
+    const selectedProduct = products.find((p) => p.name === productName);
+    if (selectedProduct) {
+      // Auto-fill unit based on product's unit of measurement
+      setField("unit", selectedProduct.unitOfMeasurement);
+      
+      // Auto-fill reorder level based on product's reorder level
+      setField("reorder", selectedProduct.reorderLevel);
+    }
   };
 
   const save = () => {
@@ -81,9 +102,19 @@ export function InventoryFormModal({ open, mode, item, onClose, onSaved }: Props
     }
 
     if (mode === "edit") {
-      updateItem(form.id, form);
-      toast.success(`Inventory updated: ${form.name}`);
-      onSaved?.(form);
+      // Calculate final stock: current stock + restock quantity
+      const finalStock = currentStock + restockQuantity;
+      const updatedForm = { ...form, stock: finalStock };
+      
+      updateItem(form.id, updatedForm, restockQuantity);
+      
+      if (restockQuantity > 0) {
+        toast.success(`Restocked ${form.name}: +${restockQuantity} ${form.unit}. New stock: ${finalStock} ${form.unit}`);
+      } else {
+        toast.success(`Inventory updated: ${form.name}`);
+      }
+      
+      onSaved?.(updatedForm);
       onClose();
       return;
     }
@@ -119,7 +150,7 @@ export function InventoryFormModal({ open, mode, item, onClose, onSaved }: Props
               <label className="text-xs font-medium text-muted-foreground mb-2 block">{LABELS.product}</label>
               <select
                 value={form.name}
-                onChange={(e) => setField("name", e.target.value)}
+                onChange={(e) => handleProductChange(e.target.value)}
                 className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
               >
                 <option value="">Select product</option>
@@ -137,6 +168,7 @@ export function InventoryFormModal({ open, mode, item, onClose, onSaved }: Props
                 value={form.branch}
                 onChange={(e) => setField("branch", e.target.value)}
                 className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+                disabled={mode === "edit"}
               >
                 <option value="">Select branch</option>
                 {branches.map((b) => (
@@ -147,24 +179,64 @@ export function InventoryFormModal({ open, mode, item, onClose, onSaved }: Props
               </select>
             </div>
 
-            <div>
-              <label className="text-xs font-medium text-muted-foreground mb-2 block">{LABELS.stock}</label>
-              <input
-                value={form.stock}
-                onChange={(e) => setField("stock", Number(e.target.value))}
-                type="number"
-                min="0"
-                className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
-              />
-            </div>
+            {mode === "edit" ? (
+              <>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-2 block">Current Stock</label>
+                  <div className="w-full px-3 py-2.5 rounded-lg bg-secondary/50 border border-border text-sm text-card-foreground font-semibold">
+                    {currentStock} {form.unit}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-2 block">Add Stock Quantity</label>
+                  <input
+                    value={restockQuantity}
+                    onChange={(e) => setRestockQuantity(Number(e.target.value))}
+                    type="number"
+                    min="0"
+                    placeholder="Enter quantity to add"
+                    className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-2 block">Final Stock</label>
+                  <div className="w-full px-3 py-2.5 rounded-lg bg-primary/10 border border-primary/20 text-sm text-primary font-bold">
+                    {currentStock + restockQuantity} {form.unit}
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-2 block">{LABELS.stock}</label>
+                <input
+                  value={form.stock}
+                  onChange={(e) => setField("stock", Number(e.target.value))}
+                  type="number"
+                  min="0"
+                  className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+                />
+              </div>
+            )}
 
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-2 block">{LABELS.unit}</label>
-              <input
+              <select
                 value={form.unit}
                 onChange={(e) => setField("unit", e.target.value)}
                 className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
-              />
+              >
+                <option value="kg">kg</option>
+                <option value="Liters">Liters</option>
+                <option value="Piece">Piece</option>
+                <option value="Box">Box</option>
+                <option value="Carton">Carton</option>
+                <option value="Gallon">Gallon</option>
+                <option value="Meter">Meter</option>
+                <option value="Ton">Ton</option>
+                <option value="Unit">Unit</option>
+              </select>
             </div>
 
             <div>
@@ -193,7 +265,7 @@ export function InventoryFormModal({ open, mode, item, onClose, onSaved }: Props
             className="flex-1 h-10 text-sm font-semibold hover:opacity-90 text-white shadow-[0px_5px_12px_rgba(39,47,158,0.2)] transition-all rounded-lg"
             style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}
           >
-            {mode === "create" ? "Add Item" : "Update Item"}
+            {mode === "create" ? "Add Item" : restockQuantity > 0 ? "Restock Item" : "Update Item"}
           </button>
         </div>
       </div>

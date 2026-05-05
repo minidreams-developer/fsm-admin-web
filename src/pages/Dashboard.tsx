@@ -215,7 +215,7 @@ const recentServices = [
 ];
 
 const quickActions = [
-  { label: "Add New Enquiry", icon: Plus, path: null, color: "text-white hover:opacity-90 shadow-[0px_5px_12px_rgba(39,47,158,0.2)]", style: { background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" } },
+  { label: "Add New Enquiry", icon: Plus, path: "/leads/new", color: "text-white hover:opacity-90 shadow-[0px_5px_12px_rgba(39,47,158,0.2)]", style: { background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" } },
   { label: "Pending Payments", icon: Eye, path: "/payments", color: "text-white hover:opacity-90 shadow-[0px_5px_12px_rgba(39,47,158,0.2)]", style: { background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" } },
   { label: "Quick Stock Update", icon: Package, path: "/inventory", color: "text-white hover:opacity-90 shadow-[0px_5px_12px_rgba(39,47,158,0.2)]", style: { background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" } },
 ];

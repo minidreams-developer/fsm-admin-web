@@ -242,6 +242,48 @@ const DraggableServiceCard = ({ service, workOrder }: any) => {
     data: dragData,
   });
 
+  // Format date
+  const formatDate = (dateStr: string) => {
+    if (!dateStr) return null;
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  };
+
+  // Format time from datetime
+  const formatTime = (dateTimeStr: string) => {
+    if (!dateTimeStr) return null;
+    const date = new Date(dateTimeStr);
+    return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+  };
+
+  // Format time from HH:MM format
+  const formatTimeFromHHMM = (timeStr: string) => {
+    if (!timeStr) return null;
+    const [hours, minutes] = timeStr.split(':');
+    const hour = parseInt(hours);
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+    return `${displayHour}:${minutes} ${ampm}`;
+  };
+
+  // Use service dates or fallback to work order dates
+  const startDate = service.startDate || workOrder.start;
+  const endDate = service.endDate || workOrder.end;
+  
+  // Check for service-specific times first, then fallback to work order time
+  const serviceFromTime = service.fromTime ? formatTimeFromHHMM(service.fromTime) : null;
+  const serviceToTime = service.toTime ? formatTimeFromHHMM(service.toTime) : null;
+  const workOrderTime = workOrder.workOrderDateTime ? formatTime(workOrder.workOrderDateTime) : null;
+  
+  // Determine which time to display - always show something
+  const displayTime = serviceFromTime && serviceToTime 
+    ? `${serviceFromTime} - ${serviceToTime}` 
+    : serviceFromTime 
+    ? serviceFromTime 
+    : workOrderTime
+    ? workOrderTime
+    : "9:00 AM"; // Default fallback time
+
   return (
     <div
       ref={setNodeRef}
@@ -261,6 +303,28 @@ const DraggableServiceCard = ({ service, workOrder }: any) => {
           {service.status}
         </span>
       </div>
+      
+      {/* Date and Time Display */}
+      <div className="space-y-0.5 mb-1">
+        {startDate && (
+          <div className="flex items-center gap-1">
+            <CalendarIcon className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+            <span className="text-[10px] text-card-foreground font-medium">{formatDate(startDate)}</span>
+            {endDate && startDate !== endDate && (
+              <>
+                <span className="text-[9px] text-muted-foreground">→</span>
+                <span className="text-[10px] text-card-foreground font-medium">{formatDate(endDate)}</span>
+              </>
+            )}
+          </div>
+        )}
+        {/* Always show time */}
+        <div className="flex items-center gap-1">
+          <Clock className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+          <span className="text-[10px] text-card-foreground font-semibold text-primary">{displayTime}</span>
+        </div>
+      </div>
+      
       {service.assignedTo && (
         <p className="text-[10px] text-muted-foreground">Assigned: {service.assignedTo}</p>
       )}
@@ -498,6 +562,34 @@ const getPriority = (wo: any): Priority => {
   return "LOW";
 };
 
+const getWorkOrderStatus = (wo: any): string => {
+  // Check if work order has explicit status
+  if (wo.status === "Completed") return "Completed";
+  if (wo.status === "Cancelled") return "Cancelled";
+  
+  // Determine status based on work order date
+  if (wo.workOrderDateTime) {
+    const woDate = new Date(wo.workOrderDateTime);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    woDate.setHours(0, 0, 0, 0);
+    
+    if (woDate < today) {
+      // Past date - check if it's completed or missed
+      return wo.status === "Completed" ? "Completed" : "Missed";
+    } else if (woDate.getTime() === today.getTime()) {
+      // Today - ongoing
+      return "Ongoing";
+    } else {
+      // Future date - upcoming
+      return "Upcoming";
+    }
+  }
+  
+  // Default to upcoming if no date
+  return "Upcoming";
+};
+
 const priorityBgColors: Record<Priority, string> = {
   LOW: "bg-green-100 border-green-300 text-green-900",
   MEDIUM: "bg-yellow-100 border-yellow-300 text-yellow-900",
@@ -512,10 +604,17 @@ const QuantCalendarPage = () => {
   
   // Filter states
   const [selectedBranch, setSelectedBranch] = useState<string>("all");
-  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [fromDate, setFromDate] = useState(new Date());
+  const [toDate, setToDate] = useState(() => {
+    const date = new Date();
+    date.setDate(date.getDate() + 7); // Default to 7 days from today
+    return date;
+  });
   const [viewMode, setViewMode] = useState<ViewMode>("day");
   const [selectedEmployee, setSelectedEmployee] = useState<string>("all");
   const [selectedService, setSelectedService] = useState<string>("all");
+  const [selectedStatus, setSelectedStatus] = useState<string>("all");
+  const [selectedCaptain, setSelectedCaptain] = useState<string>("all");
   const [searchText, setSearchText] = useState("");
   const [searchEmployee, setSearchEmployee] = useState("");
   const [selectedWorkOrder, setSelectedWorkOrder] = useState<any | null>(null);
@@ -568,9 +667,10 @@ const QuantCalendarPage = () => {
       const randomStartTime = 6 + Math.floor(Math.random() * 12); // Random time between 6 AM and 5 PM
       const duration = Math.random() > 0.5 ? 2 : 3; // Random duration of 2 or 3 hours
       
-      // Generate random date within current week/month
-      const baseDate = new Date(selectedDate);
-      const daysOffset = Math.floor(Math.random() * 7); // Random day within a week
+      // Generate random date within from and to date range
+      const baseDate = new Date(fromDate);
+      const daysDiff = Math.floor((toDate.getTime() - fromDate.getTime()) / (1000 * 60 * 60 * 24));
+      const daysOffset = Math.floor(Math.random() * (daysDiff + 1));
       baseDate.setDate(baseDate.getDate() + daysOffset);
       
       dummySchedule.push({
@@ -600,6 +700,17 @@ const QuantCalendarPage = () => {
     return Array.from(branchSet).sort();
   }, [employees]);
   
+  // Get unique captains
+  const captains = useMemo(() => {
+    const captainSet = new Set<string>();
+    employees.forEach(emp => {
+      if (emp.captain) {
+        captainSet.add(emp.captain);
+      }
+    });
+    return Array.from(captainSet).sort();
+  }, [employees]);
+  
   // Get unique service types
   const serviceTypes = useMemo(() => {
     const serviceSet = new Set<string>();
@@ -610,38 +721,24 @@ const QuantCalendarPage = () => {
     return Array.from(serviceSet).sort();
   }, [workOrders]);
   
-  // Get date range based on view mode
+  // Get date range based on from and to dates
   const getDateRange = () => {
-    const start = new Date(selectedDate);
-    const end = new Date(selectedDate);
+    const start = new Date(fromDate);
+    const end = new Date(toDate);
     
-    if (viewMode === "day") {
+    // Ensure fromDate is not after toDate
+    if (start > end) {
       return [start];
-    } else if (viewMode === "week") {
-      // Get start of week (Sunday)
-      const dayOfWeek = start.getDay();
-      start.setDate(start.getDate() - dayOfWeek);
-      end.setDate(start.getDate() + 6);
-      
-      const dates = [];
-      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-        dates.push(new Date(d));
-      }
-      return dates;
-    } else { // month
-      start.setDate(1);
-      end.setMonth(end.getMonth() + 1);
-      end.setDate(0);
-      
-      const dates = [];
-      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-        dates.push(new Date(d));
-      }
-      return dates;
     }
+    
+    const dates = [];
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+      dates.push(new Date(d));
+    }
+    return dates;
   };
   
-  const dateRange = useMemo(() => getDateRange(), [selectedDate, viewMode]);
+  const dateRange = useMemo(() => getDateRange(), [fromDate, toDate]);
   
   // Filter schedule by date range
   const filteredSchedule = useMemo(() => {
@@ -682,6 +779,11 @@ const QuantCalendarPage = () => {
       filteredEmployees = filteredEmployees.filter(emp => emp.id === selectedEmployee);
     }
     
+    // Filter by captain
+    if (selectedCaptain !== "all") {
+      filteredEmployees = filteredEmployees.filter(emp => emp.captain === selectedCaptain);
+    }
+    
     // Group by branch
     filteredEmployees.forEach(emp => {
       emp.branch.forEach(b => {
@@ -693,7 +795,7 @@ const QuantCalendarPage = () => {
     });
     
     return grouped;
-  }, [employees, selectedBranch, selectedEmployee]);
+  }, [employees, selectedBranch, selectedEmployee, selectedCaptain]);
 
   // Filter work orders
   const filteredWorkOrders = useMemo(() => {
@@ -714,9 +816,13 @@ const QuantCalendarPage = () => {
       const matchesService = selectedService === "all" || 
                             wo.serviceType.split('(')[0].trim() === selectedService;
       
-      return matchesSearch && matchesService;
+      // Status filter
+      const woStatus = getWorkOrderStatus(wo);
+      const matchesStatus = selectedStatus === "all" || woStatus === selectedStatus;
+      
+      return matchesSearch && matchesService && matchesStatus;
     });
-  }, [workOrders, searchText, filteredSchedule, selectedService, getTasksByWorkOrder]);
+  }, [workOrders, searchText, filteredSchedule, selectedService, selectedStatus, getTasksByWorkOrder]);
 
   const getEmployeeJobs = (employeeId: string, date?: string) => {
     if (date) {
@@ -727,19 +833,29 @@ const QuantCalendarPage = () => {
   
   // Handle date navigation
   const handlePreviousDay = () => {
-    const newDate = new Date(selectedDate);
-    newDate.setDate(newDate.getDate() - 1);
-    setSelectedDate(newDate);
+    const newFromDate = new Date(fromDate);
+    newFromDate.setDate(newFromDate.getDate() - 1);
+    const newToDate = new Date(toDate);
+    newToDate.setDate(newToDate.getDate() - 1);
+    setFromDate(newFromDate);
+    setToDate(newToDate);
   };
   
   const handleNextDay = () => {
-    const newDate = new Date(selectedDate);
-    newDate.setDate(newDate.getDate() + 1);
-    setSelectedDate(newDate);
+    const newFromDate = new Date(fromDate);
+    newFromDate.setDate(newFromDate.getDate() + 1);
+    const newToDate = new Date(toDate);
+    newToDate.setDate(newToDate.getDate() + 1);
+    setFromDate(newFromDate);
+    setToDate(newToDate);
   };
   
   const handleToday = () => {
-    setSelectedDate(new Date());
+    const today = new Date();
+    const nextWeek = new Date();
+    nextWeek.setDate(nextWeek.getDate() + 7);
+    setFromDate(today);
+    setToDate(nextWeek);
   };
 
   const handleDragStart = (event: DragStartEvent) => {
@@ -928,7 +1044,7 @@ const QuantCalendarPage = () => {
       const duration = 2;
       let bestEmployee: any = null;
       let bestTime = -1;
-      let bestDate = selectedDate.toISOString().split('T')[0];
+      let bestDate = fromDate.toISOString().split('T')[0];
 
       for (const emp of employees) {
         const empJobs = newSchedule.filter(s => s.employeeId === emp.id && s.date === bestDate);
@@ -1018,29 +1134,79 @@ const QuantCalendarPage = () => {
             </SelectContent>
           </Select>
           
-          {/* Date Picker */}
+          {/* Date Range Pickers */}
           <div className="flex items-center gap-2">
             <button onClick={handlePreviousDay} className="p-2 hover:bg-secondary rounded-lg border border-border transition-colors">
               <ChevronLeft className="w-4 h-4" />
             </button>
+            
+            {/* From Date */}
             <Popover>
               <PopoverTrigger asChild>
                 <button className="flex items-center gap-2 border border-border rounded-lg px-3 py-2 hover:bg-secondary transition-colors">
                   <CalendarIcon className="w-4 h-4" />
-                  <span className="text-sm font-medium min-w-[120px] text-left">
-                    {format(selectedDate, "MMM dd, yyyy")}
-                  </span>
+                  <div className="text-left">
+                    <div className="text-[10px] text-muted-foreground">From</div>
+                    <span className="text-sm font-medium">
+                      {format(fromDate, "MMM dd, yyyy")}
+                    </span>
+                  </div>
                 </button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="start">
                 <Calendar
                   mode="single"
-                  selected={selectedDate}
-                  onSelect={(date) => date && setSelectedDate(date)}
+                  selected={fromDate}
+                  onSelect={(date) => {
+                    if (date) {
+                      setFromDate(date);
+                      // Ensure toDate is not before fromDate
+                      if (date > toDate) {
+                        const newToDate = new Date(date);
+                        newToDate.setDate(newToDate.getDate() + 7);
+                        setToDate(newToDate);
+                      }
+                    }
+                  }}
                   initialFocus
                 />
               </PopoverContent>
             </Popover>
+            
+            {/* To Date */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <button className="flex items-center gap-2 border border-border rounded-lg px-3 py-2 hover:bg-secondary transition-colors">
+                  <CalendarIcon className="w-4 h-4" />
+                  <div className="text-left">
+                    <div className="text-[10px] text-muted-foreground">To</div>
+                    <span className="text-sm font-medium">
+                      {format(toDate, "MMM dd, yyyy")}
+                    </span>
+                  </div>
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={toDate}
+                  onSelect={(date) => {
+                    if (date) {
+                      setToDate(date);
+                      // Ensure fromDate is not after toDate
+                      if (date < fromDate) {
+                        const newFromDate = new Date(date);
+                        newFromDate.setDate(newFromDate.getDate() - 7);
+                        setFromDate(newFromDate);
+                      }
+                    }
+                  }}
+                  initialFocus
+                  disabled={(date) => date < fromDate}
+                />
+              </PopoverContent>
+            </Popover>
+            
             <button onClick={handleNextDay} className="p-2 hover:bg-secondary rounded-lg border border-border transition-colors">
               <ChevronRight className="w-4 h-4" />
             </button>
@@ -1074,6 +1240,19 @@ const QuantCalendarPage = () => {
             </SelectContent>
           </Select>
           
+          {/* Captain Filter */}
+          <Select value={selectedCaptain} onValueChange={setSelectedCaptain}>
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="Select Captain" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Captains</SelectItem>
+              {captains.map(captain => (
+                <SelectItem key={captain} value={captain}>{captain}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          
           {/* Service Type Filter */}
           <Select value={selectedService} onValueChange={setSelectedService}>
             <SelectTrigger className="w-[200px]">
@@ -1084,6 +1263,21 @@ const QuantCalendarPage = () => {
               {serviceTypes.map(service => (
                 <SelectItem key={service} value={service}>{service}</SelectItem>
               ))}
+            </SelectContent>
+          </Select>
+          
+          {/* Status Filter */}
+          <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="Select Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="Ongoing">Ongoing</SelectItem>
+              <SelectItem value="Upcoming">Upcoming</SelectItem>
+              <SelectItem value="Missed">Missed</SelectItem>
+              <SelectItem value="Cancelled">Cancelled</SelectItem>
+              <SelectItem value="Completed">Completed</SelectItem>
             </SelectContent>
           </Select>
           
@@ -1102,9 +1296,10 @@ const QuantCalendarPage = () => {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <span className="text-lg font-semibold">
-            {viewMode === "day" && selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
-            {viewMode === "week" && `Week of ${dateRange[0].toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${dateRange[dateRange.length - 1].toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`}
-            {viewMode === "month" && selectedDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+            {dateRange.length === 1 
+              ? dateRange[0].toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
+              : `${dateRange[0].toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${dateRange[dateRange.length - 1].toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
+            }
           </span>
         </div>
         
@@ -1152,6 +1347,16 @@ const QuantCalendarPage = () => {
               const services = getTasksByWorkOrder(wo.id);
               const hasServices = services.length > 0;
               const isSelected = selectedWorkOrder?.id === wo.id;
+              const woStatus = getWorkOrderStatus(wo);
+              
+              // Status badge colors
+              const statusColors: Record<string, string> = {
+                "Ongoing": "bg-blue-100 text-blue-800",
+                "Upcoming": "bg-purple-100 text-purple-800",
+                "Missed": "bg-red-100 text-red-800",
+                "Cancelled": "bg-gray-100 text-gray-800",
+                "Completed": "bg-green-100 text-green-800",
+              };
               
               // Count how many unique services have been scheduled at least once
               const scheduledServiceIds = new Set(
@@ -1169,8 +1374,12 @@ const QuantCalendarPage = () => {
                     onClick={() => hasServices && handleWorkOrderClick(wo)}
                   >
                     <div className="flex items-start justify-between mb-1">
-                      <div className="flex items-center gap-2 flex-1">
+                      <div className="flex items-center gap-2 flex-1 flex-wrap">
                         <p className="text-xs font-bold">{wo.id}</p>
+                        {/* Status Badge */}
+                        <span className={`text-[9px] px-1.5 py-0.5 rounded font-semibold ${statusColors[woStatus] || 'bg-gray-100 text-gray-800'}`}>
+                          {woStatus}
+                        </span>
                         {!hasServices && (
                           <span className="text-[9px] px-1.5 py-0.5 rounded bg-gray-200 text-gray-600">No Services</span>
                         )}
@@ -1308,7 +1517,8 @@ const QuantCalendarPage = () => {
                       {branchEmployees
                         .filter(emp => emp.name.toLowerCase().includes(searchEmployee.toLowerCase()))
                         .map(emp => {
-                          const empJobs = getEmployeeJobs(emp.id, selectedDate.toISOString().split('T')[0]);
+                          const currentDate = dateRange[0].toISOString().split('T')[0];
+                          const empJobs = getEmployeeJobs(emp.id, currentDate);
                           return (
                             <div key={emp.id} className="grid border-b border-border hover:bg-secondary/10" style={{ gridTemplateColumns: "200px repeat(15, 1fr)" }}>
                               {/* Employee Info */}
@@ -1321,25 +1531,29 @@ const QuantCalendarPage = () => {
                                 <div className="flex-1 min-w-0">
                                   <p className="text-sm font-semibold truncate">{emp.name}</p>
                                   <p className="text-xs text-muted-foreground">{emp.role}</p>
+                                  {emp.captain && (
+                                    <p className="text-[10px] text-muted-foreground">Captain: {emp.captain}</p>
+                                  )}
                                   <p className="text-xs font-semibold text-primary">{empJobs.length}/3</p>
                                 </div>
                               </div>
 
                               {/* Time Slots */}
                               {timeSlots.map(hour => {
-                                const job = filteredSchedule.find(s => s.employeeId === emp.id && s.startTime === hour && s.date === selectedDate.toISOString().split('T')[0]);
+                                const currentDate = dateRange[0].toISOString().split('T')[0];
+                                const job = filteredSchedule.find(s => s.employeeId === emp.id && s.startTime === hour && s.date === currentDate);
                                 const wo = job ? workOrders.find(w => w.id === job.workOrderId) : null;
                                 const service = job?.serviceId ? getTasksByWorkOrder(job.workOrderId).find(s => s.id === job.serviceId) : null;
                                 const isOver = activeDropZone?.employeeId === emp.id && 
                                               activeDropZone?.timeSlot === hour && 
-                                              activeDropZone?.date === selectedDate.toISOString().split('T')[0];
+                                              activeDropZone?.date === currentDate;
 
                                 return (
                                   <DroppableTimeSlot
                                     key={hour}
                                     employeeId={emp.id}
                                     timeSlot={hour}
-                                    date={selectedDate.toISOString().split('T')[0]}
+                                    date={currentDate}
                                     job={job}
                                     workOrder={wo}
                                     service={service}
@@ -1405,6 +1619,9 @@ const QuantCalendarPage = () => {
                               <div className="flex-1 min-w-0">
                                 <p className="text-sm font-semibold truncate">{emp.name}</p>
                                 <p className="text-xs text-muted-foreground">{emp.role}</p>
+                                {emp.captain && (
+                                  <p className="text-[10px] text-muted-foreground">Captain: {emp.captain}</p>
+                                )}
                               </div>
                             </div>
 

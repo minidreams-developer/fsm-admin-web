@@ -20,11 +20,51 @@ export const EmployeeDetailPage = () => {
   const [showEdit, setShowEdit] = useState(false);
   const [projectFilter, setProjectFilter] = useState<"All" | "Open" | "Scheduled" | "Completed">("All");
   const [inventoryFilter, setInventoryFilter] = useState<"All" | "OK" | "Low" | "Critical">("All");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [appliedFrom, setAppliedFrom] = useState("");
+  const [appliedTo, setAppliedTo] = useState("");
+
+  const applyDateFilter = () => {
+    setAppliedFrom(dateFrom);
+    setAppliedTo(dateTo);
+  };
+
+  const resetDateFilter = () => {
+    setDateFrom("");
+    setDateTo("");
+    setAppliedFrom("");
+    setAppliedTo("");
+  };
 
   const employee = id ? getEmployee(id) : null;
   const isActive = employee?.isActive !== false;
   const assignedProjects = workOrders.filter(wo => wo.assignedTech === employee?.name && wo.status !== "Completed");
-  const filteredProjects = projectFilter === "All" ? workOrders.filter(wo => wo.assignedTech === employee?.name) : workOrders.filter(wo => wo.assignedTech === employee?.name && wo.status === projectFilter);
+  
+  // Apply date filter to projects
+  let filteredProjects = projectFilter === "All" 
+    ? workOrders.filter(wo => wo.assignedTech === employee?.name) 
+    : workOrders.filter(wo => wo.assignedTech === employee?.name && wo.status === projectFilter);
+  
+  // Apply date range filter
+  if (appliedFrom || appliedTo) {
+    filteredProjects = filteredProjects.filter(wo => {
+      const woDate = new Date(wo.end || wo.start);
+      let matchDate = true;
+      
+      if (appliedFrom) {
+        const from = new Date(appliedFrom);
+        matchDate = matchDate && woDate >= from;
+      }
+      
+      if (appliedTo) {
+        const to = new Date(appliedTo);
+        matchDate = matchDate && woDate <= to;
+      }
+      
+      return matchDate;
+    });
+  }
   
   // Get actual allocated inventory for this employee
   const employeeInventoryItems = employee?.id 
@@ -83,27 +123,67 @@ export const EmployeeDetailPage = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex items-center gap-3">
-        <button
-          type="button"
-          onClick={() => navigate("/employees")}
-          className="inline-flex items-center gap-2 h-10 px-4 rounded-lg border border-border bg-card hover:bg-secondary transition-colors text-sm font-semibold text-card-foreground"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Back
-        </button>
-        <div className="flex-1">
-          <h2 className="text-lg sm:text-xl font-bold text-card-foreground">{employee.name}</h2>
-          <p className="text-sm text-muted-foreground">{employee.id}</p>
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => navigate("/employees")}
+            className="inline-flex items-center gap-2 h-10 px-4 rounded-lg border border-border bg-card hover:bg-secondary transition-colors text-sm font-semibold text-card-foreground"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back
+          </button>
+          <div>
+            <h2 className="text-lg sm:text-xl font-bold text-card-foreground">{employee.name}</h2>
+            <p className="text-sm text-muted-foreground">{employee.id}</p>
+          </div>
         </div>
-        <button
-          type="button"
-          onClick={() => setShowEdit(true)}
-          className="h-10 px-4 inline-flex items-center gap-2 rounded-lg border border-border bg-card hover:bg-secondary transition-colors text-sm font-semibold text-card-foreground"
-        >
-          <Edit2 className="w-4 h-4" />
-          Edit
-        </button>
+        
+        <div className="flex items-center gap-2">
+          {/* Date Filter - Same as Dashboard */}
+          <div className="flex items-center gap-2 bg-card border border-border rounded-xl px-3 py-2 shadow-sm">
+            <span className="text-xs text-muted-foreground">From :</span>
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={e => setDateFrom(e.target.value)}
+              className="bg-transparent text-xs text-card-foreground focus:outline-none w-[120px]"
+            />
+            <span className="text-xs text-muted-foreground">To :</span>
+            <input
+              type="date"
+              value={dateTo}
+              min={dateFrom}
+              onChange={e => setDateTo(e.target.value)}
+              className="bg-transparent text-xs text-card-foreground focus:outline-none w-[120px]"
+            />
+            <div className="flex items-center gap-1.5 ml-1 pl-2 border-l border-border">
+              <button
+                onClick={applyDateFilter}
+                disabled={!dateFrom && !dateTo}
+                className="px-3 py-1 rounded-lg text-xs font-semibold text-white transition-all hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
+                style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}
+              >
+                Apply
+              </button>
+              <button
+                onClick={resetDateFilter}
+                className="px-3 py-1 rounded-lg text-xs font-semibold border border-border text-muted-foreground hover:text-card-foreground hover:bg-secondary transition-colors"
+              >
+                Reset
+              </button>
+            </div>
+          </div>
+          
+          <button
+            type="button"
+            onClick={() => setShowEdit(true)}
+            className="h-10 px-4 inline-flex items-center gap-2 rounded-lg border border-border bg-card hover:bg-secondary transition-colors text-sm font-semibold text-card-foreground"
+          >
+            <Edit2 className="w-4 h-4" />
+            Edit
+          </button>
+        </div>
       </div>
 
       <div className="bg-card rounded-xl p-8 card-shadow border border-border">

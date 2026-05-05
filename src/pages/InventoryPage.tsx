@@ -1,5 +1,5 @@
 import { StatusBadge } from "@/components/StatusBadge";
-import { Plus, AlertTriangle, Edit2, Trash2, Eye, Package, AlertCircle, CheckCircle, UserCheck } from "lucide-react";
+import { Plus, AlertTriangle, Edit2, Trash2, Eye, Package, AlertCircle, CheckCircle, UserCheck, History } from "lucide-react";
 import { useState } from "react";
 import { useBranchesStore } from "@/store/branchesStore";
 import { useProductsStore } from "@/store/productsStore";
@@ -57,6 +57,9 @@ const InventoryPage = () => {
           <p className="text-sm text-muted-foreground">Branch-wise chemical stock management</p>
         </div>
         <div className="flex gap-2">
+          <button onClick={() => navigate("/inventory/history")} className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 border border-border text-card-foreground bg-card transition-all">
+            <History className="w-4 h-4" /> History
+          </button>
           <button onClick={() => navigate("/inventory/allocate")} className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 border border-primary text-primary bg-primary/5 transition-all">
             <UserCheck className="w-4 h-4" /> Allocate Stock
           </button>

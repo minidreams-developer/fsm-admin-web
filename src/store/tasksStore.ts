@@ -10,7 +10,7 @@ export type Task = {
   endDate: string;
   assignedTo: string;
   assignedEmployees: string[];
-  status: "Pending" | "In Progress" | "Completed";
+  status: "Pending" | "In Progress" | "Completed" | "Overdue";
 };
 
 interface TasksStore {
@@ -29,6 +29,7 @@ const initialTasks: Task[] = [
   { id: "TASK-003", workOrderId: "WO-1025", title: "Follow-up Inspection", description: "Inspect treatment effectiveness", startDate: "2026-02-10", endDate: "2026-02-10", assignedTo: "Mani", assignedEmployees: ["Mani"], status: "Pending" },
   { id: "TASK-004", workOrderId: "WO-1027", title: "Kitchen Treatment", description: "Treat kitchen area for bed bugs", startDate: "2026-01-15", endDate: "2026-01-16", assignedTo: "Safeeq", assignedEmployees: ["Safeeq"], status: "Completed" },
   { id: "TASK-005", workOrderId: "WO-1027", title: "Room Treatment", description: "Treat all guest rooms", startDate: "2026-01-17", endDate: "2026-01-19", assignedTo: "Safeeq", assignedEmployees: ["Safeeq", "Rajesh"], status: "Completed" },
+  { id: "TASK-006", workOrderId: "WO-1026", title: "Urgent Pest Control", description: "Emergency pest control needed", startDate: "2026-04-20", endDate: "2026-04-22", assignedTo: "Mani", assignedEmployees: ["Mani"], status: "Pending" }, // This will show as Overdue
 ];
 
 export const useTasksStore = create<TasksStore>()(

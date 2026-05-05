@@ -1,14 +1,22 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, X } from "lucide-react";
+import { ArrowLeft, X, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { useLeadsStore, type UrgencyLevel } from "@/store/leadsStore";
 import { useEmployeesStore } from "@/store/employeesStore";
 import { useProductsStore } from "@/store/productsStore";
 
 const urgencyLevels: UrgencyLevel[] = ["Low", "Medium", "High"];
-const leadSources = ["Website", "Call", "Referral", "Walk-in", "Google", "Facebook/Instagram", "Other"];
+          
+const leadSources = ["Website", "Call", "Referral", "Walk-in", "Google", "Facebook/Instagram", "Custom"];
 const branches = ["Kochi", "Calicut", "Thrissur", "Trivandrum", "Palakkad", "Munnar", "Other"];
+
+type AddressEntry = {
+  id: string;
+  address: string;
+  city: string;
+  pincode: string;
+};
 
 const CreateLeadPage = () => {
   const navigate = useNavigate();
@@ -34,8 +42,32 @@ const CreateLeadPage = () => {
     notes: "",
   });
 
+  const [addresses, setAddresses] = useState<AddressEntry[]>([
+    { id: crypto.randomUUID(), address: "", city: "", pincode: "" }
+  ]);
+
+  const [customLeadSource, setCustomLeadSource] = useState("");
+
   const setField = <K extends keyof typeof form>(key: K, value: typeof form[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }));
+
+  const addAddress = () => {
+    setAddresses([...addresses, { id: crypto.randomUUID(), address: "", city: "", pincode: "" }]);
+  };
+
+  const removeAddress = (id: string) => {
+    if (addresses.length === 1) {
+      toast.error("At least one address is required");
+      return;
+    }
+    setAddresses(addresses.filter(addr => addr.id !== id));
+  };
+
+  const updateAddress = (id: string, field: keyof AddressEntry, value: string) => {
+    setAddresses(addresses.map(addr => 
+      addr.id === id ? { ...addr, [field]: value } : addr
+    ));
+  };
 
   const toggleService = (s: string) => {
     setForm((prev) => ({
@@ -50,17 +82,38 @@ const CreateLeadPage = () => {
     setForm((prev) => ({ ...prev, services: prev.services.filter((x) => x !== s) }));
 
   const handleSave = () => {
-    if (!form.name.trim() || !form.phone.trim() || !form.address.trim() || form.services.length === 0) {
+    if (!form.name.trim() || !form.phone.trim() || form.services.length === 0) {
       toast.error("Please fill in all required fields and add at least one service");
       return;
     }
+
+    // Validate at least one address has content
+    const hasValidAddress = addresses.some(addr => addr.address.trim());
+    if (!hasValidAddress) {
+      toast.error("Please add at least one address");
+      return;
+    }
+
+    // Validate custom source if "Custom" is selected
+    if (form.leadSource === "Custom" && !customLeadSource.trim()) {
+      toast.error("Please enter a custom source");
+      return;
+    }
+
+    // Filter out empty addresses
+    const validAddresses = addresses.filter(addr => addr.address.trim());
+
+    // Use custom source value if "Custom" is selected
+    const finalLeadSource = form.leadSource === "Custom" ? customLeadSource.trim() : form.leadSource;
+
     addLead({
       name: form.name,
       phone: form.phone,
-      address: form.address,
+      address: validAddresses[0].address, // Keep first address as primary for backward compatibility
+      addresses: validAddresses,
       services: form.services,
       amount: form.amount.trim() ? Number(form.amount) : null,
-      leadSource: form.leadSource,
+      leadSource: finalLeadSource,
       urgencyLevel: form.urgencyLevel,
       branch: form.branch,
       salesExecutive: form.salesExecutive,
@@ -103,9 +156,66 @@ const CreateLeadPage = () => {
             <input value={form.phone} onChange={(e) => setField("phone", e.target.value)} placeholder="e.g. 9876543210" className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20" />
           </div>
 
+          {/* Multiple Addresses Section */}
           <div className="md:col-span-2">
-            <label className="text-xs font-medium text-muted-foreground mb-2 block">Address *</label>
-            <input value={form.address} onChange={(e) => setField("address", e.target.value)} placeholder="e.g. 12 MG Road, Kochi" className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20" />
+            <div className="flex items-center justify-between mb-3">
+              <label className="text-xs font-medium text-muted-foreground"></label>
+              <button
+                type="button"
+                onClick={addAddress}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-primary bg-primary/10 hover:bg-primary/20 rounded-lg transition-colors border border-primary/20"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Add Address
+              </button>
+            </div>
+            <div className="space-y-4">
+              {addresses.map((addr, index) => (
+                <div key={addr.id} className="relative bg-secondary/30 rounded-lg p-4 border border-border">
+                  {addresses.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => removeAddress(addr.id)}
+                      className="absolute top-3 right-3 p-1 text-destructive hover:bg-destructive/10 rounded transition-colors"
+                      title="Remove address"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div className="md:col-span-3">
+                      <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+                        Address {index + 1} *
+                      </label>
+                      <input
+                        value={addr.address}
+                        onChange={(e) => updateAddress(addr.id, "address", e.target.value)}
+                        placeholder="e.g. 12 MG Road, Kochi"
+                        className="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground mb-1.5 block">City</label>
+                      <input
+                        value={addr.city}
+                        onChange={(e) => updateAddress(addr.id, "city", e.target.value)}
+                        placeholder="e.g. Kochi"
+                        className="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Pincode</label>
+                      <input
+                        value={addr.pincode}
+                        onChange={(e) => updateAddress(addr.id, "pincode", e.target.value)}
+                        placeholder="e.g. 682001"
+                        className="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
 
           <div>
@@ -122,11 +232,33 @@ const CreateLeadPage = () => {
 
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-2 block">Enquiry Source</label>
-            <select value={form.leadSource} onChange={(e) => setField("leadSource", e.target.value)} className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20">
+            <select 
+              value={form.leadSource} 
+              onChange={(e) => {
+                setField("leadSource", e.target.value);
+                if (e.target.value !== "Custom") {
+                  setCustomLeadSource("");
+                }
+              }} 
+              className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+            >
               <option value="">Select source</option>
               {leadSources.map((s) => <option key={s} value={s}>{s}</option>)}
             </select>
           </div>
+
+          {/* Custom Source Input - Shows when "Custom" is selected */}
+          {form.leadSource === "Custom" && (
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-2 block">Custom Source</label>
+              <input 
+                value={customLeadSource} 
+                onChange={(e) => setCustomLeadSource(e.target.value)} 
+                placeholder="Enter custom source" 
+                className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20" 
+              />
+            </div>
+          )}
 
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-2 block">Branch</label>

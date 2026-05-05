@@ -11,16 +11,22 @@ const StockAllocationPage = () => {
   const { employees } = useEmployeesStore();
   const { branches } = useBranchesStore();
   
-  const [selectedBranch, setSelectedBranch] = useState("All");
+  const [selectedBranch, setSelectedBranch] = useState("");
   const [selectedEmployee, setSelectedEmployee] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [allocations, setAllocations] = useState<Record<number, number>>({});
 
   const activeEmployees = employees.filter(e => e.isActive !== false);
-  const branchNames = ["All", ...Array.from(new Set(inventory.map(i => i.branch)))];
+  const branchNames = Array.from(new Set(inventory.map(i => i.branch)));
+  
+  // Filter employees by selected branch
+  const filteredEmployees = selectedBranch 
+    ? activeEmployees.filter(emp => emp.branch.includes(selectedBranch))
+    : activeEmployees;
   
   const filteredInventory = inventory.filter(item => {
-    const matchesBranch = selectedBranch === "All" || item.branch === selectedBranch;
+    if (!selectedBranch) return false;
+    const matchesBranch = item.branch === selectedBranch;
     const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesBranch && matchesSearch && item.stock > 0;
   });
@@ -94,6 +100,51 @@ const StockAllocationPage = () => {
         </div>
       </div>
 
+      {/* Branch Selection Card */}
+      <div className="bg-card rounded-xl p-6 card-shadow border border-border">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="p-2 bg-primary/10 rounded-lg">
+            <Package className="w-5 h-5 text-primary" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-card-foreground">Select Branch</h3>
+            <p className="text-xs text-muted-foreground">Choose the branch for stock allocation</p>
+          </div>
+        </div>
+        
+        <select
+          value={selectedBranch}
+          onChange={(e) => {
+            setSelectedBranch(e.target.value);
+            setSelectedEmployee(""); // Reset employee when branch changes
+            setAllocations({}); // Reset allocations
+          }}
+          className="w-full px-4 py-3 rounded-lg bg-background text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
+        >
+          <option value="">-- Select Branch --</option>
+          {branchNames.map(branch => (
+            <option key={branch} value={branch}>
+              {branch}
+            </option>
+          ))}
+        </select>
+
+        {selectedBranch && (
+          <div className="mt-4 p-4 bg-primary/5 rounded-lg border border-primary/10">
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">Selected Branch</p>
+                <p className="font-semibold text-card-foreground">{selectedBranch}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">Available Employees</p>
+                <p className="font-semibold text-card-foreground">{filteredEmployees.length}</p>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Employee Selection Card */}
       <div className="bg-card rounded-xl p-6 card-shadow border border-border">
         <div className="flex items-center gap-3 mb-4">
@@ -108,22 +159,21 @@ const StockAllocationPage = () => {
         
         <select
           value={selectedEmployee}
-          onChange={(e) => {
-            setSelectedEmployee(e.target.value);
-            const emp = employees.find(em => em.id === e.target.value);
-            if (emp && emp.branch.length > 0) {
-              setSelectedBranch(emp.branch[0]);
-            }
-          }}
+          onChange={(e) => setSelectedEmployee(e.target.value)}
           className="w-full px-4 py-3 rounded-lg bg-background text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
+          disabled={!selectedBranch}
         >
           <option value="">-- Select Employee --</option>
-          {activeEmployees.map(emp => (
+          {filteredEmployees.map(emp => (
             <option key={emp.id} value={emp.id}>
-              {emp.name} ({emp.id}) - {emp.branch.join(", ")}
+              {emp.name} ({emp.id}) - {emp.role}
             </option>
           ))}
         </select>
+
+        {!selectedBranch && (
+          <p className="mt-2 text-xs text-muted-foreground">Please select a branch first</p>
+        )}
 
         {selectedEmp && (
           <div className="mt-4 p-4 bg-primary/5 rounded-lg border border-primary/10">
@@ -151,29 +201,19 @@ const StockAllocationPage = () => {
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3">
-        <div className="w-full sm:max-w-xs">
-          <select
-            value={selectedBranch}
-            onChange={(e) => setSelectedBranch(e.target.value)}
-            className="w-full px-3 py-2 rounded-lg bg-card text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
-            disabled={!selectedEmployee}
-          >
-            {branchNames.map(b => (
-              <option key={b} value={b}>{b === "All" ? "All Branches" : b}</option>
-            ))}
-          </select>
-        </div>
-        
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <input
-            type="text"
-            placeholder="Search products..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 rounded-lg bg-card text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
-            disabled={!selectedEmployee}
-          />
+          <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Search Products</label>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <input
+              type="text"
+              placeholder="Search products..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 rounded-lg bg-card text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
+              disabled={!selectedBranch}
+            />
+          </div>
         </div>
       </div>
 
@@ -205,7 +245,18 @@ const StockAllocationPage = () => {
               </tr>
             </thead>
             <tbody>
-              {!selectedEmployee ? (
+              {!selectedBranch ? (
+                <tr>
+                  <td colSpan={6} className="px-4 py-12 text-center">
+                    <div className="flex flex-col items-center gap-3">
+                      <div className="p-3 bg-secondary/30 rounded-full">
+                        <Package className="w-8 h-8 text-muted-foreground" />
+                      </div>
+                      <p className="text-sm text-muted-foreground">Please select a branch to view available stock</p>
+                    </div>
+                  </td>
+                </tr>
+              ) : !selectedEmployee ? (
                 <tr>
                   <td colSpan={6} className="px-4 py-12 text-center">
                     <div className="flex flex-col items-center gap-3">
@@ -219,7 +270,7 @@ const StockAllocationPage = () => {
               ) : filteredInventory.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-4 py-12 text-center">
-                    <p className="text-sm text-muted-foreground">No inventory items available</p>
+                    <p className="text-sm text-muted-foreground">No inventory items available in {selectedBranch}</p>
                   </td>
                 </tr>
               ) : (
@@ -228,15 +279,10 @@ const StockAllocationPage = () => {
                   return (
                     <tr 
                       key={item.id} 
-                      className={`border-b border-border last:border-0 hover:bg-secondary/20 transition-colors ${!isEmployeeBranch ? 'opacity-50' : ''}`}
+                      className="border-b border-border last:border-0 hover:bg-secondary/20 transition-colors"
                     >
                       <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <p className="font-medium text-card-foreground">{item.name}</p>
-                          {!isEmployeeBranch && (
-                            <span className="text-xs text-warning">(Different branch)</span>
-                          )}
-                        </div>
+                        <p className="font-medium text-card-foreground">{item.name}</p>
                       </td>
                       <td className="px-4 py-3 text-muted-foreground">{item.branch}</td>
                       <td className="px-4 py-3">
@@ -270,7 +316,7 @@ const StockAllocationPage = () => {
       </div>
 
       {/* Action Button */}
-      {selectedEmployee && filteredInventory.length > 0 && (
+      {selectedBranch && selectedEmployee && filteredInventory.length > 0 && (
         <div className="flex justify-end">
           <button
             onClick={handleAllocate}

@@ -54,6 +54,7 @@ export type ServiceAppointment = {
   completionNotes?: string;
   cancelledAt?: string;
   cancellationReason?: string;
+  profilePhoto?: string;
 };
 
 export type Task = {
@@ -402,6 +403,7 @@ export const useServicesStore = create<ServicesStore>()(
               completionNotes: typeof a.completionNotes === "string" ? a.completionNotes : undefined,
               cancelledAt: typeof a.cancelledAt === "string" ? a.cancelledAt : undefined,
               cancellationReason: typeof a.cancellationReason === "string" ? a.cancellationReason : undefined,
+              profilePhoto: typeof a.profilePhoto === "string" ? a.profilePhoto : undefined,
             };
           });
           return { appointments: migratedAppointments.length ? migratedAppointments : initialAppointments };

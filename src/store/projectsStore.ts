@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-export type WorkOrderStatus = "Authorization Pending" | "Ongoing" | "Upcoming" | "Missed" | "Cancelled" | "Completed" | "Converted";
+export type WorkOrderStatus = "Authorization Pending" | "Ongoing" | "Upcoming" | "Missed" | "Cancelled" | "Completed" | "Converted" | "Overdue";
 
 export type ExecutiveSignature = {
   name: string;
@@ -21,6 +21,8 @@ export type WorkOrder = {
   id: string;
   customer: string;
   address: string;
+  location?: string;
+  liveLocation?: string;
   siteAddress?: string;
   billingAddress?: string;
   workOrderDateTime?: string;
@@ -541,7 +543,7 @@ export const useProjectsStore = create<ProjectsStore>()(
             customerConfirmation: wo.customerConfirmation as CustomerConfirmation | undefined,
             start: typeof wo.start === "string" ? wo.start : "",
             end: typeof wo.end === "string" ? wo.end : "",
-            status: wo.status === "Authorization Pending" || wo.status === "Ongoing" || wo.status === "Upcoming" || wo.status === "Missed" || wo.status === "Cancelled" || wo.status === "Completed" || wo.status === "Converted" ? wo.status : "Authorization Pending",
+            status: wo.status === "Authorization Pending" || wo.status === "Ongoing" || wo.status === "Upcoming" || wo.status === "Overdue" || wo.status === "Missed" || wo.status === "Cancelled" || wo.status === "Completed" || wo.status === "Converted" ? wo.status : "Authorization Pending",
             phone: typeof wo.phone === "string" ? wo.phone : "",
             email: typeof wo.email === "string" ? wo.email : "",
             serviceType: typeof wo.serviceType === "string" ? wo.serviceType : "",

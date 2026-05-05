@@ -6,6 +6,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
+import Select from "react-select";
 import { useProjectsStore } from "@/store/projectsStore";
 import { useTasksStore } from "@/store/tasksStore";
 import { useProductsStore } from "@/store/productsStore";
@@ -27,7 +28,7 @@ const workOrderSchema = z.object({
   paidAmount: z.string().optional(),
   start: z.string().min(1, "Start date is required"),
   end: z.string().optional(),
-  status: z.enum(["Authorization Pending", "Ongoing", "Upcoming", "Missed", "Cancelled", "Completed", "Converted"]),
+  status: z.enum(["Authorization Pending", "Ongoing", "Upcoming", "Missed", "Cancelled", "Completed", "Converted", "Overdue"]),
   assignedTech: z.string().optional(),
   workOrderIncharge: z.string().optional(),
   notes: z.string().optional(),
@@ -79,8 +80,9 @@ const CreateWorkOrderPage = () => {
     id: string;
     service: string;
     scheduleDate: string;
-    timeSlot: string;
-    assignedEmployees: string[];
+    fromTime: string;
+    toTime: string;
+    requiredEmployees: number;
   };
   const [serviceSchedules, setServiceSchedules] = useState<ServiceSchedule[]>([]);
   const [termsAccepted, setTermsAccepted] = useState(false);
@@ -116,8 +118,72 @@ const CreateWorkOrderPage = () => {
   );
   const serviceOptions = uniqueServices.map(s => s.name);
   
+  // Prepare customer options for React Select
+  const customerOptions = customers.map((customer) => ({
+    value: customer.id,
+    label: `${customer.firstName} ${customer.lastName} — ${customer.mobile || customer.landline}`,
+    customer: customer,
+  }));
+
   // Filter employees to show only Sales Executives
   const salesExecutives = employees.filter((emp) => emp.role === "Sales Executive");
+
+  // Custom styles for React Select to match the theme
+  const customSelectStyles = {
+    control: (base: any, state: any) => ({
+      ...base,
+      backgroundColor: 'hsl(var(--secondary))',
+      borderColor: state.isFocused ? 'hsl(var(--primary) / 0.2)' : 'hsl(var(--border))',
+      borderRadius: '0.5rem',
+      minHeight: '38px',
+      boxShadow: state.isFocused ? '0 0 0 2px hsl(var(--primary) / 0.2)' : 'none',
+      '&:hover': {
+        borderColor: 'hsl(var(--border))',
+      },
+    }),
+    menu: (base: any) => ({
+      ...base,
+      backgroundColor: 'hsl(var(--card))',
+      border: '1px solid hsl(var(--border))',
+      borderRadius: '0.5rem',
+      boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+      zIndex: 9999,
+    }),
+    option: (base: any, state: any) => ({
+      ...base,
+      backgroundColor: state.isSelected
+        ? 'hsl(var(--primary))'
+        : state.isFocused
+        ? 'hsl(var(--secondary))'
+        : 'transparent',
+      color: state.isSelected ? 'white' : 'hsl(var(--card-foreground))',
+      fontSize: '0.875rem',
+      cursor: 'pointer',
+      '&:active': {
+        backgroundColor: 'hsl(var(--primary) / 0.9)',
+      },
+    }),
+    input: (base: any) => ({
+      ...base,
+      color: 'hsl(var(--card-foreground))',
+      fontSize: '0.875rem',
+    }),
+    placeholder: (base: any) => ({
+      ...base,
+      color: 'hsl(var(--muted-foreground))',
+      fontSize: '0.875rem',
+    }),
+    singleValue: (base: any) => ({
+      ...base,
+      color: 'hsl(var(--card-foreground))',
+      fontSize: '0.875rem',
+    }),
+    noOptionsMessage: (base: any) => ({
+      ...base,
+      color: 'hsl(var(--muted-foreground))',
+      fontSize: '0.875rem',
+    }),
+  };
 
   const handleCustomerSelect = (customerId: string) => {
     setSelectedCustomerId(customerId);
@@ -151,34 +217,32 @@ const CreateWorkOrderPage = () => {
   });
 
   const toggleService = (value: string) => {
+    // Always add the service (allow duplicates)
+    const service = uniqueServices.find(s => s.name === value);
+    
+    // Add to selected services array
     setSelectedServices((prev) => {
-      const next = prev.includes(value) ? prev.filter((s) => s !== value) : [...prev, value];
+      const next = [...prev, value];
       setValue("serviceType", next[0] ?? "");
-      // add as task if not already there
-      if (!prev.includes(value) && !tasks.find((t) => t.title === value)) {
-        // Find the service details from combined services list
-        const service = uniqueServices.find(s => s.name === value);
-        setTasks((t) => [...t, { 
-          id: Date.now().toString(), 
-          title: value,
-          description: service?.description || "",
-          unitPrice: service?.unitPrice || 0,
-          quantity: 1,
-          amount: service?.unitPrice || 0,
-          startDate: "", 
-          endDate: "",
-          fromTime: "",
-          toTime: "",
-          assignedTo: "", 
-          assignedEmployees: [],
-          status: "Pending"
-        }]);
-      }
-      if (prev.includes(value)) {
-        setTasks((t) => t.filter((task) => task.title !== value));
-      }
       return next;
     });
+    
+    // Add as a new task (always create a new task, even if service name is duplicate)
+    setTasks((t) => [...t, { 
+      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`, // Unique ID for each task
+      title: value,
+      description: service?.description || "",
+      unitPrice: service?.unitPrice || 0,
+      quantity: 1,
+      amount: service?.unitPrice || 0,
+      startDate: "", 
+      endDate: "",
+      fromTime: "",
+      toTime: "",
+      assignedTo: "", 
+      assignedEmployees: [],
+      status: "Pending"
+    }]);
   };
 
   const toggleEmployee = (employeeName: string) => {
@@ -189,7 +253,10 @@ const CreateWorkOrderPage = () => {
     );
   };
 
-  const removeService = (value: string) => toggleService(value);
+  const removeService = (index: number) => {
+    setSelectedServices((prev) => prev.filter((_, i) => i !== index));
+    setTasks((prev) => prev.filter((_, i) => i !== index));
+  };
 
   const updateTask = (updated: Task) => {
     setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
@@ -280,28 +347,28 @@ const CreateWorkOrderPage = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-2 block">Customer Name *</label>
-            <select
-              value={selectedCustomerId}
-              onChange={(e) => {
-                if (e.target.value) {
-                  handleCustomerSelect(e.target.value);
+            <Select
+              options={customerOptions}
+              value={customerOptions.find(opt => opt.value === selectedCustomerId) || null}
+              onChange={(option) => {
+                if (option) {
+                  handleCustomerSelect(option.value);
                 } else {
                   setSelectedCustomerId("");
                   setValue("customer", "");
                   setValue("phone", "");
                   setValue("email", "");
                   setValue("address", "");
+                  setValue("siteAddress", "");
+                  setValue("billingAddress", "");
                 }
               }}
-              className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
-            >
-              <option value="">Select customer...</option>
-              {customers.map((customer) => (
-                <option key={customer.id} value={customer.id}>
-                  {customer.firstName} {customer.lastName} — {customer.mobile || customer.landline}
-                </option>
-              ))}
-            </select>
+              styles={customSelectStyles}
+              placeholder="Search or select customer..."
+              isClearable
+              isSearchable
+              noOptionsMessage={() => "No customers found"}
+            />
             {/* Hidden input for form validation */}
             <input type="hidden" {...register("customer")} />
             {errors.customer && <p className="text-xs text-red-500 mt-1">{errors.customer.message}</p>}
@@ -338,6 +405,19 @@ const CreateWorkOrderPage = () => {
             <label className="text-xs font-medium text-muted-foreground mb-2 block">Subject *</label>
             <input type="text" placeholder="Work order subject" {...register("subject")} className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground" />
             {errors.subject && <p className="text-xs text-red-500 mt-1">{errors.subject.message}</p>}
+          </div>
+
+               <div className="text-xs font-medium text-muted-foreground mb-2 block">
+            <div className="flex items-center justify-between gap-3 mb-2">
+              <label className="text-xs font-medium text-muted-foreground block">Billing Address</label>
+            
+            </div>
+            <textarea
+              {...register("billingAddress")}
+              placeholder="e.g. 12 MG Road, Kochi"
+              rows={2}
+              className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none"
+            />
           </div>
 
           <div className="text-xs font-medium text-muted-foreground mb-2 block">
@@ -378,27 +458,7 @@ const CreateWorkOrderPage = () => {
             ))}
           </div>
 
-          <div className="text-xs font-medium text-muted-foreground mb-2 block">
-            <div className="flex items-center justify-between gap-3 mb-2">
-              <label className="text-xs font-medium text-muted-foreground block">Billing Address</label>
-              <button
-                type="button"
-                onClick={() => {
-                  const siteAddr = document.querySelector<HTMLTextAreaElement>('textarea[name="siteAddress"]')?.value || "";
-                  setValue("billingAddress", siteAddr);
-                }}
-                className="text-xs font-semibold text-primary hover:opacity-80 transition-opacity"
-              >
-                Same as Site Address
-              </button>
-            </div>
-            <textarea
-              {...register("billingAddress")}
-              placeholder="e.g. 12 MG Road, Kochi"
-              rows={2}
-              className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none"
-            />
-          </div>
+     
 
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-2 block">Frequency</label>
@@ -416,10 +476,10 @@ const CreateWorkOrderPage = () => {
             <input type="date" {...register("end")} className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground" />
           </div>
 
-          <div>
+          {/* <div>
             <label className="text-xs font-medium text-muted-foreground mb-2 block">Total Value (₹)</label>
             <input type="number" placeholder="0" {...register("totalValue")} className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground" />
-          </div>
+          </div> */}
 
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-2 block">Paid Amount (₹)</label>
@@ -432,6 +492,7 @@ const CreateWorkOrderPage = () => {
               <option value="Authorization Pending">Authorization Pending</option>
               <option value="Ongoing">Ongoing</option>
               <option value="Upcoming">Upcoming</option>
+              <option value="Overdue">Overdue</option>
               <option value="Missed">Missed</option>
               <option value="Cancelled">Cancelled</option>
               <option value="Completed">Completed</option>
@@ -439,7 +500,7 @@ const CreateWorkOrderPage = () => {
             </select>
           </div>
 
-          <div>
+          {/* <div>
             <label className="text-xs font-medium text-muted-foreground mb-2 block">Assign Work Order Incharge</label>
             <select {...register("workOrderIncharge")} className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground">
               <option value="">Select incharge...</option>
@@ -449,7 +510,7 @@ const CreateWorkOrderPage = () => {
                 </option>
               ))}
             </select>
-          </div>
+          </div> */}
 
          
 
@@ -504,21 +565,31 @@ const CreateWorkOrderPage = () => {
            <div className="md:col-span-3">
             <label className="text-xs font-medium text-muted-foreground mb-2 block">Service Type</label>
             <select
-              onChange={(e) => { if (e.target.value) { toggleService(e.target.value); e.target.value = ""; } }}
+              onChange={(e) => { 
+                if (e.target.value) { 
+                  toggleService(e.target.value); 
+                } 
+                e.target.value = ""; 
+              }}
               className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground mb-2"
-              defaultValue=""
+              value=""
             >
-              <option value="" disabled>Select service type...</option>
+              <option value="" disabled>Select service type (can add multiple times)...</option>
               {serviceOptions.map((s) => (
-                <option key={s} value={s} disabled={selectedServices.includes(s)}>{s}{selectedServices.includes(s) ? " ✓" : ""}</option>
+                <option key={s} value={s}>{s}</option>
               ))}
             </select>
             {selectedServices.length > 0 && (
               <div className="flex flex-wrap gap-2">
-                {selectedServices.map((s) => (
-                  <div key={s} className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 border border-primary/20 rounded-lg">
+                {selectedServices.map((s, index) => (
+                  <div key={`${s}-${index}`} className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 border border-primary/20 rounded-lg">
                     <span className="text-xs font-medium text-primary">{s}</span>
-                    <button type="button" onClick={() => removeService(s)} className="text-primary hover:text-primary/70"><X className="w-3 h-3" /></button>
+                    {selectedServices.filter(service => service === s).length > 1 && (
+                      <span className="text-xs text-primary/70">#{selectedServices.slice(0, index + 1).filter(service => service === s).length}</span>
+                    )}
+                    <button type="button" onClick={() => removeService(index)} className="text-primary hover:text-primary/70">
+                      <X className="w-3 h-3" />
+                    </button>
                   </div>
                 ))}
               </div>
@@ -652,18 +723,20 @@ const CreateWorkOrderPage = () => {
                   <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-12">#</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Service</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Schedule Date</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Time Slot</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">From Time</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">To Time</th>
                   <th className="text-center px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Required Employees</th>
                 </tr>
               </thead>
               <tbody>
                 {tasks.map((task, index) => {
-                  const schedule = serviceSchedules.find(s => s.service === task.title) || {
+                  const schedule = serviceSchedules.find(s => s.service === task.title && s.id === task.id) || {
                     id: task.id,
                     service: task.title,
                     scheduleDate: "",
-                    timeSlot: "",
-                    assignedEmployees: []
+                    fromTime: "",
+                    toTime: "",
+                    requiredEmployees: 1
                   };
                   
                   return (
@@ -676,9 +749,9 @@ const CreateWorkOrderPage = () => {
                           value={schedule.scheduleDate}
                           onChange={(e) => {
                             setServiceSchedules(prev => {
-                              const existing = prev.find(s => s.service === task.title);
+                              const existing = prev.find(s => s.id === task.id);
                               if (existing) {
-                                return prev.map(s => s.service === task.title ? { ...s, scheduleDate: e.target.value } : s);
+                                return prev.map(s => s.id === task.id ? { ...s, scheduleDate: e.target.value } : s);
                               }
                               return [...prev, { ...schedule, scheduleDate: e.target.value }];
                             });
@@ -687,102 +760,74 @@ const CreateWorkOrderPage = () => {
                         />
                       </td>
                       <td className="px-4 py-3">
-                        <select
-                          value={schedule.timeSlot}
+                        <input
+                          type="time"
+                          value={schedule.fromTime}
                           onChange={(e) => {
                             setServiceSchedules(prev => {
-                              const existing = prev.find(s => s.service === task.title);
+                              const existing = prev.find(s => s.id === task.id);
                               if (existing) {
-                                return prev.map(s => s.service === task.title ? { ...s, timeSlot: e.target.value } : s);
+                                return prev.map(s => s.id === task.id ? { ...s, fromTime: e.target.value } : s);
                               }
-                              return [...prev, { ...schedule, timeSlot: e.target.value }];
+                              return [...prev, { ...schedule, fromTime: e.target.value }];
                             });
                           }}
                           className="w-full px-3 py-1.5 rounded-lg bg-secondary text-xs border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
-                        >
-                          <option value="">Select time slot</option>
-                          <option value="09:00 AM - 11:00 AM">09:00 AM - 11:00 AM</option>
-                          <option value="10:00 AM - 12:00 PM">10:00 AM - 12:00 PM</option>
-                          <option value="11:00 AM - 01:00 PM">11:00 AM - 01:00 PM</option>
-                          <option value="02:00 PM - 04:00 PM">02:00 PM - 04:00 PM</option>
-                          <option value="03:00 PM - 05:00 PM">03:00 PM - 05:00 PM</option>
-                          <option value="04:00 PM - 06:00 PM">04:00 PM - 06:00 PM</option>
-                        </select>
+                        />
                       </td>
                       <td className="px-4 py-3">
-                        <div className="space-y-2">
-                          <select
-                            onChange={(e) => {
-                              if (e.target.value) {
-                                const empName = e.target.value;
-                                setServiceSchedules(prev => {
-                                  const existing = prev.find(s => s.service === task.title);
-                                  const currentEmployees = existing?.assignedEmployees || [];
-                                  
-                                  if (!currentEmployees.includes(empName)) {
-                                    const newEmployees = [...currentEmployees, empName];
-                                    if (existing) {
-                                      return prev.map(s => s.service === task.title ? { ...s, assignedEmployees: newEmployees } : s);
-                                    }
-                                    return [...prev, { ...schedule, assignedEmployees: newEmployees }];
-                                  }
-                                  return prev;
-                                });
-                                e.target.value = "";
+                        <input
+                          type="time"
+                          value={schedule.toTime}
+                          onChange={(e) => {
+                            setServiceSchedules(prev => {
+                              const existing = prev.find(s => s.id === task.id);
+                              if (existing) {
+                                return prev.map(s => s.id === task.id ? { ...s, toTime: e.target.value } : s);
                               }
+                              return [...prev, { ...schedule, toTime: e.target.value }];
+                            });
+                          }}
+                          className="w-full px-3 py-1.5 rounded-lg bg-secondary text-xs border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
+                        />
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center justify-center gap-2">
+                          <button 
+                            type="button"
+                            onClick={() => {
+                              setServiceSchedules(prev => {
+                                const existing = prev.find(s => s.id === task.id);
+                                const newQuantity = Math.max(0, (existing?.requiredEmployees || 1) - 1);
+                                if (existing) {
+                                  return prev.map(s => s.id === task.id ? { ...s, requiredEmployees: newQuantity } : s);
+                                }
+                                return [...prev, { ...schedule, requiredEmployees: newQuantity }];
+                              });
                             }}
-                            className="w-full px-3 py-1.5 rounded-lg bg-secondary text-xs border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
-                            defaultValue=""
+                            className="w-7 h-7 flex items-center justify-center rounded border border-border hover:bg-secondary transition-colors"
                           >
-                            <option value="" disabled>
-                              {employees.length === 0 ? "No employees" : "Select employees..."}
-                            </option>
-                            {employees.map((emp) => (
-                              <option 
-                                key={emp.id} 
-                                value={emp.name}
-                                disabled={schedule.assignedEmployees.includes(emp.name)}
-                              >
-                                {emp.name} — {emp.role}{schedule.assignedEmployees.includes(emp.name) ? " ✓" : ""}
-                              </option>
-                            ))}
-                          </select>
-                          
-                          {/* Selected Employees List */}
-                          {schedule.assignedEmployees.length > 0 && (
-                            <div className="space-y-1">
-                              {schedule.assignedEmployees.map((empName) => {
-                                const emp = employees.find(e => e.name === empName);
-                                return (
-                                  <div
-                                    key={empName}
-                                    className="flex items-center justify-between gap-2 px-2 py-1.5 bg-primary/10 text-primary text-xs font-medium rounded border border-primary/20"
-                                  >
-                                    <div className="flex items-center gap-1.5 flex-1 min-w-0">
-                                      <span className="truncate">{empName}</span>
-                                      {emp && <span className="text-primary/70 text-[10px] flex-shrink-0">• {emp.role}</span>}
-                                    </div>
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        setServiceSchedules(prev => {
-                                          const existing = prev.find(s => s.service === task.title);
-                                          if (existing) {
-                                            const newEmployees = existing.assignedEmployees.filter(name => name !== empName);
-                                            return prev.map(s => s.service === task.title ? { ...s, assignedEmployees: newEmployees } : s);
-                                          }
-                                          return prev;
-                                        });
-                                      }}
-                                      className="hover:bg-primary/20 rounded-full p-0.5 transition-colors flex-shrink-0"
-                                    >
-                                      <X className="w-3 h-3" />
-                                    </button>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          )}
+                            <span className="text-sm">−</span>
+                          </button>
+                          <span className="text-sm font-semibold text-card-foreground min-w-[2.5rem] text-center">
+                            {schedule.requiredEmployees}
+                          </span>
+                          <button 
+                            type="button"
+                            onClick={() => {
+                              setServiceSchedules(prev => {
+                                const existing = prev.find(s => s.id === task.id);
+                                const newQuantity = (existing?.requiredEmployees || 1) + 1;
+                                if (existing) {
+                                  return prev.map(s => s.id === task.id ? { ...s, requiredEmployees: newQuantity } : s);
+                                }
+                                return [...prev, { ...schedule, requiredEmployees: newQuantity }];
+                              });
+                            }}
+                            className="w-7 h-7 flex items-center justify-center rounded border border-border hover:bg-secondary transition-colors"
+                          >
+                            <span className="text-sm">+</span>
+                          </button>
                         </div>
                       </td>
                     </tr>
