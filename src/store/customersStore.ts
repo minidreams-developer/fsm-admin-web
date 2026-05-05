@@ -30,6 +30,7 @@ export type Customer = {
   billingAddress: string;
   siteAddress: string;
   locationUrl?: string;
+  companyDocument?: string; // PDF filename
   contactPersonsDetails: ContactPerson[];
   customerDocuments: CustomerDocument[];
 };

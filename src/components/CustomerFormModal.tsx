@@ -42,6 +42,7 @@ export function CustomerFormModal({ open, mode, customer, prefill, onClose, onSa
   const [extraSiteAddresses, setExtraSiteAddresses] = useState<string[]>([]);
   const [isCustomPayment, setIsCustomPayment] = useState(false);
   const [commercialDoc, setCommercialDoc] = useState<File | null>(null);
+  const [existingDocName, setExistingDocName] = useState<string>("");
 
   const [form, setForm] = useState<Customer>({
     id: getNextCustomerId(),
@@ -71,8 +72,16 @@ export function CustomerFormModal({ open, mode, customer, prefill, onClose, onSa
         : [{ name: "", email: "", city: "", pincode: "", address: "" }];
       setForm({ ...customer, contactPersonsDetails: contacts });
       setIsCustomPayment(!["30", "60", "90", ""].includes(customer.paymentTerms));
+      // Restore existing company document name as a display-only placeholder
+      if (customer.companyDocument) {
+        // We can't restore the File object, but we track the name for display
+        setExistingDocName(customer.companyDocument);
+      } else {
+        setExistingDocName("");
+      }
       return;
     }
+    setExistingDocName("");
     const nextId = getNextCustomerId();
     const next = {
       id: nextId,
@@ -141,6 +150,8 @@ export function CustomerFormModal({ open, mode, customer, prefill, onClose, onSa
       billingAddress: (form.billingAddress.trim() || form.siteAddress.trim()).trim(),
       siteAddress: form.siteAddress.trim(),
       contactPersonsDetails: form.contactPersonsDetails,
+      // Save the PDF filename; keep existing if no new file uploaded
+      companyDocument: commercialDoc ? commercialDoc.name : (existingDocName || form.companyDocument || ""),
     };
 
     if (mode === "edit") {
@@ -191,10 +202,7 @@ export function CustomerFormModal({ open, mode, customer, prefill, onClose, onSa
               <label className="text-xs font-medium text-muted-foreground mb-2 block">{LABELS.customerType}</label>
               <select
                 value={form.customerType}
-                onChange={(e) => {
-                  setField("customerType", e.target.value as CustomerType);
-                  if (e.target.value !== "Commercial") setCommercialDoc(null);
-                }}
+                onChange={(e) => setField("customerType", e.target.value as CustomerType)}
                 className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
               >
                 <option value="Residential">Residential</option>
@@ -202,35 +210,49 @@ export function CustomerFormModal({ open, mode, customer, prefill, onClose, onSa
               </select>
             </div>
 
-            {form.customerType === "Commercial" && (
-              <div className="md:col-span-2">
-                <label className="text-xs font-medium text-muted-foreground mb-2 block">Company Document (PDF only)</label>
-                <label className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg bg-secondary border border-border cursor-pointer hover:bg-secondary/80 transition-colors">
-                  <Upload className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                  <span className="text-sm text-muted-foreground truncate">
-                    {commercialDoc ? commercialDoc.name : "Click to upload PDF"}
-                  </span>
-                  <input
-                    type="file"
-                    accept="application/pdf"
-                    className="hidden"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) setCommercialDoc(file);
-                    }}
-                  />
-                </label>
-                {commercialDoc && (
+            {/* Company Document - Show for both Residential and Commercial */}
+            <div className="md:col-span-2">
+              <label className="text-xs font-medium text-muted-foreground mb-2 block">Company Document (PDF only)</label>
+              <label className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg bg-secondary border border-border cursor-pointer hover:bg-secondary/80 transition-colors">
+                <Upload className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                <span className="text-sm text-muted-foreground truncate">
+                  {commercialDoc
+                    ? commercialDoc.name
+                    : existingDocName
+                    ? existingDocName
+                    : "Click to upload PDF"}
+                </span>
+                <input
+                  type="file"
+                  accept="application/pdf"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      setCommercialDoc(file);
+                      setExistingDocName("");
+                    }
+                  }}
+                />
+              </label>
+              {(commercialDoc || existingDocName) && (
+                <div className="flex items-center gap-3 mt-1.5">
+                  {existingDocName && !commercialDoc && (
+                    <span className="text-xs text-muted-foreground flex items-center gap-1">
+                      <span className="w-2 h-2 rounded-full bg-green-500 inline-block" />
+                      Saved: {existingDocName}
+                    </span>
+                  )}
                   <button
                     type="button"
-                    onClick={() => setCommercialDoc(null)}
-                    className="mt-1 text-xs text-destructive hover:opacity-80 transition-opacity"
+                    onClick={() => { setCommercialDoc(null); setExistingDocName(""); }}
+                    className="text-xs text-destructive hover:opacity-80 transition-opacity"
                   >
                     Remove
                   </button>
-                )}
-              </div>
-            )}
+                </div>
+              )}
+            </div>
 
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-2 block">{LABELS.firstName}</label>

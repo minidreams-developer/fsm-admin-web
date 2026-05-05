@@ -1,6 +1,7 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Briefcase, CheckCircle, Clock, AlertCircle, MapPin, Phone, Mail, DollarSign, Calendar, Edit2, Trash2, Download } from "lucide-react";
+import { ArrowLeft, Briefcase, CheckCircle, Clock, AlertCircle, MapPin, Phone, Mail, DollarSign, Calendar, Edit2, Trash2, Download, User } from "lucide-react";
 import { useState, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useProjectsStore } from "@/store/projectsStore";
 import { useTasksStore } from "@/store/tasksStore";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -9,16 +10,19 @@ import { TaskEditModal } from "@/components/TaskEditModal";
 import { toast } from "sonner";
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import SignatureCanvas from "react-signature-canvas";
 
 export const WorkOrderDetailsPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { getWorkOrder } = useProjectsStore();
+  const { getWorkOrder, updateWorkOrder } = useProjectsStore();
   const { getTasksByWorkOrder, deleteTask } = useTasksStore();
   const [isEditingWorkOrder, setIsEditingWorkOrder] = useState(false);
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [showSignatureModal, setShowSignatureModal] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
+  const execSignatureRef = useRef<SignatureCanvas>(null);
 
   const workOrder = id ? getWorkOrder(id) : null;
   const tasks = id ? getTasksByWorkOrder(id) : [];
@@ -95,6 +99,24 @@ export const WorkOrderDetailsPage = () => {
       toast.success("Service deleted successfully!");
       setRefreshKey(prev => prev + 1);
     }
+  };
+
+  const handleSaveExecSignature = () => {
+    if (execSignatureRef.current?.isEmpty()) {
+      toast.error("Please provide a signature before saving");
+      return;
+    }
+    const signatureData = execSignatureRef.current?.toDataURL();
+    updateWorkOrder(workOrder!.id, {
+      executiveSignature: {
+        name: workOrder!.salesExecutive || workOrder!.assignedTech || "Sales Executive",
+        signedAt: new Date().toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" }),
+      },
+      executiveSignatureImage: signatureData,
+    });
+    setShowSignatureModal(false);
+    setRefreshKey(prev => prev + 1);
+    toast.success("Sales Executive signature saved!");
   };
 
   if (!workOrder) {
@@ -376,6 +398,69 @@ export const WorkOrderDetailsPage = () => {
           </div>
         )}
 
+        {/* Sales Executive Signature */}
+        <div className="mb-8 pb-8 border-b border-border">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-bold text-card-foreground flex items-center gap-2">
+              <User className="w-5 h-5" />
+              Sales Executive Signature
+            </h3>
+            {!workOrder.executiveSignature && (
+              <button
+                onClick={() => setShowSignatureModal(true)}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-white text-sm font-semibold hover:opacity-90 transition-all"
+                style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}
+              >
+                <Edit2 className="w-4 h-4" />
+                Add Signature
+              </button>
+            )}
+            {workOrder.executiveSignature && (
+              <button
+                onClick={() => setShowSignatureModal(true)}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-border text-card-foreground text-sm font-semibold hover:bg-secondary transition-colors"
+              >
+                <Edit2 className="w-4 h-4" />
+                Re-sign
+              </button>
+            )}
+          </div>
+
+          {workOrder.executiveSignature ? (
+            <div className="bg-secondary/30 rounded-lg p-5 border border-border">
+              <div className="flex items-start gap-4">
+                {workOrder.executiveSignatureImage && (
+                  <div className="bg-white rounded-lg border border-border p-3 flex-shrink-0">
+                    <img
+                      src={workOrder.executiveSignatureImage}
+                      alt="Executive Signature"
+                      className="h-20 max-w-[200px] object-contain"
+                    />
+                  </div>
+                )}
+                <div className="space-y-1">
+                  <p className="text-sm font-semibold text-card-foreground">{workOrder.executiveSignature.name}</p>
+                  <p className="text-xs text-muted-foreground">Signed at: {workOrder.executiveSignature.signedAt}</p>
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-success/10 text-success text-xs font-semibold border border-success/20">
+                    <CheckCircle className="w-3 h-3" />
+                    Signed
+                  </span>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-secondary/30 rounded-lg border-2 border-dashed border-border p-8 flex items-center justify-center">
+              <div className="text-center">
+                <div className="w-14 h-14 rounded-full bg-secondary flex items-center justify-center mx-auto mb-3">
+                  <Edit2 className="w-6 h-6 text-muted-foreground" />
+                </div>
+                <p className="text-sm font-medium text-muted-foreground">No signature yet</p>
+                <p className="text-xs text-muted-foreground mt-1">Click "Add Signature" to sign this work order</p>
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* Period Information */}
         {workOrder.period && (
           <div>
@@ -541,6 +626,60 @@ export const WorkOrderDetailsPage = () => {
           onClose={() => setEditingTaskId(null)}
           onSave={() => setRefreshKey(prev => prev + 1)}
         />
+      )}
+
+      {/* Sales Executive Signature Modal */}
+      {showSignatureModal && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/75">
+          <div className="bg-card rounded-[20px] shadow-2xl w-full max-w-md animate-in fade-in slide-in-from-bottom-4 duration-300">
+            <div className="flex items-center justify-between p-6 border-b border-border">
+              <div>
+                <h2 className="text-lg font-bold text-card-foreground">Sales Executive Signature</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Signing as: <span className="font-semibold text-primary">{workOrder.salesExecutive || workOrder.assignedTech || "Sales Executive"}</span>
+                </p>
+              </div>
+              <button
+                onClick={() => setShowSignatureModal(false)}
+                className="p-2 hover:bg-secondary rounded-lg transition-colors"
+              >
+                <ArrowLeft className="w-5 h-5 text-muted-foreground rotate-[135deg]" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Please sign below to confirm your authorization of this work order.
+              </p>
+
+              {/* Signature Canvas */}
+              <div className="border-2 border-border rounded-lg bg-white overflow-hidden">
+                <SignatureCanvas
+                  ref={execSignatureRef}
+                  canvasProps={{ className: "w-full h-44" }}
+                  backgroundColor="white"
+                />
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => execSignatureRef.current?.clear()}
+                  className="flex-1 h-10 border border-border text-card-foreground text-sm font-medium hover:bg-secondary transition-colors rounded-lg"
+                >
+                  Clear
+                </button>
+                <button
+                  onClick={handleSaveExecSignature}
+                  className="flex-1 h-10 text-white text-sm font-semibold rounded-lg hover:opacity-90 transition-all"
+                  style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}
+                >
+                  Save Signature
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body
       )}
     </div>
   );

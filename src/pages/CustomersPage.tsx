@@ -326,6 +326,19 @@ export const CustomerDetailPage = () => {
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Billing Address</p>
             <p className="text-sm font-semibold text-card-foreground">{detail.billingAddress || "—"}</p>
           </div>
+          {detail.companyDocument && (
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Company Document</p>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-secondary border border-border">
+                  <svg className="w-4 h-4 text-red-500 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 1.5L18.5 9H13V3.5zM6 20V4h5v7h7v9H6z"/>
+                  </svg>
+                  <span className="text-sm font-medium text-card-foreground truncate max-w-[200px]">{detail.companyDocument}</span>
+                </div>
+              </div>
+            </div>
+          )}
           {detail.contactPersonsDetails && detail.contactPersonsDetails.length > 0 && (
             <div className="space-y-2 md:col-span-2">
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Contact Persons</p>
