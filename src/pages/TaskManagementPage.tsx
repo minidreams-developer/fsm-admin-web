@@ -66,7 +66,7 @@ function EmployeeMultiSelect({ options, selected, onChange }: { options: string[
   );
 }
 
-const emptyForm = { title: "", description: "", workOrderId: "", startDate: "", endDate: "", assignedEmployees: [] as string[], status: "Pending" as TaskStatus, attachments: [] as File[] };
+const emptyForm = { title: "", description: "", workOrderId: "", startDate: "", endDate: "", branch: "", assignedEmployees: [] as string[], status: "Pending" as TaskStatus, attachments: [] as File[] };
 
 const TaskManagementPage = () => {
   const { tasks, addTask, updateTask, deleteTask, getNextTaskId } = useTasksStore();
@@ -82,6 +82,16 @@ const TaskManagementPage = () => {
 
   const employeeNames = employees.map(e => e.name);
 
+  // All unique branches from employees
+  const allBranches = Array.from(
+    new Set(employees.flatMap(e => e.branch))
+  ).sort();
+
+  // Employees filtered by selected branch
+  const filteredEmployeeNames = form.branch
+    ? employees.filter(e => e.branch.includes(form.branch)).map(e => e.name)
+    : employeeNames;
+
   const filtered = tasks.filter(t => {
     const matchSearch = t.title.toLowerCase().includes(search.toLowerCase()) || t.assignedEmployees?.join(", ").toLowerCase().includes(search.toLowerCase());
     const taskStatus = getTaskStatus(t);
@@ -93,7 +103,7 @@ const TaskManagementPage = () => {
   const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   const openCreate = () => { setEditingTask(null); setForm({ ...emptyForm }); setShowModal(true); };
-  const openEdit = (t: Task) => { setEditingTask(t); setForm({ title: t.title, description: t.description, workOrderId: t.workOrderId, startDate: t.startDate, endDate: t.endDate, assignedEmployees: t.assignedEmployees || [t.assignedTo], status: t.status, attachments: [] }); setShowModal(true); };
+  const openEdit = (t: Task) => { setEditingTask(t); setForm({ title: t.title, description: t.description, workOrderId: t.workOrderId, startDate: t.startDate, endDate: t.endDate, branch: (t as any).branch || "", assignedEmployees: t.assignedEmployees || [t.assignedTo], status: t.status, attachments: [] }); setShowModal(true); };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -327,8 +337,26 @@ const TaskManagementPage = () => {
                 </div>
               </div>
               <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Branch</label>
+                <select
+                  value={form.branch}
+                  onChange={e => setForm(f => ({ ...f, branch: e.target.value, assignedEmployees: [] }))}
+                  className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+                >
+                  <option value="">All Branches</option>
+                  {allBranches.map(b => (
+                    <option key={b} value={b}>{b}</option>
+                  ))}
+                </select>
+                {form.branch && (
+                  <p className="text-[10px] text-muted-foreground mt-1">
+                    Showing {filteredEmployeeNames.length} employee{filteredEmployeeNames.length !== 1 ? "s" : ""} in <span className="font-semibold text-primary">{form.branch}</span>
+                  </p>
+                )}
+              </div>
+              <div>
                 <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Assign Employees *</label>
-                <EmployeeMultiSelect options={employeeNames} selected={form.assignedEmployees} onChange={v => setForm(f => ({ ...f, assignedEmployees: v }))} />
+                <EmployeeMultiSelect options={filteredEmployeeNames} selected={form.assignedEmployees} onChange={v => setForm(f => ({ ...f, assignedEmployees: v }))} />
               </div>
               <div>
                 <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Status</label>

@@ -194,7 +194,7 @@ const ServiceManagementPage = () => {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border">
-                {["Ref No", "Subject", "Active/Inactive", "Warranty", "Action"].map((h) => (
+                {["Subject", "Active/Inactive", "Warranty", "Action"].map((h) => (
                   <th key={h} className="text-left px-3 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">{h}</th>
                 ))}
               </tr>
@@ -206,7 +206,6 @@ const ServiceManagementPage = () => {
                   onClick={() => navigate(`/service/${apt.id}`)}
                   className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors cursor-pointer"
                 >
-                  <td className="px-3 py-2.5 font-semibold text-primary text-xs">{apt.refNo || "—"}</td>
                   <td className="px-3 py-2.5">
                     <div className="space-y-0.5">
                       <p className="font-semibold text-card-foreground text-xs">{apt.subject || "—"}</p>
