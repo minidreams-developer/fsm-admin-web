@@ -9,6 +9,7 @@ export default defineConfig(({ mode }) => ({
     sourcemap: false,
   },
   server: {
+    allowedHosts: ["fsm-admin-web.onrender.com"],
     host: "::",
     port: 8080,
     hmr: {
