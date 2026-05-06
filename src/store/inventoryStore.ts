@@ -7,6 +7,7 @@ export type InventoryItem = {
   branch: string;
   stock: number;
   unit: string;
+  unitPrice?: number;
   reorder: number;
   status: "OK" | "Low" | "Critical";
   allocations?: Array<{
@@ -27,6 +28,7 @@ export type InventoryHistoryEntry = {
   newStock?: number;
   quantityChanged?: number;
   unit: string;
+  unitPrice?: number;
   performedBy?: string;
   notes?: string;
   timestamp: string;
@@ -46,19 +48,90 @@ interface InventoryStore {
 }
 
 const initialInventory: InventoryItem[] = [
-  { id: 1, name: "Cypermethrin 10% EC", branch: "Kochi", stock: 45, unit: "Liters", reorder: 20, status: "OK" },
-  { id: 2, name: "Bifenthrin 2.5% SC", branch: "Kochi", stock: 12, unit: "Liters", reorder: 20, status: "Low" },
-  { id: 3, name: "Gel Bait (Maxforce)", branch: "Kochi", stock: 8, unit: "Tubes", reorder: 15, status: "Low" },
-  { id: 4, name: "Termiticide (Imida)", branch: "Calicut", stock: 32, unit: "Liters", reorder: 10, status: "OK" },
-  { id: 5, name: "Rodent Blocks", branch: "Kochi", stock: 5, unit: "Packs", reorder: 10, status: "Critical" },
-  { id: 6, name: "Pyrethrin Spray", branch: "Calicut", stock: 28, unit: "Cans", reorder: 10, status: "OK" },
+  { id: 1, name: "Cypermethrin 10% EC", branch: "Kochi", stock: 45, unit: "Liters", unitPrice: 850, reorder: 20, status: "OK" },
+  { id: 2, name: "Bifenthrin 2.5% SC", branch: "Kochi", stock: 12, unit: "Liters", unitPrice: 1200, reorder: 20, status: "Low" },
+  { id: 3, name: "Gel Bait (Maxforce)", branch: "Kochi", stock: 8, unit: "Tubes", unitPrice: 450, reorder: 15, status: "Low" },
+  { id: 4, name: "Termiticide (Imida)", branch: "Calicut", stock: 32, unit: "Liters", unitPrice: 950, reorder: 10, status: "OK" },
+  { id: 5, name: "Rodent Blocks", branch: "Kochi", stock: 5, unit: "Packs", unitPrice: 320, reorder: 10, status: "Critical" },
+  { id: 6, name: "Pyrethrin Spray", branch: "Calicut", stock: 28, unit: "Cans", unitPrice: 280, reorder: 10, status: "OK" },
+];
+
+const initialHistory: InventoryHistoryEntry[] = [
+  {
+    id: "HIST-INIT-001",
+    itemId: 1,
+    itemName: "Cypermethrin 10% EC",
+    branch: "Kochi",
+    action: "Restocked",
+    previousStock: 20,
+    newStock: 45,
+    quantityChanged: 25,
+    unit: "Liters",
+    performedBy: "Safeeq",
+    notes: "Added 25 Liters",
+    timestamp: "2026-04-28T09:15:00.000Z",
+  },
+  {
+    id: "HIST-INIT-002",
+    itemId: 3,
+    itemName: "Gel Bait (Maxforce)",
+    branch: "Kochi",
+    action: "Allocated",
+    quantityChanged: -5,
+    newStock: 8,
+    unit: "Tubes",
+    unitPrice: 450,
+    performedBy: "Mani",
+    notes: "Allocated 5 Tubes to Mani",
+    timestamp: "2026-04-27T11:30:00.000Z",
+  },
+  {
+    id: "HIST-INIT-003",
+    itemId: 4,
+    itemName: "Termiticide (Imida)",
+    branch: "Calicut",
+    action: "Added",
+    newStock: 32,
+    unit: "Liters",
+    performedBy: "Rajesh",
+    notes: "Initial stock: 32 Liters",
+    timestamp: "2026-04-25T08:00:00.000Z",
+  },
+  {
+    id: "HIST-INIT-004",
+    itemId: 5,
+    itemName: "Rodent Blocks",
+    branch: "Kochi",
+    action: "Updated",
+    previousStock: 12,
+    newStock: 5,
+    quantityChanged: -7,
+    unit: "Packs",
+    performedBy: "Safeeq",
+    notes: "Stock adjusted from 12 to 5 Packs",
+    timestamp: "2026-04-22T14:45:00.000Z",
+  },
+  {
+    id: "HIST-INIT-005",
+    itemId: 2,
+    itemName: "Bifenthrin 2.5% SC",
+    branch: "Kochi",
+    action: "Restocked",
+    previousStock: 5,
+    newStock: 12,
+    quantityChanged: 7,
+    unit: "Liters",
+    performedBy: "Mani",
+    notes: "Added 7 Liters",
+    timestamp: "2026-04-20T10:00:00.000Z",
+  },
 ];
 
 export const useInventoryStore = create<InventoryStore>()(
   persist(
     (set, get) => ({
       inventory: initialInventory,
-      history: [],
+      history: initialHistory,
 
       addHistoryEntry: (entry) =>
         set((state) => ({
@@ -156,7 +229,9 @@ export const useInventoryStore = create<InventoryStore>()(
             branch: item.branch,
             action: "Allocated",
             quantityChanged: -quantity,
+            newStock: item.stock - quantity,
             unit: item.unit,
+            unitPrice: item.unitPrice,
             performedBy: employeeName,
             notes: `Allocated ${quantity} ${item.unit} to ${employeeName}`,
           });
@@ -199,6 +274,13 @@ export const useInventoryStore = create<InventoryStore>()(
 
       getHistory: () => get().history,
     }),
-    { name: "inventory-store", version: 1 },
+    {
+      name: "inventory-store",
+      version: 3,
+      migrate: () => ({
+        inventory: initialInventory,
+        history: initialHistory,
+      }),
+    },
   ),
 );

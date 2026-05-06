@@ -1,69 +1,69 @@
 import { useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useInventoryStore } from "@/store/inventoryStore";
-import { History, TrendingUp, TrendingDown, Plus, Trash2, UserCheck, Edit, Package, Calendar, Filter } from "lucide-react";
+import { History, TrendingUp, Plus, UserCheck, Package, Calendar } from "lucide-react";
 import { format } from "date-fns";
 
+const formatDate = (timestamp: string) => {
+  try {
+    return format(new Date(timestamp), "MMM dd, yyyy HH:mm");
+  } catch {
+    return timestamp;
+  }
+};
+
 const InventoryHistoryPage = () => {
+  const [searchParams] = useSearchParams();
+  const type = searchParams.get("type"); // "inventory" | "allocate" | null (show both)
   const { history, inventory } = useInventoryStore();
-  const [filterAction, setFilterAction] = useState<string>("All");
-  const [filterBranch, setFilterBranch] = useState<string>("All");
-  const [filterProduct, setFilterProduct] = useState<string>("All");
 
-  // Get unique branches and products for filters
-  const branches = ["All", ...Array.from(new Set(history.map((h) => h.branch)))];
-  const products = ["All", ...Array.from(new Set(history.map((h) => h.itemName)))];
+  // Split into two categories
+  const inventoryHistory = history.filter((h) => h.action !== "Allocated");
+  const allocationHistory = history.filter((h) => h.action === "Allocated");
 
-  // Filter history
-  const filteredHistory = history.filter((entry) => {
-    if (filterAction !== "All" && entry.action !== filterAction) return false;
-    if (filterBranch !== "All" && entry.branch !== filterBranch) return false;
-    if (filterProduct !== "All" && entry.itemName !== filterProduct) return false;
+  // Filters for inventory history
+  const [invBranch, setInvBranch] = useState("All");
+  const [invProduct, setInvProduct] = useState("All");
+
+  // Filters for allocation history
+  const [allocBranch, setAllocBranch] = useState("All");
+  const [allocEmployee, setAllocEmployee] = useState("All");
+
+  const invBranches = ["All", ...Array.from(new Set(inventoryHistory.map((h) => h.branch)))];
+  const invProducts = ["All", ...Array.from(new Set(inventoryHistory.map((h) => h.itemName)))];
+
+  const allocBranches = ["All", ...Array.from(new Set(allocationHistory.map((h) => h.branch)))];
+  const allocEmployees = ["All", ...Array.from(new Set(allocationHistory.map((h) => h.performedBy).filter(Boolean) as string[]))];
+
+  const filteredInv = inventoryHistory.filter((h) => {
+    if (invBranch !== "All" && h.branch !== invBranch) return false;
+    if (invProduct !== "All" && h.itemName !== invProduct) return false;
     return true;
   });
 
-  // Get action icon and color
-  const getActionDetails = (action: string) => {
-    switch (action) {
-      case "Added":
-        return { icon: Plus, color: "text-success", bg: "bg-success/10" };
-      case "Restocked":
-        return { icon: TrendingUp, color: "text-primary", bg: "bg-primary/10" };
-      case "Updated":
-        return { icon: Edit, color: "text-warning", bg: "bg-warning/10" };
-      case "Deleted":
-        return { icon: Trash2, color: "text-destructive", bg: "bg-destructive/10" };
-      case "Allocated":
-        return { icon: UserCheck, color: "text-info", bg: "bg-info/10" };
-      default:
-        return { icon: Package, color: "text-muted-foreground", bg: "bg-secondary" };
-    }
-  };
+  const filteredAlloc = allocationHistory.filter((h) => {
+    if (allocBranch !== "All" && h.branch !== allocBranch) return false;
+    if (allocEmployee !== "All" && h.performedBy !== allocEmployee) return false;
+    return true;
+  });
 
-  // Format timestamp
-  const formatTimestamp = (timestamp: string) => {
-    try {
-      return format(new Date(timestamp), "MMM dd, yyyy HH:mm");
-    } catch {
-      return timestamp;
-    }
-  };
-
-  // Stats
-  const totalTransactions = history.length;
-  const restockCount = history.filter((h) => h.action === "Restocked").length;
-  const allocationCount = history.filter((h) => h.action === "Allocated").length;
-  const addedCount = history.filter((h) => h.action === "Added").length;
+  const selectCls = "w-full px-3 py-2 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20";
+  const thCls = "text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider";
+  const tdCls = "px-4 py-3 text-xs";
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className="text-lg sm:text-xl font-bold text-card-foreground">Inventory History</h2>
-          <p className="text-sm text-muted-foreground">Complete transaction log of all inventory activities</p>
-        </div>
+    <div className="space-y-8 animate-fade-in">
+      {/* Page Header */}
+      <div>
+        <h2 className="text-lg sm:text-xl font-bold text-card-foreground">
+          {type === "inventory" ? "Inventory History" : type === "allocate" ? "Allocate Stock History" : "Inventory History"}
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          {type === "allocate" ? "Stock allocated to employees" : "Stock additions, restocks and updates"}
+        </p>
       </div>
 
-      {/* Stats Cards */}
+      {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-card rounded-xl p-5 card-shadow border border-border">
           <div className="flex items-start gap-3">
@@ -72,35 +72,21 @@ const InventoryHistoryPage = () => {
             </div>
             <div>
               <p className="text-xs font-medium text-muted-foreground mb-1">Total Transactions</p>
-              <p className="text-2xl font-bold text-card-foreground">{totalTransactions}</p>
+              <p className="text-2xl font-bold text-card-foreground">{history.length}</p>
             </div>
           </div>
         </div>
-
         <div className="bg-card rounded-xl p-5 card-shadow border border-border">
           <div className="flex items-start gap-3">
             <div className="p-2.5 bg-success/10 rounded-lg flex-shrink-0">
               <Plus className="w-5 h-5 text-success" />
             </div>
             <div>
-              <p className="text-xs font-medium text-muted-foreground mb-1">Items Added</p>
-              <p className="text-2xl font-bold text-card-foreground">{addedCount}</p>
+              <p className="text-xs font-medium text-muted-foreground mb-1">Stock Changes</p>
+              <p className="text-2xl font-bold text-card-foreground">{inventoryHistory.length}</p>
             </div>
           </div>
         </div>
-
-        <div className="bg-card rounded-xl p-5 card-shadow border border-border">
-          <div className="flex items-start gap-3">
-            <div className="p-2.5 bg-primary/10 rounded-lg flex-shrink-0">
-              <TrendingUp className="w-5 h-5 text-primary" />
-            </div>
-            <div>
-              <p className="text-xs font-medium text-muted-foreground mb-1">Restocks</p>
-              <p className="text-2xl font-bold text-card-foreground">{restockCount}</p>
-            </div>
-          </div>
-        </div>
-
         <div className="bg-card rounded-xl p-5 card-shadow border border-border">
           <div className="flex items-start gap-3">
             <div className="p-2.5 bg-info/10 rounded-lg flex-shrink-0">
@@ -108,172 +94,192 @@ const InventoryHistoryPage = () => {
             </div>
             <div>
               <p className="text-xs font-medium text-muted-foreground mb-1">Allocations</p>
-              <p className="text-2xl font-bold text-card-foreground">{allocationCount}</p>
+              <p className="text-2xl font-bold text-card-foreground">{allocationHistory.length}</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-card rounded-xl p-5 card-shadow border border-border">
+          <div className="flex items-start gap-3">
+            <div className="p-2.5 bg-warning/10 rounded-lg flex-shrink-0">
+              <TrendingUp className="w-5 h-5 text-warning" />
+            </div>
+            <div>
+              <p className="text-xs font-medium text-muted-foreground mb-1">Restocks</p>
+              <p className="text-2xl font-bold text-card-foreground">{history.filter((h) => h.action === "Restocked").length}</p>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="bg-card rounded-xl p-4 card-shadow border border-border">
-        <div className="flex items-center gap-2 mb-3">
-          <Filter className="w-4 h-4 text-muted-foreground" />
-          <h3 className="text-sm font-semibold text-card-foreground">Filters</h3>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Action</label>
-            <select
-              value={filterAction}
-              onChange={(e) => setFilterAction(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
-            >
-              <option value="All">All Actions</option>
-              <option value="Added">Added</option>
-              <option value="Restocked">Restocked</option>
-              <option value="Updated">Updated</option>
-              <option value="Allocated">Allocated</option>
-              <option value="Deleted">Deleted</option>
-            </select>
+      {/* ── INVENTORY HISTORY ── */}
+      {type !== "allocate" && <div className="bg-card rounded-xl card-shadow border border-border overflow-hidden">
+        <div className="px-6 py-4 border-b border-border flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <Package className="w-5 h-5 text-primary" />
+            <div>
+              <h3 className="text-base font-bold text-card-foreground">Inventory History</h3>
+              <p className="text-xs text-muted-foreground">Stock additions, restocks and updates</p>
+            </div>
           </div>
-
-          <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Branch</label>
-            <select
-              value={filterBranch}
-              onChange={(e) => setFilterBranch(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
-            >
-              {branches.map((branch) => (
-                <option key={branch} value={branch}>
-                  {branch === "All" ? "All Branches" : branch}
-                </option>
-              ))}
+          {/* Filters */}
+          <div className="flex flex-wrap gap-2">
+            <select value={invBranch} onChange={(e) => setInvBranch(e.target.value)} className={`${selectCls} w-auto`}>
+              {invBranches.map((b) => <option key={b} value={b}>{b === "All" ? "All Branches" : b}</option>)}
             </select>
-          </div>
-
-          <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Product</label>
-            <select
-              value={filterProduct}
-              onChange={(e) => setFilterProduct(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
-            >
-              {products.map((product) => (
-                <option key={product} value={product}>
-                  {product === "All" ? "All Products" : product}
-                </option>
-              ))}
+            <select value={invProduct} onChange={(e) => setInvProduct(e.target.value)} className={`${selectCls} w-auto`}>
+              {invProducts.map((p) => <option key={p} value={p}>{p === "All" ? "All Products" : p}</option>)}
             </select>
           </div>
         </div>
-      </div>
-
-      {/* History Table */}
-      <div className="bg-card rounded-xl card-shadow overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-secondary/30">
-                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                  Date & Time
-                </th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                  Action
-                </th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                  Product
-                </th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                  Branch
-                </th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                  Previous Stock
-                </th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                  Change
-                </th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                  New Stock
-                </th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                  Notes
-                </th>
+                <th className={thCls}>Date</th>
+                <th className={thCls}>Product</th>
+                <th className={thCls}>Quantity (Stock)</th>
+                <th className={thCls}>Unit</th>
+                <th className={thCls}>Branch</th>
+                <th className={thCls}>Action</th>
               </tr>
             </thead>
             <tbody>
-              {filteredHistory.map((entry) => {
-                const { icon: Icon, color, bg } = getActionDetails(entry.action);
+              {filteredInv.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-4 py-10 text-center">
+                    <History className="w-10 h-10 text-muted-foreground/30 mx-auto mb-2" />
+                    <p className="text-sm text-muted-foreground">No inventory history found</p>
+                  </td>
+                </tr>
+              ) : filteredInv.map((entry) => {
+                const stockDisplay = entry.newStock !== undefined
+                  ? entry.previousStock !== undefined
+                    ? `${entry.previousStock} → ${entry.newStock}`
+                    : `${entry.newStock}`
+                  : entry.quantityChanged !== undefined
+                    ? (entry.quantityChanged > 0 ? `+${entry.quantityChanged}` : `${entry.quantityChanged}`)
+                    : "—";
+
+                const actionColors: Record<string, string> = {
+                  Added: "bg-success/10 text-success",
+                  Restocked: "bg-primary/10 text-primary",
+                  Updated: "bg-warning/10 text-warning",
+                  Deleted: "bg-destructive/10 text-destructive",
+                };
+
                 return (
                   <tr key={entry.id} className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors">
-                    <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
-                      <div className="flex items-center gap-2">
+                    <td className={`${tdCls} text-muted-foreground whitespace-nowrap`}>
+                      <div className="flex items-center gap-1.5">
                         <Calendar className="w-3.5 h-3.5" />
-                        {formatTimestamp(entry.timestamp)}
+                        {formatDate(entry.timestamp)}
                       </div>
                     </td>
-                    <td className="px-4 py-3">
-                      <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg ${bg}`}>
-                        <Icon className={`w-3.5 h-3.5 ${color}`} />
-                        <span className={`text-xs font-semibold ${color}`}>{entry.action}</span>
-                      </div>
+                    <td className={`${tdCls} font-medium text-card-foreground`}>{entry.itemName}</td>
+                    <td className={`${tdCls} font-semibold`}>
+                      <span className={entry.quantityChanged !== undefined && entry.quantityChanged < 0 ? "text-destructive" : "text-success"}>
+                        {stockDisplay}
+                      </span>
                     </td>
-                    <td className="px-4 py-3 text-xs font-medium text-card-foreground">{entry.itemName}</td>
-                    <td className="px-4 py-3 text-xs text-muted-foreground">{entry.branch}</td>
-                    <td className="px-4 py-3 text-xs text-muted-foreground">
-                      {entry.previousStock !== undefined ? `${entry.previousStock} ${entry.unit}` : "-"}
-                    </td>
-                    <td className="px-4 py-3 text-xs font-semibold">
-                      {entry.quantityChanged !== undefined ? (
-                        <span className={entry.quantityChanged > 0 ? "text-success" : "text-destructive"}>
-                          {entry.quantityChanged > 0 ? "+" : ""}
-                          {entry.quantityChanged} {entry.unit}
-                        </span>
-                      ) : (
-                        "-"
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-xs font-semibold text-card-foreground">
-                      {entry.newStock !== undefined ? `${entry.newStock} ${entry.unit}` : "-"}
-                    </td>
-                    <td className="px-4 py-3 text-xs text-muted-foreground max-w-xs truncate">
-                      {entry.notes || "-"}
-                      {entry.performedBy && (
-                        <span className="block text-xs text-primary mt-0.5">By: {entry.performedBy}</span>
-                      )}
+                    <td className={`${tdCls} text-muted-foreground`}>{entry.unit}</td>
+                    <td className={`${tdCls} text-muted-foreground`}>{entry.branch}</td>
+                    <td className={tdCls}>
+                      <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold ${actionColors[entry.action] || "bg-secondary text-muted-foreground"}`}>
+                        {entry.action}
+                      </span>
                     </td>
                   </tr>
                 );
               })}
-              {filteredHistory.length === 0 && (
-                <tr>
-                  <td colSpan={8} className="px-4 py-12 text-center">
-                    <div className="flex flex-col items-center gap-2">
-                      <History className="w-12 h-12 text-muted-foreground/30" />
-                      <p className="text-sm text-muted-foreground">No history records found</p>
-                      <p className="text-xs text-muted-foreground">
-                        {filterAction !== "All" || filterBranch !== "All" || filterProduct !== "All"
-                          ? "Try adjusting your filters"
-                          : "Inventory transactions will appear here"}
-                      </p>
-                    </div>
-                  </td>
-                </tr>
-              )}
             </tbody>
           </table>
         </div>
-      </div>
+        {filteredInv.length > 0 && (
+          <div className="px-6 py-3 border-t border-border bg-secondary/10">
+            <p className="text-xs text-muted-foreground">Showing <span className="font-semibold text-card-foreground">{filteredInv.length}</span> records</p>
+          </div>
+        )}
+      </div>}
 
-      {/* Summary */}
-      {filteredHistory.length > 0 && (
-        <div className="bg-secondary/30 rounded-xl p-4 border border-border">
-          <p className="text-xs text-muted-foreground">
-            Showing <span className="font-semibold text-card-foreground">{filteredHistory.length}</span> of{" "}
-            <span className="font-semibold text-card-foreground">{totalTransactions}</span> transactions
-          </p>
+      {/* ── ALLOCATE STOCK HISTORY ── */}
+      {type !== "inventory" && <div className="bg-card rounded-xl card-shadow border border-border overflow-hidden">
+        <div className="px-6 py-4 border-b border-border flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <UserCheck className="w-5 h-5 text-info" />
+            <div>
+              <h3 className="text-base font-bold text-card-foreground">Allocate Stock History</h3>
+              <p className="text-xs text-muted-foreground">Stock allocated to employees</p>
+            </div>
+          </div>
+          {/* Filters */}
+          <div className="flex flex-wrap gap-2">
+            <select value={allocBranch} onChange={(e) => setAllocBranch(e.target.value)} className={`${selectCls} w-auto`}>
+              {allocBranches.map((b) => <option key={b} value={b}>{b === "All" ? "All Branches" : b}</option>)}
+            </select>
+            <select value={allocEmployee} onChange={(e) => setAllocEmployee(e.target.value)} className={`${selectCls} w-auto`}>
+              {allocEmployees.map((e) => <option key={e} value={e}>{e === "All" ? "All Employees" : e}</option>)}
+            </select>
+          </div>
         </div>
-      )}
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border bg-secondary/30">
+                <th className={thCls}>Date</th>
+                <th className={thCls}>Employee</th>
+                <th className={thCls}>Branch</th>
+                <th className={thCls}>Product</th>
+                <th className={thCls}>Quantity</th>
+                <th className={thCls}>Remaining Stock</th>
+                <th className={thCls}>Unit</th>
+                <th className={thCls}>Unit Price</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredAlloc.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="px-4 py-10 text-center">
+                    <UserCheck className="w-10 h-10 text-muted-foreground/30 mx-auto mb-2" />
+                    <p className="text-sm text-muted-foreground">No allocation history found</p>
+                  </td>
+                </tr>
+              ) : filteredAlloc.map((entry) => {
+                const allocated = entry.quantityChanged !== undefined ? Math.abs(entry.quantityChanged) : "—";
+                const remaining = entry.newStock !== undefined ? entry.newStock : "—";
+                const unitPrice = entry.unitPrice !== undefined
+                  ? `₹ ${entry.unitPrice.toLocaleString()}`
+                  : (() => {
+                      const item = inventory.find((i) => i.id === entry.itemId);
+                      return item?.unitPrice ? `₹ ${item.unitPrice.toLocaleString()}` : "—";
+                    })();
+
+                return (
+                  <tr key={entry.id} className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors">
+                    <td className={`${tdCls} text-muted-foreground whitespace-nowrap`}>
+                      <div className="flex items-center gap-1.5">
+                        <Calendar className="w-3.5 h-3.5" />
+                        {formatDate(entry.timestamp)}
+                      </div>
+                    </td>
+                    <td className={`${tdCls} font-medium text-card-foreground`}>{entry.performedBy || "—"}</td>
+                    <td className={`${tdCls} text-muted-foreground`}>{entry.branch}</td>
+                    <td className={`${tdCls} font-medium text-card-foreground`}>{entry.itemName}</td>
+                    <td className={`${tdCls} font-semibold text-destructive`}>−{allocated} {entry.unit}</td>
+                    <td className={`${tdCls} font-semibold text-card-foreground`}>{remaining !== "—" ? `${remaining} ${entry.unit}` : "—"}</td>
+                    <td className={`${tdCls} text-muted-foreground`}>{entry.unit}</td>
+                    <td className={`${tdCls} font-semibold text-primary`}>{unitPrice}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        {filteredAlloc.length > 0 && (
+          <div className="px-6 py-3 border-t border-border bg-secondary/10">
+            <p className="text-xs text-muted-foreground">Showing <span className="font-semibold text-card-foreground">{filteredAlloc.length}</span> records</p>
+          </div>
+        )}
+      </div>}
     </div>
   );
 };

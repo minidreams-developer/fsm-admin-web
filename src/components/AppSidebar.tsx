@@ -26,7 +26,6 @@ const menuItems = [
 
 const inventoryMenuItems = [
   { label: "Inventory", path: "/inventory" },
-  { label: "History", path: "/inventory/history" },
   { label: "Allocate Stock", path: "/inventory/allocate" },
   { label: "Branches", path: "/branches" },
   { label: "Products", path: "/products" },
