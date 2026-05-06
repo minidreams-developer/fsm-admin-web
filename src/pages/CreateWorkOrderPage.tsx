@@ -610,28 +610,54 @@ const CreateWorkOrderPage = () => {
          
         </div>
          {/* Services Section */}
-      {tasks.length > 0 && (
+      {tasks.length > 0 && (() => {
+        const subtotal = tasks.reduce((sum, t) => sum + (t.amount || 0), 0);
+        const totalGst = tasks.reduce((sum, t) => {
+          const rate = parseFloat(t.gst || "0") / 100;
+          return sum + (t.amount || 0) * rate;
+        }, 0);
+        const totalCgst = tasks.reduce((sum, t) => {
+          const rate = parseFloat(t.cgst || "0") / 100;
+          return sum + (t.amount || 0) * rate;
+        }, 0);
+        const totalIgst = tasks.reduce((sum, t) => {
+          const rate = parseFloat(t.igst || "0") / 100;
+          return sum + (t.amount || 0) * rate;
+        }, 0);
+        const totalTax = totalGst + totalCgst + totalIgst;
+        const grandTotal = subtotal + totalTax;
+        const hasTax = tasks.some(t => t.gst || t.cgst || t.igst);
+
+        return (
         <div className="bg-card rounded-xl card-shadow border border-border overflow-hidden">
           <div className="px-6 py-4 border-b border-border">
             <h2 className="text-base font-bold text-card-foreground">Services</h2>
             <p className="text-xs text-muted-foreground mt-0.5">Services added</p>
           </div>
-          <div className="flex flex-row">
-            <div className="flex-1 min-w-0">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border bg-secondary/30">
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">#</th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Service</th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Description</th>
-                    <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Unit Price</th>
-                    <th className="text-center px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Quantity</th>
-                    <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Amount</th>
-                    <th className="text-center px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {tasks.map((task, index) => (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border bg-secondary/30">
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">#</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Service</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Description</th>
+                  <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Unit Price</th>
+                  <th className="text-center px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Qty</th>
+                  <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Amount</th>
+                  {hasTax && <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">GST</th>}
+                  {hasTax && tasks.some(t => t.cgst) && <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">CGST</th>}
+                  {hasTax && tasks.some(t => t.igst) && <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">IGST</th>}
+                  {hasTax && <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Total</th>}
+                  <th className="text-center px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {tasks.map((task, index) => {
+                  const gstAmt = (task.amount || 0) * (parseFloat(task.gst || "0") / 100);
+                  const cgstAmt = (task.amount || 0) * (parseFloat(task.cgst || "0") / 100);
+                  const igstAmt = (task.amount || 0) * (parseFloat(task.igst || "0") / 100);
+                  const rowTotal = (task.amount || 0) + gstAmt + cgstAmt + igstAmt;
+                  return (
                     <tr key={task.id} className="border-b border-border last:border-0 hover:bg-secondary/10 transition-colors">
                       <td className="px-4 py-3 text-xs text-muted-foreground">{index + 1}</td>
                       <td className="px-4 py-3 font-medium text-card-foreground text-xs">{task.title}</td>
@@ -639,7 +665,7 @@ const CreateWorkOrderPage = () => {
                       <td className="px-4 py-3 text-right text-card-foreground text-xs font-semibold">₹ {task.unitPrice?.toLocaleString() || 0}</td>
                       <td className="px-4 py-3">
                         <div className="flex items-center justify-center gap-2">
-                          <button 
+                          <button
                             type="button"
                             onClick={() => {
                               const newQuantity = Math.max(1, task.quantity - 1);
@@ -651,7 +677,7 @@ const CreateWorkOrderPage = () => {
                             <span className="text-xs">−</span>
                           </button>
                           <span className="text-xs font-semibold text-card-foreground min-w-[2rem] text-center">{task.quantity || 1}</span>
-                          <button 
+                          <button
                             type="button"
                             onClick={() => {
                               const newQuantity = task.quantity + 1;
@@ -665,20 +691,24 @@ const CreateWorkOrderPage = () => {
                         </div>
                       </td>
                       <td className="px-4 py-3 text-right text-card-foreground text-xs font-bold">₹ {task.amount?.toLocaleString() || 0}</td>
+                      {hasTax && <td className="px-4 py-3 text-right text-xs text-muted-foreground">{task.gst ? `${task.gst}% (₹ ${Math.round(gstAmt).toLocaleString()})` : "—"}</td>}
+                      {hasTax && tasks.some(t => t.cgst) && <td className="px-4 py-3 text-right text-xs text-muted-foreground">{task.cgst ? `${task.cgst}% (₹ ${Math.round(cgstAmt).toLocaleString()})` : "—"}</td>}
+                      {hasTax && tasks.some(t => t.igst) && <td className="px-4 py-3 text-right text-xs text-muted-foreground">{task.igst ? `${task.igst}% (₹ ${Math.round(igstAmt).toLocaleString()})` : "—"}</td>}
+                      {hasTax && <td className="px-4 py-3 text-right text-xs font-bold text-primary">₹ {Math.round(rowTotal).toLocaleString()}</td>}
                       <td className="px-4 py-3">
                         <div className="flex items-center justify-center gap-1">
-                          <button 
+                          <button
                             type="button"
-                            onClick={() => setEditingTask({ ...task })} 
-                            className="p-1.5 rounded-md border border-border hover:bg-secondary transition-colors" 
+                            onClick={() => setEditingTask({ ...task })}
+                            className="p-1.5 rounded-md border border-border hover:bg-secondary transition-colors"
                             title="Edit service"
                           >
                             <Edit2 className="w-3.5 h-3.5 text-muted-foreground" />
                           </button>
-                          <button 
+                          <button
                             type="button"
-                            onClick={() => removeTask(task.id)} 
-                            className="p-1.5 rounded-md border border-border hover:bg-destructive/10 transition-colors" 
+                            onClick={() => removeTask(task.id)}
+                            className="p-1.5 rounded-md border border-border hover:bg-destructive/10 transition-colors"
                             title="Remove service"
                           >
                             <X className="w-3.5 h-3.5 text-destructive" />
@@ -686,36 +716,51 @@ const CreateWorkOrderPage = () => {
                         </div>
                       </td>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-               <div className="w-64 flex-shrink-0  border-border bg-secondary/10 p-4 space-y-3 self-start ml-auto">
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          {/* Summary */}
+          <div className="border-t border-border bg-secondary/10 px-6 py-4">
+            <div className="ml-auto w-full max-w-xs space-y-2">
               <div className="flex justify-between items-center">
                 <span className="text-xs font-medium text-muted-foreground">Subtotal</span>
-                <span className="text-sm font-semibold text-card-foreground">
-                  ₹ {tasks.reduce((sum, t) => sum + (t.amount || 0), 0).toLocaleString()}
-                </span>
+                <span className="text-sm font-semibold text-card-foreground">₹ {Math.round(subtotal).toLocaleString()}</span>
               </div>
-              <div className="flex justify-between items-center">
-                <span className="text-xs font-medium text-muted-foreground">GST (18%)</span>
-                <span className="text-sm font-semibold text-card-foreground">
-                  ₹ {(tasks.reduce((sum, t) => sum + (t.amount || 0), 0) * 0.18).toLocaleString()}
-                </span>
-              </div>
-              <div className="pt-3 border-t border-border">
+              {totalGst > 0 && (
                 <div className="flex justify-between items-center">
-                  <span className="text-sm font-bold text-card-foreground">Total Amount</span>
-                  <span className="text-lg font-bold text-primary">
-                    ₹ {(tasks.reduce((sum, t) => sum + (t.amount || 0), 0) * 1.18).toLocaleString()}
-                  </span>
+                  <span className="text-xs font-medium text-muted-foreground">GST</span>
+                  <span className="text-sm font-semibold text-card-foreground">₹ {Math.round(totalGst).toLocaleString()}</span>
                 </div>
+              )}
+              {totalCgst > 0 && (
+                <div className="flex justify-between items-center">
+                  <span className="text-xs font-medium text-muted-foreground">CGST</span>
+                  <span className="text-sm font-semibold text-card-foreground">₹ {Math.round(totalCgst).toLocaleString()}</span>
+                </div>
+              )}
+              {totalIgst > 0 && (
+                <div className="flex justify-between items-center">
+                  <span className="text-xs font-medium text-muted-foreground">IGST</span>
+                  <span className="text-sm font-semibold text-card-foreground">₹ {Math.round(totalIgst).toLocaleString()}</span>
+                </div>
+              )}
+              {!hasTax && (
+                <div className="flex justify-between items-center">
+                  <span className="text-xs font-medium text-muted-foreground">Tax</span>
+                  <span className="text-xs text-muted-foreground italic">Edit a service to set tax</span>
+                </div>
+              )}
+              <div className="pt-2 border-t border-border flex justify-between items-center">
+                <span className="text-sm font-bold text-card-foreground">Total Amount</span>
+                <span className="text-lg font-bold text-primary">₹ {Math.round(grandTotal).toLocaleString()}</span>
               </div>
             </div>
-            </div>
-           
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {/* Service Appointments Schedule */}
       {tasks.length > 0 && (
