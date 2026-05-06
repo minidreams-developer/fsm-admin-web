@@ -36,6 +36,8 @@ export type ServiceAppointment = {
   refNo?: string;
   warrantyPeriod?: string;
   unitPrice?: string;
+  unitType?: string;
+  unitCount?: string;
   state?: string;
   gst?: string;
   igst?: string;
@@ -351,7 +353,7 @@ export const useServicesStore = create<ServicesStore>()(
     }),
     {
       name: 'services-store',
-      version: 3,
+      version: 4,
       migrate: (persistedState: unknown) => {
         if (
           typeof persistedState === "object" &&
@@ -389,6 +391,13 @@ export const useServicesStore = create<ServicesStore>()(
               salesExecutive: typeof a.salesExecutive === "string" ? a.salesExecutive : undefined,
               refNo: typeof a.refNo === "string" ? a.refNo : undefined,
               warrantyPeriod: typeof a.warrantyPeriod === "string" ? a.warrantyPeriod : undefined,
+              unitPrice: typeof (a as ServiceAppointment).unitPrice === "string" ? (a as ServiceAppointment).unitPrice : undefined,
+              unitType: typeof (a as ServiceAppointment).unitType === "string" ? (a as ServiceAppointment).unitType : undefined,
+              unitCount: typeof (a as ServiceAppointment).unitCount === "string" ? (a as ServiceAppointment).unitCount : undefined,
+              state: typeof (a as ServiceAppointment).state === "string" ? (a as ServiceAppointment).state : undefined,
+              gst: typeof (a as ServiceAppointment).gst === "string" ? (a as ServiceAppointment).gst : undefined,
+              igst: typeof (a as ServiceAppointment).igst === "string" ? (a as ServiceAppointment).igst : undefined,
+              cgst: typeof (a as ServiceAppointment).cgst === "string" ? (a as ServiceAppointment).cgst : undefined,
               technicians: Array.isArray(a.technicians) ? (a.technicians as string[]) : undefined,
               serviceDescription: typeof a.serviceDescription === "string" ? a.serviceDescription : undefined,
               customerSignature: a.customerSignature as DigitalSignature | undefined,

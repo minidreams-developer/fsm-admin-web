@@ -2,9 +2,11 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, X, Plus } from "lucide-react";
 import { toast } from "sonner";
+import Select from "react-select";
 import { useLeadsStore, type UrgencyLevel } from "@/store/leadsStore";
 import { useEmployeesStore } from "@/store/employeesStore";
 import { useProductsStore } from "@/store/productsStore";
+import { useCustomersStore } from "@/store/customersStore";
 
 const urgencyLevels: UrgencyLevel[] = ["Low", "Medium", "High"];
           
@@ -23,6 +25,7 @@ const CreateLeadPage = () => {
   const { addLead } = useLeadsStore();
   const { employees } = useEmployeesStore();
   const { products } = useProductsStore();
+  const { customers } = useCustomersStore();
 
   const serviceOptions = products.filter((p) => p.category === "Services" && p.status === "Active").map((p) => p.name);
 
@@ -41,6 +44,60 @@ const CreateLeadPage = () => {
     nextFollowUpDate: "",
     notes: "",
   });
+
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string>("");
+
+  // Customer options for React Select
+  const customerOptions = customers.map((c) => ({
+    value: c.id,
+    label: `${c.firstName} ${c.lastName} — ${c.mobile || c.landline}`,
+    customer: c,
+  }));
+
+  // Custom styles matching the app theme
+  const customSelectStyles = {
+    control: (base: any, state: any) => ({
+      ...base,
+      backgroundColor: 'hsl(var(--secondary))',
+      borderColor: state.isFocused ? 'hsl(var(--primary) / 0.2)' : 'hsl(var(--border))',
+      borderRadius: '0.5rem',
+      minHeight: '42px',
+      boxShadow: state.isFocused ? '0 0 0 2px hsl(var(--primary) / 0.2)' : 'none',
+      '&:hover': { borderColor: 'hsl(var(--border))' },
+    }),
+    menu: (base: any) => ({
+      ...base,
+      backgroundColor: 'hsl(var(--card))',
+      border: '1px solid hsl(var(--border))',
+      borderRadius: '0.5rem',
+      boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+      zIndex: 9999,
+    }),
+    option: (base: any, state: any) => ({
+      ...base,
+      backgroundColor: state.isSelected ? 'hsl(var(--primary))' : state.isFocused ? 'hsl(var(--secondary))' : 'transparent',
+      color: state.isSelected ? 'white' : 'hsl(var(--card-foreground))',
+      fontSize: '0.875rem',
+      cursor: 'pointer',
+    }),
+    input: (base: any) => ({ ...base, color: 'hsl(var(--card-foreground))', fontSize: '0.875rem' }),
+    placeholder: (base: any) => ({ ...base, color: 'hsl(var(--muted-foreground))', fontSize: '0.875rem' }),
+    singleValue: (base: any) => ({ ...base, color: 'hsl(var(--card-foreground))', fontSize: '0.875rem' }),
+    noOptionsMessage: (base: any) => ({ ...base, color: 'hsl(var(--muted-foreground))', fontSize: '0.875rem' }),
+  };
+
+  const handleCustomerSelect = (customerId: string) => {
+    setSelectedCustomerId(customerId);
+    const customer = customers.find((c) => c.id === customerId);
+    if (customer) {
+      setField("name", `${customer.firstName} ${customer.lastName}`.trim());
+      setField("phone", customer.mobile || customer.landline || "");
+      // Pre-fill first address from customer
+      if (customer.siteAddress || customer.billingAddress) {
+        setAddresses([{ id: crypto.randomUUID(), address: customer.siteAddress || customer.billingAddress, city: "", pincode: "" }]);
+      }
+    }
+  };
 
   const [addresses, setAddresses] = useState<AddressEntry[]>([
     { id: crypto.randomUUID(), address: "", city: "", pincode: "" }
@@ -148,7 +205,29 @@ const CreateLeadPage = () => {
 
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-2 block">Customer Name *</label>
-            <input value={form.name} onChange={(e) => setField("name", e.target.value)} placeholder="e.g. Arun Sharma" className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20" />
+            <Select
+              options={customerOptions}
+              value={customerOptions.find((opt) => opt.value === selectedCustomerId) || null}
+              onChange={(option) => {
+                if (option) {
+                  handleCustomerSelect(option.value);
+                } else {
+                  setSelectedCustomerId("");
+                  setField("name", "");
+                  setField("phone", "");
+                }
+              }}
+              onInputChange={(inputValue) => {
+                // Allow typing a new name not in the list
+                if (!selectedCustomerId) setField("name", inputValue);
+              }}
+              inputValue={selectedCustomerId ? undefined : form.name}
+              styles={customSelectStyles}
+              placeholder="Search existing customer or type new name..."
+              isClearable
+              isSearchable
+              noOptionsMessage={() => "No customers found — type to enter a new name"}
+            />
           </div>
 
           <div>

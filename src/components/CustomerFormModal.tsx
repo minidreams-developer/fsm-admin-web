@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { X, Plus, Upload } from "lucide-react";
+import { X, Plus, Upload, Copy } from "lucide-react";
 import { toast } from "sonner";
-import { useCustomersStore, type Customer, type CustomerDocument, type CustomerType, type ContactPerson } from "@/store/customersStore";
+import { useCustomersStore, type Customer, type CustomerDocument, type CustomerType, type ContactPerson, type AddressFields } from "@/store/customersStore";
 
 type Mode = "create" | "edit";
 
@@ -16,7 +16,7 @@ type Props = {
 };
 
 const LABELS = {
-  title: "Customer Add Fields",
+  title: "add Customer",
   customerId: "Customer ID ( Automated Generated )",
   customerType: "Customer Type ( Residential / Commercial )",
   firstName: "First Name",
@@ -33,8 +33,109 @@ const LABELS = {
   customerDocuments: "Customer Documents",
 } as const;
 
+const INDIAN_STATES = [
+  "Andhra Pradesh","Arunachal Pradesh","Assam","Bihar","Chhattisgarh","Goa","Gujarat",
+  "Haryana","Himachal Pradesh","Jharkhand","Karnataka","Kerala","Madhya Pradesh",
+  "Maharashtra","Manipur","Meghalaya","Mizoram","Nagaland","Odisha","Punjab",
+  "Rajasthan","Sikkim","Tamil Nadu","Telangana","Tripura","Uttar Pradesh",
+  "Uttarakhand","West Bengal","Andaman and Nicobar Islands","Chandigarh",
+  "Dadra and Nagar Haveli and Daman and Diu","Delhi","Jammu and Kashmir",
+  "Ladakh","Lakshadweep","Puducherry",
+];
+
+const emptyAddress = (): AddressFields => ({
+  attention: "", country: "India", street1: "", street2: "",
+  city: "", state: "", pinCode: "", phone: "", fax: "",
+});
+
 function buildDisplayName(firstName: string, lastName: string) {
   return `${firstName} ${lastName}`.trim().replace(/\s+/g, " ");
+}
+
+function addressToString(a: AddressFields): string {
+  return [a.street1, a.street2, a.city, a.state, a.pinCode, a.country]
+    .filter(Boolean).join(", ");
+}
+
+// Reusable structured address block
+function AddressBlock({
+  title,
+  fields,
+  onChange,
+  extra,
+}: {
+  title: string;
+  fields: AddressFields;
+  onChange: (updated: AddressFields) => void;
+  extra?: React.ReactNode;
+}) {
+  const set = (key: keyof AddressFields, val: string) =>
+    onChange({ ...fields, [key]: val });
+
+  const inputCls = "w-full px-3 py-2 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20";
+  const labelCls = "text-xs font-medium text-muted-foreground mb-1.5 block";
+
+  return (
+    <div className="flex-1 min-w-0">
+      <div className="flex items-center justify-between mb-3">
+        <h4 className="text-sm font-bold text-card-foreground">{title}</h4>
+        {extra}
+      </div>
+      <div className="space-y-3">
+        <div>
+          <label className={labelCls}>Attention</label>
+          <input value={fields.attention} onChange={e => set("attention", e.target.value)} placeholder="e.g. Mr. Praveen Kumar" className={inputCls} />
+        </div>
+        <div>
+          <label className={labelCls}>Country / Region</label>
+          <select value={fields.country} onChange={e => set("country", e.target.value)} className={inputCls}>
+            <option value="">Select</option>
+            <option value="India">India</option>
+            <option value="UAE">UAE</option>
+            <option value="USA">USA</option>
+            <option value="UK">UK</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <div>
+          <label className={labelCls}>Address</label>
+          <textarea value={fields.street1} onChange={e => set("street1", e.target.value)} placeholder="Street 1" rows={2} className={`${inputCls} resize-none`} />
+          <textarea value={fields.street2} onChange={e => set("street2", e.target.value)} placeholder="Street 2" rows={2} className={`${inputCls} resize-none mt-2`} />
+        </div>
+        <div>
+          <label className={labelCls}>City</label>
+          <input value={fields.city} onChange={e => set("city", e.target.value)} placeholder="e.g. Kochi" className={inputCls} />
+        </div>
+        <div>
+          <label className={labelCls}>State</label>
+          <select value={fields.state} onChange={e => set("state", e.target.value)} className={inputCls}>
+            <option value="">Select or type to add</option>
+            {INDIAN_STATES.map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className={labelCls}>Pin Code</label>
+          <input value={fields.pinCode} onChange={e => set("pinCode", e.target.value)} placeholder="e.g. 682001" className={inputCls} />
+        </div>
+        <div>
+          <label className={labelCls}>Phone</label>
+          <div className="flex gap-2">
+            <select className="px-2 py-2 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none w-20">
+              <option value="+91">+91</option>
+              <option value="+1">+1</option>
+              <option value="+44">+44</option>
+              <option value="+971">+971</option>
+            </select>
+            <input value={fields.phone} onChange={e => set("phone", e.target.value)} placeholder="Phone number" className={`${inputCls} flex-1`} />
+          </div>
+        </div>
+        <div>
+          <label className={labelCls}>Fax Number</label>
+          <input value={fields.fax} onChange={e => set("fax", e.target.value)} placeholder="e.g. 044-12345678" className={inputCls} />
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export function CustomerFormModal({ open, mode, customer, prefill, onClose, onSaved }: Props) {
@@ -42,6 +143,9 @@ export function CustomerFormModal({ open, mode, customer, prefill, onClose, onSa
   const [extraSiteAddresses, setExtraSiteAddresses] = useState<string[]>([]);
   const [isCustomPayment, setIsCustomPayment] = useState(false);
   const [commercialDoc, setCommercialDoc] = useState<File | null>(null);
+  const [existingDocName, setExistingDocName] = useState<string>("");
+  const [billingFields, setBillingFields] = useState<AddressFields>(emptyAddress());
+  const [siteFields, setSiteFields] = useState<AddressFields>(emptyAddress());
 
   const [form, setForm] = useState<Customer>({
     id: getNextCustomerId(),
@@ -56,7 +160,7 @@ export function CustomerFormModal({ open, mode, customer, prefill, onClose, onSa
     paymentTerms: "",
     billingAddress: "",
     siteAddress: "",
-    contactPersonsDetails: [{ name: "", email: "", city: "", pincode: "", address: "" }],
+    contactPersonsDetails: [{ name: "", phone: "", email: "", city: "", pincode: "", address: "" }],
     customerDocuments: [],
   });
 
@@ -68,11 +172,21 @@ export function CustomerFormModal({ open, mode, customer, prefill, onClose, onSa
     if (mode === "edit" && customer) {
       const contacts = Array.isArray(customer.contactPersonsDetails) && customer.contactPersonsDetails.length > 0
         ? customer.contactPersonsDetails
-        : [{ name: "", email: "", city: "", pincode: "", address: "" }];
+        : [{ name: "", phone: "", email: "", city: "", pincode: "", address: "" }];
       setForm({ ...customer, contactPersonsDetails: contacts });
       setIsCustomPayment(!["30", "60", "90", ""].includes(customer.paymentTerms));
+      setBillingFields(customer.billingAddressFields ?? emptyAddress());
+      setSiteFields(customer.siteAddressFields ?? emptyAddress());
+      if (customer.companyDocument) {
+        setExistingDocName(customer.companyDocument);
+      } else {
+        setExistingDocName("");
+      }
       return;
     }
+    setExistingDocName("");
+    setBillingFields(emptyAddress());
+    setSiteFields(emptyAddress());
     const nextId = getNextCustomerId();
     const next = {
       id: nextId,
@@ -87,7 +201,7 @@ export function CustomerFormModal({ open, mode, customer, prefill, onClose, onSa
       paymentTerms: "",
       billingAddress: "",
       siteAddress: "",
-      contactPersonsDetails: [{ name: "", email: "", city: "", pincode: "", address: "" }],
+      contactPersonsDetails: [{ name: "", phone: "", email: "", city: "", pincode: "", address: "" }],
       customerDocuments: [],
     } satisfies Customer;
     const merged: Customer = { ...next, ...prefill, id: nextId };
@@ -123,10 +237,13 @@ export function CustomerFormModal({ open, mode, customer, prefill, onClose, onSa
       toast.error(`${LABELS.mobile} is required`);
       return;
     }
-    if (!form.siteAddress.trim()) {
+    if (!siteFields.street1.trim() && !form.siteAddress.trim()) {
       toast.error(`${LABELS.siteAddress} is required`);
       return;
     }
+
+    const derivedSiteAddress = addressToString(siteFields) || form.siteAddress.trim();
+    const derivedBillingAddress = addressToString(billingFields) || derivedSiteAddress;
 
     const normalized: Customer = {
       ...form,
@@ -138,9 +255,13 @@ export function CustomerFormModal({ open, mode, customer, prefill, onClose, onSa
       gstNumber: form.gstNumber.trim(),
       placeOfSupply: form.placeOfSupply.trim(),
       paymentTerms: form.paymentTerms.trim(),
-      billingAddress: (form.billingAddress.trim() || form.siteAddress.trim()).trim(),
-      siteAddress: form.siteAddress.trim(),
+      billingAddress: derivedBillingAddress,
+      siteAddress: derivedSiteAddress,
+      billingAddressFields: billingFields,
+      siteAddressFields: siteFields,
       contactPersonsDetails: form.contactPersonsDetails,
+      companyDocument: commercialDoc ? commercialDoc.name : (existingDocName || form.companyDocument || ""),
+      customerLanguage: form.customerLanguage || "",
     };
 
     if (mode === "edit") {
@@ -161,7 +282,7 @@ export function CustomerFormModal({ open, mode, customer, prefill, onClose, onSa
 
   return createPortal(
     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-0 sm:p-4 bg-black/75">
-      <div className="bg-card rounded-[20px] shadow-2xl w-full h-full sm:h-auto sm:max-w-3xl sm:max-h-[90vh] flex flex-col animate-in fade-in slide-in-from-bottom-4 duration-300 relative z-[10000]">
+      <div className="bg-card rounded-[20px] shadow-2xl w-full h-full sm:h-auto sm:max-w-4xl sm:max-h-[90vh] flex flex-col animate-in fade-in slide-in-from-bottom-4 duration-300 relative z-[10000]">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-border bg-card flex-shrink-0">
           <div>
@@ -191,10 +312,7 @@ export function CustomerFormModal({ open, mode, customer, prefill, onClose, onSa
               <label className="text-xs font-medium text-muted-foreground mb-2 block">{LABELS.customerType}</label>
               <select
                 value={form.customerType}
-                onChange={(e) => {
-                  setField("customerType", e.target.value as CustomerType);
-                  if (e.target.value !== "Commercial") setCommercialDoc(null);
-                }}
+                onChange={(e) => setField("customerType", e.target.value as CustomerType)}
                 className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
               >
                 <option value="Residential">Residential</option>
@@ -202,35 +320,74 @@ export function CustomerFormModal({ open, mode, customer, prefill, onClose, onSa
               </select>
             </div>
 
-            {form.customerType === "Commercial" && (
-              <div className="md:col-span-2">
-                <label className="text-xs font-medium text-muted-foreground mb-2 block">Company Document (PDF only)</label>
-                <label className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg bg-secondary border border-border cursor-pointer hover:bg-secondary/80 transition-colors">
-                  <Upload className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                  <span className="text-sm text-muted-foreground truncate">
-                    {commercialDoc ? commercialDoc.name : "Click to upload PDF"}
-                  </span>
-                  <input
-                    type="file"
-                    accept="application/pdf"
-                    className="hidden"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) setCommercialDoc(file);
-                    }}
-                  />
-                </label>
-                {commercialDoc && (
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-2 block">Customer Language</label>
+              <select
+                value={form.customerLanguage || ""}
+                onChange={(e) => setField("customerLanguage", e.target.value)}
+                className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+              >
+                <option value="">Select Language</option>
+                <option value="English">English</option>
+                <option value="Hindi">Hindi</option>
+                <option value="Malayalam">Malayalam</option>
+                <option value="Tamil">Tamil</option>
+                <option value="Telugu">Telugu</option>
+                <option value="Kannada">Kannada</option>
+                <option value="Marathi">Marathi</option>
+                <option value="Bengali">Bengali</option>
+                <option value="Gujarati">Gujarati</option>
+                <option value="Punjabi">Punjabi</option>
+                <option value="Odia">Odia</option>
+                <option value="Urdu">Urdu</option>
+                <option value="Arabic">Arabic</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+
+            {/* Company Document - Show for both Residential and Commercial */}
+            <div className="md:col-span-2">
+              <label className="text-xs font-medium text-muted-foreground mb-2 block">Company Document (PDF only)</label>
+              <label className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg bg-secondary border border-border cursor-pointer hover:bg-secondary/80 transition-colors">
+                <Upload className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                <span className="text-sm text-muted-foreground truncate">
+                  {commercialDoc
+                    ? commercialDoc.name
+                    : existingDocName
+                    ? existingDocName
+                    : "Click to upload PDF"}
+                </span>
+                <input
+                  type="file"
+                  accept="application/pdf"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      setCommercialDoc(file);
+                      setExistingDocName("");
+                    }
+                  }}
+                />
+              </label>
+              {(commercialDoc || existingDocName) && (
+                <div className="flex items-center gap-3 mt-1.5">
+                  {existingDocName && !commercialDoc && (
+                    <span className="text-xs text-muted-foreground flex items-center gap-1">
+                      <span className="w-2 h-2 rounded-full bg-green-500 inline-block" />
+                      Saved: {existingDocName}
+                    </span>
+                  )}
                   <button
                     type="button"
-                    onClick={() => setCommercialDoc(null)}
-                    className="mt-1 text-xs text-destructive hover:opacity-80 transition-opacity"
+                    onClick={() => { setCommercialDoc(null); setExistingDocName(""); }}
+                    className="text-xs text-destructive hover:opacity-80 transition-opacity"
                   >
                     Remove
                   </button>
-                )}
-              </div>
-            )}
+                </div>
+              )}
+            </div>
 
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-2 block">{LABELS.firstName}</label>
@@ -262,7 +419,52 @@ export function CustomerFormModal({ open, mode, customer, prefill, onClose, onSa
               />
             </div>
 
+            {/* Structured Address Section - Side by Side */}
             <div className="md:col-span-2">
+              <div className="flex flex-col md:flex-row gap-6 p-5 rounded-xl bg-secondary/20 border border-border">
+                {/* Billing Address */}
+                <AddressBlock
+                  title="Billing Address"
+                  fields={billingFields}
+                  onChange={setBillingFields}
+                />
+
+                {/* Divider */}
+                <div className="hidden md:block w-px bg-border flex-shrink-0" />
+                <div className="md:hidden h-px bg-border" />
+
+                {/* Site Address */}
+                <AddressBlock
+                  title="Site Address"
+                  fields={siteFields}
+                  onChange={setSiteFields}
+                  extra={
+                    <button
+                      type="button"
+                      onClick={() => setSiteFields({ ...billingFields })}
+                      className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:opacity-80 transition-opacity"
+                      title="Copy billing address to site address"
+                    >
+                      <Copy className="w-3.5 h-3.5" />
+                      Copy billing address
+                    </button>
+                  }
+                />
+              </div>
+            </div>
+
+            {/* Location URL */}
+            {/* <div className="md:col-span-2">
+              <label className="text-xs font-medium text-muted-foreground mb-2 block">Location URL</label>
+              <input
+                value={form.locationUrl || ""}
+                onChange={(e) => setField("locationUrl", e.target.value)}
+                placeholder="e.g. Google Maps link or coordinates"
+                className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+              />
+            </div> */}
+
+            {/* <div className="md:col-span-2">
               <div className="flex items-center justify-between mb-2">
                 <label className="text-xs font-medium text-muted-foreground block">{LABELS.siteAddress}</label>
                 <button
@@ -299,9 +501,9 @@ export function CustomerFormModal({ open, mode, customer, prefill, onClose, onSa
                   </button>
                 </div>
               ))}
-            </div>
+            </div> */}
 
-            <div className="md:col-span-2">
+            {/* <div className="md:col-span-2">
               <label className="text-xs font-medium text-muted-foreground mb-2 block">Location URL</label>
               <input
                 value={form.locationUrl || ""}
@@ -309,21 +511,21 @@ export function CustomerFormModal({ open, mode, customer, prefill, onClose, onSa
                 placeholder="e.g. Google Maps link or coordinates"
                 className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
               />
-            </div>
-
+            </div> */}
+{/* 
             <div className="md:col-span-2">
               <div className="flex items-center justify-between gap-3 mb-2">
                 <label className="text-xs font-medium text-muted-foreground block">{LABELS.billingAddress}</label>
                 
               </div>
-              <textarea
+              <textarea 
                 value={form.billingAddress}
                 onChange={(e) => setField("billingAddress", e.target.value)}
                 placeholder="e.g. 12 MG Road, Kochi"
                 rows={2}
                 className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none"
               />
-            </div>
+            </div> */}
 
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-2 block">{LABELS.emailAddress}</label>
@@ -353,6 +555,17 @@ export function CustomerFormModal({ open, mode, customer, prefill, onClose, onSa
                 onChange={(e) => setField("gstNumber", e.target.value)}
                 placeholder="e.g. 29ABCDE1234F1Z5"
                 className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-2 block">PAN Card Number</label>
+              <input
+                value={form.panCardNumber || ""}
+                onChange={(e) => setField("panCardNumber", e.target.value.toUpperCase())}
+                placeholder="e.g. ABCDE1234F"
+                maxLength={10}
+                className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 uppercase"
               />
             </div>
 
@@ -442,7 +655,7 @@ export function CustomerFormModal({ open, mode, customer, prefill, onClose, onSa
                 <button
                   type="button"
                   onClick={() => {
-                    const newContact: ContactPerson = { name: "", email: "", city: "", pincode: "", address: "" };
+                    const newContact: ContactPerson = { name: "", phone: "", email: "", city: "", pincode: "", address: "" };
                     setField("contactPersonsDetails", [...form.contactPersonsDetails, newContact]);
                   }}
                   className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:opacity-80 transition-opacity"
@@ -481,6 +694,10 @@ export function CustomerFormModal({ open, mode, customer, prefill, onClose, onSa
                         <div>
                           <label className="text-xs text-muted-foreground mb-1 block">Name</label>
                           <input value={cp.name} onChange={e => update("name", e.target.value)} placeholder="e.g. John" className="w-full px-2.5 py-2 rounded-lg bg-secondary border border-border text-xs text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                        </div>
+                        <div>
+                          <label className="text-xs text-muted-foreground mb-1 block">Phone Number</label>
+                          <input value={cp.phone || ""} onChange={e => update("phone", e.target.value)} placeholder="e.g. 9876543210" className="w-full px-2.5 py-2 rounded-lg bg-secondary border border-border text-xs text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20" />
                         </div>
                         <div>
                           <label className="text-xs text-muted-foreground mb-1 block">Email</label>

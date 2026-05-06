@@ -10,10 +10,23 @@ export type CustomerDocument = {
 
 export type ContactPerson = {
   name: string;
+  phone: string;
   email: string;
   city: string;
   pincode: string;
   address: string;
+};
+
+export type AddressFields = {
+  attention: string;
+  country: string;
+  street1: string;
+  street2: string;
+  city: string;
+  state: string;
+  pinCode: string;
+  phone: string;
+  fax: string;
 };
 
 export type Customer = {
@@ -29,7 +42,12 @@ export type Customer = {
   paymentTerms: string;
   billingAddress: string;
   siteAddress: string;
+  billingAddressFields?: AddressFields;
+  siteAddressFields?: AddressFields;
   locationUrl?: string;
+  companyDocument?: string; // PDF filename
+  customerLanguage?: string;
+  panCardNumber?: string;
   contactPersonsDetails: ContactPerson[];
   customerDocuments: CustomerDocument[];
 };

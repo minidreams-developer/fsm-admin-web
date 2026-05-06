@@ -218,11 +218,27 @@ export const ServiceDetailPage = () => {
         {/* Header Section */}
         <div className="mb-8 pb-8 border-b border-border">
           <div className="flex items-start justify-between gap-4 mb-4">
-            <div className="flex-1">
-              <h1 className="text-3xl font-bold text-card-foreground mb-2">{service.subject || "Service Appointment"}</h1>
-              {service.serviceDescription && (
-                <p className="text-lg text-muted-foreground">{service.serviceDescription}</p>
+            <div className="flex items-center gap-5 flex-1">
+              {/* Profile Photo */}
+              {appointment?.profilePhoto ? (
+                <img
+                  src={appointment.profilePhoto}
+                  alt="Service"
+                  className="w-20 h-20 rounded-full object-cover border-2 border-border flex-shrink-0"
+                />
+              ) : (
+                <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                  <span className="text-3xl font-bold text-primary">
+                    {(service.subject || "S")[0].toUpperCase()}
+                  </span>
+                </div>
               )}
+              <div className="flex-1">
+                <h1 className="text-3xl font-bold text-card-foreground mb-2">{service.subject || "Service Appointment"}</h1>
+                {/* {service.serviceDescription && (
+                  <p className="text-lg text-muted-foreground">{service.serviceDescription}</p>
+                )} */}
+              </div>
             </div>
             <div className="flex items-center gap-3">
               {getStatusIcon()}
@@ -235,50 +251,29 @@ export const ServiceDetailPage = () => {
         </div>
 
         {/* Key Information Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-          {/* Service ID */}
-          <div className="space-y-2">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Service ID</p>
-            <p className="text-lg font-bold text-card-foreground">{service.id}</p>
-          </div>
-
-          {/* Reference No */}
-          <div className="space-y-2">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Reference No</p>
-            <p className="text-lg font-bold text-primary">{service.refNo || "—"}</p>
-          </div>
-
-          {/* Work Order */}
-          <div className="space-y-2">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Work Order</p>
-            <p className="text-lg font-bold text-primary">{service.workOrderId}</p>
-          </div>
-
-          {/* Status */}
-          <div className="space-y-2">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Current Status</p>
-            <p className="text-lg font-bold text-card-foreground">{service.status}</p>
-          </div>
-
-          {/* Warranty Period */}
-          {service.warrantyPeriod && (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mb-8">
+          {appointment?.unitPrice && (
             <div className="space-y-2">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Warranty Period</p>
-              <p className="text-lg font-bold text-card-foreground">{service.warrantyPeriod}</p>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Unit Price</p>
+              <p className="text-lg font-bold text-card-foreground">₹ {appointment.unitPrice}</p>
             </div>
           )}
-
-          {/* Sales Executive */}
-          {service.salesExecutive && (
+          {appointment?.unitType && (
             <div className="space-y-2">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Sales Executive</p>
-              <p className="text-lg font-bold text-card-foreground">{service.salesExecutive}</p>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Unit Type</p>
+              <p className="text-lg font-bold text-card-foreground">{appointment.unitType}</p>
+            </div>
+          )}
+          {appointment?.unitCount && (
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Unit Count</p>
+              <p className="text-lg font-bold text-card-foreground">{appointment.unitCount}</p>
             </div>
           )}
         </div>
 
         {/* Assignment Information */}
-        <div className="mb-8 pb-8 border-b border-border">
+        {/* <div className="mb-8 pb-8 border-b border-border">
           <h3 className="text-lg font-bold text-card-foreground mb-4">Assignment Information</h3>
           <div className="flex items-start gap-3">
             <User className="w-5 h-5 text-primary flex-shrink-0 mt-1" />
@@ -300,10 +295,10 @@ export const ServiceDetailPage = () => {
               )}
             </div>
           </div>
-        </div>
+        </div> */}
 
         {/* Timeline Information */}
-        <div className="mb-8 pb-8 border-b border-border">
+        {/* <div className="mb-8 pb-8 border-b border-border">
           <h3 className="text-lg font-bold text-card-foreground mb-4">Timeline</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="flex items-start gap-3">
@@ -342,10 +337,10 @@ export const ServiceDetailPage = () => {
               </div>
             )}
           </div>
-        </div>
+        </div> */}
 
         {/* Description Section */}
-        {service.serviceDescription && (
+        {service.serviceDescription && !isTask && (
           <div className="mb-8 pb-8 border-b border-border">
             <h3 className="text-lg font-bold text-card-foreground mb-3 flex items-center gap-2">
               <FileText className="w-5 h-5" />
@@ -358,7 +353,7 @@ export const ServiceDetailPage = () => {
         )}
 
         {/* Instructions Section */}
-        {service.instructions && (
+        {/* {service.instructions && (
           <div className={isTask ? "mb-8 pb-8 border-b border-border" : ""}>
             <h3 className="text-lg font-bold text-card-foreground mb-3 flex items-center gap-2">
               <FileText className="w-5 h-5" />
@@ -368,7 +363,7 @@ export const ServiceDetailPage = () => {
               <p className="text-sm text-card-foreground leading-relaxed whitespace-pre-wrap">{service.instructions}</p>
             </div>
           </div>
-        )}
+        )} */}
 
         {/* Show Odometer, Before/After, and Signature ONLY for tasks (from work orders) */}
         {isTask && (

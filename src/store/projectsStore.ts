@@ -36,6 +36,7 @@ export type WorkOrder = {
   executiveSignature?: ExecutiveSignature;
   customerConfirmation?: CustomerConfirmation;
   customerSignature?: string;
+  executiveSignatureImage?: string;
   start: string;
   end: string;
   status: WorkOrderStatus;

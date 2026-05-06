@@ -118,7 +118,7 @@ const CustomersPage = () => {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border">
-              {["Customer", "Phone", "Work Orders", "Total", "Active/Inactive", "Action"].map((h) => (
+              {["CUST ID", "Customer", "Phone", "Work Orders", "Total", "Active/Inactive", "Action"].map((h) => (
                 <th key={h} className="text-left px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                   {h}
                 </th>
@@ -137,6 +137,7 @@ const CustomersPage = () => {
                   onClick={() => navigate(`/customers/${c.id}`)}
                   className="border-b border-border last:border-0 cursor-pointer transition-colors hover:bg-secondary/30"
                 >
+                  <td className="px-3 py-3 font-semibold text-primary text-xs">{c.id}</td>
                   <td className="px-3 py-3 font-medium text-card-foreground text-xs">{name}</td>
                   <td className="px-3 py-3 text-muted-foreground text-xs">{c.mobile}</td>
                   <td className="px-3 py-3 text-muted-foreground text-xs">{ledger.projects}</td>
@@ -266,7 +267,14 @@ export const CustomerDetailPage = () => {
             </div>
             <div className="flex-1">
               <h1 className="text-3xl font-bold text-card-foreground">{name}</h1>
-              <p className="text-lg text-muted-foreground mt-1">{detail.customerType}</p>
+              <p className="text-lg text-muted-foreground mt-1">
+                {detail.customerType}
+                {detail.customerLanguage && (
+                  <span className="ml-2 text-sm font-medium px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                    {detail.customerLanguage}
+                  </span>
+                )}
+              </p>
               <p className="text-sm text-muted-foreground mt-2">{detail.id}</p>
             </div>
           </div>
@@ -289,6 +297,10 @@ export const CustomerDetailPage = () => {
           <div className="space-y-2">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">GST Number</p>
             <p className="text-lg font-bold text-card-foreground">{detail.gstNumber || "—"}</p>
+          </div>
+          <div className="space-y-2">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">PAN Card Number</p>
+            <p className="text-lg font-bold text-card-foreground">{detail.panCardNumber || "—"}</p>
           </div>
           <div className="space-y-2">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Place of Supply</p>
@@ -326,6 +338,19 @@ export const CustomerDetailPage = () => {
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Billing Address</p>
             <p className="text-sm font-semibold text-card-foreground">{detail.billingAddress || "—"}</p>
           </div>
+          {detail.companyDocument && (
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Company Document</p>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-secondary border border-border">
+                  <svg className="w-4 h-4 text-red-500 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 1.5L18.5 9H13V3.5zM6 20V4h5v7h7v9H6z"/>
+                  </svg>
+                  <span className="text-sm font-medium text-card-foreground truncate max-w-[200px]">{detail.companyDocument}</span>
+                </div>
+              </div>
+            </div>
+          )}
           {detail.contactPersonsDetails && detail.contactPersonsDetails.length > 0 && (
             <div className="space-y-2 md:col-span-2">
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Contact Persons</p>
@@ -333,6 +358,7 @@ export const CustomerDetailPage = () => {
                 {detail.contactPersonsDetails.map((contact, index) => (
                   <div key={index} className="text-sm font-semibold text-card-foreground">
                     <p className="font-bold">{contact.name}</p>
+                    {contact.phone && <p className="text-xs text-muted-foreground">Phone: {contact.phone}</p>}
                     {contact.email && <p className="text-xs text-muted-foreground">Email: {contact.email}</p>}
                     {contact.city && <p className="text-xs text-muted-foreground">City: {contact.city}</p>}
                     {contact.pincode && <p className="text-xs text-muted-foreground">Pincode: {contact.pincode}</p>}
@@ -347,8 +373,7 @@ export const CustomerDetailPage = () => {
       </div>
 
       {/* Tabbed Work Orders / Payment History */}
-      {getCustomerWorkOrders(workOrders, name).length > 0 && (
-        <div className="bg-card rounded-xl card-shadow border border-border">
+      <div className="bg-card rounded-xl card-shadow border border-border">
           <div className="flex border-b border-border">
             <button
               onClick={() => setActiveTab("workorders")}
@@ -368,7 +393,12 @@ export const CustomerDetailPage = () => {
           <div className="p-6">
             {activeTab === "workorders" && (
               <div className="space-y-3">
-                {getCustomerWorkOrders(workOrders, name).map((wo) => (
+                {getCustomerWorkOrders(workOrders, name).length === 0 ? (
+                  <div className="text-center py-10">
+                    <Briefcase className="w-10 h-10 text-muted-foreground/30 mx-auto mb-3" />
+                    <p className="text-sm text-muted-foreground">No work orders assigned to this customer yet.</p>
+                  </div>
+                ) : getCustomerWorkOrders(workOrders, name).map((wo) => (
                   <button
                     key={wo.id}
                     onClick={() => navigate(`/work-order/${wo.id}`)}
@@ -379,7 +409,7 @@ export const CustomerDetailPage = () => {
                         <p className="font-semibold text-card-foreground">{wo.id}</p>
                         <p className="text-sm text-muted-foreground">{wo.serviceType}</p>
                       </div>
-                      <StatusBadge label={wo.status} variant={wo.status === "Completed" ? "neutral" : wo.status === "Scheduled" ? "success" : "warning"} />
+                      <StatusBadge label={wo.status} variant={wo.status === "Completed" ? "neutral" : "warning"} />
                     </div>
                     <div className="flex items-center justify-between text-xs">
                       <span className="text-muted-foreground">{wo.address}</span>
@@ -392,41 +422,46 @@ export const CustomerDetailPage = () => {
 
             {activeTab === "payments" && (
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-border">
-                      {["Work Order", "Service", "Total", "Paid", "Balance", "Status"].map((h) => (
-                        <th key={h} className="text-left px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {getCustomerWorkOrders(workOrders, name).map((wo) => {
-                      const total = parseRupee(wo.totalValue);
-                      const paid = parseRupee(wo.paidAmount);
-                      const bal = total - paid;
-                      return (
-                        <tr key={wo.id} onClick={() => navigate("/payments", { state: { workOrderId: wo.id } })} className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors cursor-pointer">
-                          <td className="px-3 py-3 font-medium text-card-foreground text-xs">{wo.id}</td>
-                          <td className="px-3 py-3 text-muted-foreground text-xs">{wo.serviceType}</td>
-                          <td className="px-3 py-3 text-muted-foreground text-xs">{formatRupee(total)}</td>
-                          <td className="px-3 py-3 text-success text-xs font-semibold">{formatRupee(paid)}</td>
-                          <td className="px-3 py-3 text-xs font-semibold">
-                            <span className={bal <= 0 ? "text-success" : "text-destructive"}>{formatRupee(bal)}</span>
-                          </td>
-                          <td className="px-3 py-3">
-                            <StatusBadge label={wo.status} variant={wo.status === "Completed" ? "neutral" : wo.status === "Scheduled" ? "success" : "warning"} />
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                {getCustomerWorkOrders(workOrders, name).length === 0 ? (
+                  <div className="text-center py-10">
+                    <p className="text-sm text-muted-foreground">No payment history available for this customer yet.</p>
+                  </div>
+                ) : (
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-border">
+                        {["Work Order", "Service", "Total", "Paid", "Balance", "Status"].map((h) => (
+                          <th key={h} className="text-left px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {getCustomerWorkOrders(workOrders, name).map((wo) => {
+                        const total = parseRupee(wo.totalValue);
+                        const paid = parseRupee(wo.paidAmount);
+                        const bal = total - paid;
+                        return (
+                          <tr key={wo.id} onClick={() => navigate("/payments", { state: { workOrderId: wo.id } })} className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors cursor-pointer">
+                            <td className="px-3 py-3 font-medium text-card-foreground text-xs">{wo.id}</td>
+                            <td className="px-3 py-3 text-muted-foreground text-xs">{wo.serviceType}</td>
+                            <td className="px-3 py-3 text-muted-foreground text-xs">{formatRupee(total)}</td>
+                            <td className="px-3 py-3 text-success text-xs font-semibold">{formatRupee(paid)}</td>
+                            <td className="px-3 py-3 text-xs font-semibold">
+                              <span className={bal <= 0 ? "text-success" : "text-destructive"}>{formatRupee(bal)}</span>
+                            </td>
+                            <td className="px-3 py-3">
+                              <StatusBadge label={wo.status} variant={wo.status === "Completed" ? "neutral" : "warning"} />
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                )}
               </div>
             )}
           </div>
         </div>
-      )}
 
       <CustomerFormModal
         open={showEdit}

@@ -54,6 +54,9 @@ type Task = {
   assignedTo: string;
   assignedEmployees: string[];
   status: TaskStatus;
+  gst?: string;
+  igst?: string;
+  cgst?: string;
 };
 
 const CreateWorkOrderPage = () => {
@@ -73,6 +76,7 @@ const CreateWorkOrderPage = () => {
   );
   const [selectedEmployees, setSelectedEmployees] = useState<string[]>([]);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>("");
+  const [customerState, setCustomerState] = useState<string>("");
   const [extraSiteAddresses, setExtraSiteAddresses] = useState<string[]>([]);
   
   // Service Appointments Schedule state
@@ -196,6 +200,9 @@ const CreateWorkOrderPage = () => {
       setValue("address", customer.siteAddress || customer.billingAddress || "");
       setValue("siteAddress", customer.siteAddress || "", { shouldValidate: true, shouldDirty: true });
       setValue("billingAddress", customer.billingAddress || "", { shouldValidate: true, shouldDirty: true });
+      // Capture customer state for tax calculation
+      const state = customer.placeOfSupply || customer.siteAddressFields?.state || customer.billingAddressFields?.state || "";
+      setCustomerState(state);
     }
   };
 
@@ -355,6 +362,7 @@ const CreateWorkOrderPage = () => {
                   handleCustomerSelect(option.value);
                 } else {
                   setSelectedCustomerId("");
+                  setCustomerState("");
                   setValue("customer", "");
                   setValue("phone", "");
                   setValue("email", "");
@@ -977,6 +985,53 @@ const CreateWorkOrderPage = () => {
                   />
                 </div>
               </div>
+              {customerState ? (
+                <div className="rounded-lg bg-secondary/40 border border-border px-4 py-3 space-y-3">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    Tax — {customerState}
+                  </p>
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground mb-2 block">GST (%)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={editingTask.gst || ""}
+                      onChange={(e) => setEditingTask({ ...editingTask, gst: e.target.value })}
+                      placeholder="e.g. 18"
+                      className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
+                    />
+                  </div>
+                  {customerState === "Tamil Nadu" ? (
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground mb-2 block">CGST (%)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={editingTask.cgst || ""}
+                        onChange={(e) => setEditingTask({ ...editingTask, cgst: e.target.value })}
+                        placeholder="e.g. 9"
+                        className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
+                      />
+                    </div>
+                  ) : (
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground mb-2 block">IGST (%)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={editingTask.igst || ""}
+                        onChange={(e) => setEditingTask({ ...editingTask, igst: e.target.value })}
+                        placeholder="e.g. 18"
+                        className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
+                      />
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="rounded-lg bg-secondary/40 border border-dashed border-border px-4 py-3">
+                  <p className="text-xs text-muted-foreground">Select a customer to auto-detect state and show applicable tax fields.</p>
+                </div>
+              )}
               <div>
                 <label className="text-xs font-medium text-muted-foreground mb-2 block">Status</label>
                 <select value={editingTask.status} onChange={(e) => setEditingTask({ ...editingTask, status: e.target.value as TaskStatus })} className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground">

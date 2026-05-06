@@ -24,6 +24,8 @@ export function ServiceFormModal({ open, onClose, onSaved, appointment, mode = "
     refNo: "",
     warrantyPeriod: "",
     unitPrice: "",
+    unitType: "",
+    unitCount: "",
     state: "",
     gst: "",
     igst: "",
@@ -49,6 +51,8 @@ export function ServiceFormModal({ open, onClose, onSaved, appointment, mode = "
       refNo: "",
       warrantyPeriod: "",
       unitPrice: "",
+      unitType: "",
+      unitCount: "",
       state: "",
       gst: "",
       igst: "",
@@ -75,19 +79,7 @@ export function ServiceFormModal({ open, onClose, onSaved, appointment, mode = "
 
   const save = () => {
     if (!form.subject?.trim()) {
-      toast.error("Subject is required");
-      return;
-    }
-    if (!form.employeeName?.trim()) {
-      toast.error("Employee name is required");
-      return;
-    }
-    // if (!form.date) {
-    //   toast.error("Date is required");
-    //   return;
-    // }
-    if (!form.time) {
-      toast.error("Time is required");
+      toast.error("Service Name is required");
       return;
     }
 
@@ -110,6 +102,8 @@ export function ServiceFormModal({ open, onClose, onSaved, appointment, mode = "
       refNo: form.refNo || "",
       warrantyPeriod: form.warrantyPeriod || "",
       unitPrice: form.unitPrice || "",
+      unitType: form.unitType || "",
+      unitCount: form.unitCount || "",
       state: form.state || "",
       gst: form.gst || "",
       igst: form.igst || "",
@@ -266,6 +260,42 @@ export function ServiceFormModal({ open, onClose, onSaved, appointment, mode = "
             </div>
 
             <div>
+              <label className="text-xs font-medium text-muted-foreground mb-2 block">Unit Type</label>
+              <select
+                value={form.unitType || ""}
+                onChange={(e) => setField("unitType", e.target.value)}
+                className="w-full px-3 py-2 rounded-lg bg-secondary text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 border border-border"
+              >
+                <option value="">Select Unit Type</option>
+                <option value="BOX">BOX - box</option>
+                <option value="CMS">CMS - cm</option>
+                <option value="DOZ">DOZ - dz</option>
+                <option value="FTS">FTS - ft</option>
+                <option value="GMS">GMS - g</option>
+                <option value="INC">INC - in</option>
+                <option value="KGS">KGS - kg</option>
+                <option value="KME">KME - km</option>
+                <option value="LBS">LBS - lb</option>
+                <option value="MGS">MGS - mg</option>
+                <option value="MLT">MLT - ml</option>
+                <option value="MTR">MTR - m</option>
+                <option value="PCS">PCS - pcs</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-2 block">Unit Count</label>
+              <input
+                type="number"
+                value={form.unitCount || ""}
+                onChange={(e) => setField("unitCount", e.target.value)}
+                placeholder="e.g. 5"
+                min="0"
+                className="w-full px-3 py-2 rounded-lg bg-secondary text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 border border-border"
+              />
+            </div>
+
+            {/* <div>
               <label className="text-xs font-medium text-muted-foreground mb-2 block">State</label>
               <select
                 value={form.state || ""}
@@ -282,9 +312,9 @@ export function ServiceFormModal({ open, onClose, onSaved, appointment, mode = "
                 <option value="Delhi">Delhi</option>
                 <option value="Other">Other</option>
               </select>
-            </div>
+            </div> */}
 
-            <div>
+            {/* <div>
               <label className="text-xs font-medium text-muted-foreground mb-2 block">GST (%)</label>
               <input
                 type="number"
@@ -293,11 +323,11 @@ export function ServiceFormModal({ open, onClose, onSaved, appointment, mode = "
                 placeholder="e.g. 18"
                 className="w-full px-3 py-2 rounded-lg bg-secondary text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 border border-border"
               />
-            </div>
+            </div> */}
 
             {form.state !== "Tamil Nadu" && (
               <>
-                <div>
+                {/* <div>
                   <label className="text-xs font-medium text-muted-foreground mb-2 block">IGST (%)</label>
                   <input
                     type="number"
@@ -306,8 +336,8 @@ export function ServiceFormModal({ open, onClose, onSaved, appointment, mode = "
                     placeholder="e.g. 18"
                     className="w-full px-3 py-2 rounded-lg bg-secondary text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 border border-border"
                   />
-                </div>
-                <div>
+                </div> */}
+                {/* <div>
                   <label className="text-xs font-medium text-muted-foreground mb-2 block">CGST (%)</label>
                   <input
                     type="number"
@@ -316,7 +346,7 @@ export function ServiceFormModal({ open, onClose, onSaved, appointment, mode = "
                     placeholder="e.g. 9"
                     className="w-full px-3 py-2 rounded-lg bg-secondary text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 border border-border"
                   />
-                </div>
+                </div> */}
               </>
             )}
            
