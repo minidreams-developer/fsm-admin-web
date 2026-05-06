@@ -101,7 +101,7 @@ const BranchesPage = () => {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border">
-              {["Branch ID", "Name", "Type", "Location", "Manager", "Active/Inactive", "Actions"].map((h) => (
+              {["#", "Branch ID", "Name", "Type", "Location", "Manager", "Active/Inactive", "Actions"].map((h) => (
                 <th key={h} className="text-left px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                   {h}
                 </th>
@@ -110,8 +110,9 @@ const BranchesPage = () => {
           </thead>
           <tbody>
             {filtered.length > 0 ? (
-              filtered.map((branch) => (
+              filtered.map((branch, index) => (
                 <tr key={branch.id} onClick={() => { setDetailsBranch(branch); setShowDetails(true); }} className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors cursor-pointer">
+                  <td className="px-3 py-3 text-xs text-muted-foreground font-medium">{index + 1}</td>
                   <td className="px-3 py-3 font-medium text-card-foreground text-xs">{branch.id}</td>
                   <td className="px-3 py-3">
                     <div className="flex items-center gap-2">
@@ -153,7 +154,7 @@ const BranchesPage = () => {
               ))
             ) : (
               <tr>
-                <td colSpan={7} className="px-3 py-8 text-center text-muted-foreground">
+                <td colSpan={8} className="px-3 py-8 text-center text-muted-foreground">
                   No branches found
                 </td>
               </tr>

@@ -135,7 +135,7 @@ const ProductsPage = () => {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border">
-              {["Product ID", "Name", "Category", "Unit", "Price", "Active/Inactive", "Actions"].map((h) => (
+              {["#", "Product ID", "Name", "Category", "Unit", "Price", "Active/Inactive", "Actions"].map((h) => (
                 <th key={h} className="text-left px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                   {h}
                 </th>
@@ -144,8 +144,9 @@ const ProductsPage = () => {
           </thead>
           <tbody>
             {filtered.length > 0 ? (
-              filtered.map((product) => (
+              filtered.map((product, index) => (
                 <tr key={product.id} onClick={() => { setDetailsProduct(product); setShowDetails(true); }} className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors cursor-pointer">
+                  <td className="px-3 py-3 text-xs text-muted-foreground font-medium">{index + 1}</td>
                   <td className="px-3 py-3 font-medium text-card-foreground text-xs">{product.id}</td>
                   <td className="px-3 py-3">
                     <div className="flex items-center gap-2">
@@ -187,7 +188,7 @@ const ProductsPage = () => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={7} className="px-5 py-8 text-center text-muted-foreground">
+                  <td colSpan={8} className="px-5 py-8 text-center text-muted-foreground">
                     No products found
                   </td>
                 </tr>

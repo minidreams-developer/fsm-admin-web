@@ -468,6 +468,21 @@ export const WorkOrderDetailsPage = () => {
             <p className="text-sm text-card-foreground">{workOrder.period}</p>
           </div>
         )}
+
+        {/* Terms & Conditions */}
+        {workOrder.termsAndConditions && (
+          <div className="mt-8 pt-8 border-t border-border">
+            <h3 className="text-lg font-bold text-card-foreground mb-3">Terms & Conditions</h3>
+            <div className="space-y-2">
+              {workOrder.termsAndConditions.split("\n").filter(Boolean).map((term, idx) => (
+                <div key={idx} className="flex gap-3">
+                  <span className="text-sm font-medium text-muted-foreground flex-shrink-0">{idx + 1}.</span>
+                  <p className="text-sm text-muted-foreground">{term}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Services Section */}

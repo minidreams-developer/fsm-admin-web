@@ -293,6 +293,19 @@ const CreateWorkOrderPage = () => {
         data.siteAddress || data.address,
         ...extraSiteAddresses.filter(addr => addr.trim())
       ].filter(Boolean).join(" | ");
+
+      // Compute grand total from services table (subtotal + all taxes)
+      const subtotal = tasks.reduce((sum, t) => sum + (t.amount || 0), 0);
+      const totalTax = tasks.reduce((sum, t) => {
+        const gst = (t.amount || 0) * (parseFloat(t.gst || "0") / 100);
+        const cgst = (t.amount || 0) * (parseFloat(t.cgst || "0") / 100);
+        const igst = (t.amount || 0) * (parseFloat(t.igst || "0") / 100);
+        return sum + gst + cgst + igst;
+      }, 0);
+      const grandTotal = Math.round(subtotal + totalTax);
+      const computedTotalValue = grandTotal > 0
+        ? `₹ ${grandTotal.toLocaleString()}`
+        : data.totalValue ? `₹ ${parseInt(data.totalValue).toLocaleString()}` : "₹ 0";
       
       addWorkOrder({
         id: workOrderId,
@@ -306,7 +319,7 @@ const CreateWorkOrderPage = () => {
         serviceType: data.serviceType || "",
         serviceTypes: selectedServices,
         frequency: data.frequency || "",
-        totalValue: data.totalValue ? `₹ ${parseInt(data.totalValue).toLocaleString()}` : "₹ 0",
+        totalValue: computedTotalValue,
         paidAmount: data.paidAmount ? `₹ ${parseInt(data.paidAmount).toLocaleString()}` : "₹ 0",
         start: data.start,
         end: data.end || data.start,
@@ -317,6 +330,7 @@ const CreateWorkOrderPage = () => {
         siteAddress: allSiteAddresses,
         billingAddress: data.billingAddress || data.address,
         nextService: "Unassigned",
+        termsAndConditions: termsList.filter(t => t.trim()).join("\n"),
       });
       tasks.forEach((t, i) => {
         addTask({
