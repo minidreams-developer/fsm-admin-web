@@ -90,6 +90,14 @@ const CreateWorkOrderPage = () => {
   };
   const [serviceSchedules, setServiceSchedules] = useState<ServiceSchedule[]>([]);
   const [termsAccepted, setTermsAccepted] = useState(false);
+  const [isEditingTerms, setIsEditingTerms] = useState(false);
+  const [termsList, setTermsList] = useState([
+    "Services will be performed as per the scheduled appointments",
+    "Customer must provide access to all areas requiring treatment",
+    "Payment is due within 30 days of invoice date",
+    "24-hour advance notice required for rescheduling",
+    "Service warranty valid for 30 days after each treatment",
+  ]);
 
   // Get services from both Products (Services category) and Service Appointments
   const productServices = products.filter((p) => p.category === "Services" && p.status === "Active");
@@ -894,33 +902,55 @@ const CreateWorkOrderPage = () => {
 
       {/* Terms & Conditions */}
       <div className="bg-card rounded-xl card-shadow border border-border overflow-hidden">
-        <div className="px-6 py-4 border-b border-border">
+        <div className="px-6 py-4 border-b border-border flex items-center justify-between">
           <h2 className="text-base font-bold text-card-foreground">Terms & Conditions</h2>
+          <button
+            type="button"
+            onClick={() => setIsEditingTerms(e => !e)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-card hover:bg-secondary transition-colors text-xs font-semibold text-card-foreground"
+          >
+            <Edit2 className="w-3.5 h-3.5" />
+            {isEditingTerms ? "Done" : "Edit"}
+          </button>
         </div>
         <div className="px-6 py-5 space-y-3">
           <div className="space-y-2.5">
-            <div className="flex gap-3">
-              <span className="text-sm font-medium text-muted-foreground flex-shrink-0">1.</span>
-              <p className="text-sm text-muted-foreground">Services will be performed as per the scheduled appointments</p>
-            </div>
-            <div className="flex gap-3">
-              <span className="text-sm font-medium text-muted-foreground flex-shrink-0">2.</span>
-              <p className="text-sm text-muted-foreground">Customer must provide access to all areas requiring treatment</p>
-            </div>
-            <div className="flex gap-3">
-              <span className="text-sm font-medium text-muted-foreground flex-shrink-0">3.</span>
-              <p className="text-sm text-muted-foreground">Payment is due within 30 days of invoice date</p>
-            </div>
-            <div className="flex gap-3">
-              <span className="text-sm font-medium text-muted-foreground flex-shrink-0">4.</span>
-              <p className="text-sm text-muted-foreground">24-hour advance notice required for rescheduling</p>
-            </div>
-            <div className="flex gap-3">
-              <span className="text-sm font-medium text-muted-foreground flex-shrink-0">5.</span>
-              <p className="text-sm text-muted-foreground">Service warranty valid for 30 days after each treatment</p>
-            </div>
+            {termsList.map((term, idx) => (
+              <div key={idx} className="flex items-start gap-3">
+                <span className="text-sm font-medium text-muted-foreground flex-shrink-0 mt-0.5">{idx + 1}.</span>
+                {isEditingTerms ? (
+                  <div className="flex-1 flex items-center gap-2">
+                    <input
+                      value={term}
+                      onChange={(e) => setTermsList(prev => prev.map((t, i) => i === idx ? e.target.value : t))}
+                      className="flex-1 px-3 py-1.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setTermsList(prev => prev.filter((_, i) => i !== idx))}
+                      className="p-1 hover:bg-destructive/10 rounded transition-colors flex-shrink-0"
+                      title="Remove"
+                    >
+                      <X className="w-4 h-4 text-destructive" />
+                    </button>
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">{term}</p>
+                )}
+              </div>
+            ))}
+            {isEditingTerms && (
+              <button
+                type="button"
+                onClick={() => setTermsList(prev => [...prev, ""])}
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:opacity-80 transition-opacity mt-1"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Add Term
+              </button>
+            )}
           </div>
-          
+
           <div className="pt-4 border-t border-border">
             <label className="flex items-center gap-3 cursor-pointer group">
               <input

@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Package, UserCheck, Search, ArrowRight, CheckCircle } from "lucide-react";
+import { Package, UserCheck, Search, ArrowRight, CheckCircle, History } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { useInventoryStore } from "@/store/inventoryStore";
 import { useEmployeesStore } from "@/store/employeesStore";
 import { useBranchesStore } from "@/store/branchesStore";
@@ -7,6 +8,7 @@ import { toast } from "sonner";
 import { StatusBadge } from "@/components/StatusBadge";
 
 const StockAllocationPage = () => {
+  const navigate = useNavigate();
   const { inventory, updateItem } = useInventoryStore();
   const { employees } = useEmployeesStore();
   const { branches } = useBranchesStore();
@@ -98,6 +100,13 @@ const StockAllocationPage = () => {
           <h2 className="text-lg sm:text-xl font-bold text-card-foreground">Stock Allocation</h2>
           <p className="text-sm text-muted-foreground">Allocate inventory items to field employees</p>
         </div>
+        <button
+          onClick={() => navigate("/inventory/history?type=allocate")}
+          className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 border border-border text-card-foreground bg-card transition-all"
+        >
+          <History className="w-4 h-4" />
+          History
+        </button>
       </div>
 
       {/* Branch Selection Card */}

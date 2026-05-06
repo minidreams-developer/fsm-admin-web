@@ -7,23 +7,24 @@ import { useEmployeesStore } from "@/store/employeesStore";
 import { StatusBadge } from "@/components/StatusBadge";
 
 const PAGE_SIZE = 10;
-const STATUSES = ["Pending",  "Completed", "Overdue"] as const;
-const MANUAL_STATUSES = ["Pending",  "Completed","Overdue"] as const; // Statuses that can be manually set
+const STATUSES = ["Pending", "In Progress", "Completed", "Overdue", "Verified"] as const;
+const MANUAL_STATUSES = ["Pending", "In Progress", "Completed", "Overdue", "Verified"] as const;
 
 type TaskStatus = typeof STATUSES[number];
 
-const statusVariant: Record<TaskStatus, "warning" | "info" | "success" | "error"> = {
+const statusVariant: Record<TaskStatus, "warning" | "info" | "success" | "error" | "neutral"> = {
   "Pending": "warning",
-  
+  "In Progress": "info",
   "Completed": "success",
   "Overdue": "error",
+  "Verified": "neutral",
 };
 
 // Helper function to determine if a task is overdue
 const getTaskStatus = (task: Task): TaskStatus => {
-  // If task is already completed, return completed
-  if (task.status === "Completed") {
-    return "Completed";
+  // If task is already completed or verified, return as-is
+  if (task.status === "Completed" || task.status === "Verified") {
+    return task.status;
   }
   
   // Check if task is overdue based on end date
@@ -38,8 +39,8 @@ const getTaskStatus = (task: Task): TaskStatus => {
     }
   }
   
-  // Return the task's current status
-  return task.status;
+  // Return the task's current status (Pending, In Progress, etc.)
+  return task.status as TaskStatus;
 };
 
 function EmployeeMultiSelect({ options, selected, onChange }: { options: string[]; selected: string[]; onChange: (v: string[]) => void }) {

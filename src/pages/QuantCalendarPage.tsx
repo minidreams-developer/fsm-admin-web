@@ -566,6 +566,7 @@ const getWorkOrderStatus = (wo: any): string => {
   // Check if work order has explicit status
   if (wo.status === "Completed") return "Completed";
   if (wo.status === "Cancelled") return "Cancelled";
+  if (wo.status === "Overdue") return "Overdue";
   
   // Determine status based on work order date
   if (wo.workOrderDateTime) {
@@ -575,8 +576,8 @@ const getWorkOrderStatus = (wo: any): string => {
     woDate.setHours(0, 0, 0, 0);
     
     if (woDate < today) {
-      // Past date - check if it's completed or missed
-      return wo.status === "Completed" ? "Completed" : "Missed";
+      // Past date - check if it's completed or overdue/missed
+      return wo.status === "Completed" ? "Completed" : "Overdue";
     } else if (woDate.getTime() === today.getTime()) {
       // Today - ongoing
       return "Ongoing";
@@ -1275,6 +1276,7 @@ const QuantCalendarPage = () => {
               <SelectItem value="all">All Status</SelectItem>
               <SelectItem value="Ongoing">Ongoing</SelectItem>
               <SelectItem value="Upcoming">Upcoming</SelectItem>
+              <SelectItem value="Overdue">Overdue</SelectItem>
               <SelectItem value="Missed">Missed</SelectItem>
               <SelectItem value="Cancelled">Cancelled</SelectItem>
               <SelectItem value="Completed">Completed</SelectItem>

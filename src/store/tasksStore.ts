@@ -10,7 +10,7 @@ export type Task = {
   endDate: string;
   assignedTo: string;
   assignedEmployees: string[];
-  status: "Pending" | "In Progress" | "Completed" | "Overdue";
+  status: "Pending" | "In Progress" | "Completed" | "Overdue" | "Verified";
 };
 
 interface TasksStore {
