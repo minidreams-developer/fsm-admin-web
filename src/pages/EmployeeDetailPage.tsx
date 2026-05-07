@@ -275,7 +275,80 @@ export const EmployeeDetailPage = () => {
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Performance</p>
             <p className="text-lg font-bold text-success">{employee.performance}</p>
           </div>
+          {employee.aadharNumber && (
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Aadhar Number</p>
+              <p className="text-lg font-bold text-card-foreground">{employee.aadharNumber}</p>
+            </div>
+          )}
         </div>
+
+        {/* Aadhar Documents */}
+        {(employee.aadharDocuments?.length || employee.aadharDocument) && (
+          <div className="mt-8 pt-8 border-t border-border">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Aadhar Documents</p>
+            <div className="space-y-2">
+              {/* Legacy single doc */}
+              {employee.aadharDocument && !employee.aadharDocuments?.length && (
+                <div className="flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg bg-secondary border border-border">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <svg className="w-4 h-4 text-red-500 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 1.5L18.5 9H13V3.5zM6 20V4h5v7h7v9H6z"/></svg>
+                    <span className="text-sm font-medium text-card-foreground">aadhar_document.pdf</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <button type="button" onClick={() => {
+                      const [header, base64] = employee.aadharDocument!.split(",");
+                      const mime = header.match(/:(.*?);/)?.[1] || "application/pdf";
+                      const bytes = new Uint8Array(atob(base64).split("").map(c => c.charCodeAt(0)));
+                      const blob = new Blob([bytes], { type: mime });
+                      const url = URL.createObjectURL(blob);
+                      window.open(url, "_blank");
+                      setTimeout(() => URL.revokeObjectURL(url), 10000);
+                    }} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-primary/10 text-primary text-xs font-semibold hover:bg-primary/20 transition-colors">View</button>
+                    <button type="button" onClick={() => {
+                      const [header, base64] = employee.aadharDocument!.split(",");
+                      const mime = header.match(/:(.*?);/)?.[1] || "application/pdf";
+                      const bytes = new Uint8Array(atob(base64).split("").map(c => c.charCodeAt(0)));
+                      const blob = new Blob([bytes], { type: mime });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement("a"); a.href = url; a.download = "aadhar_document.pdf"; a.click();
+                      setTimeout(() => URL.revokeObjectURL(url), 5000);
+                    }} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-success/10 text-success text-xs font-semibold hover:bg-success/20 transition-colors">Download</button>
+                  </div>
+                </div>
+              )}
+              {/* Multiple docs */}
+              {employee.aadharDocuments?.map((doc, idx) => (
+                <div key={idx} className="flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg bg-secondary border border-border">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <svg className="w-4 h-4 text-red-500 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 1.5L18.5 9H13V3.5zM6 20V4h5v7h7v9H6z"/></svg>
+                    <span className="text-sm font-medium text-card-foreground truncate max-w-[200px]">{doc.name}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    <button type="button" onClick={() => {
+                      const [header, base64] = doc.dataUrl.split(",");
+                      const mime = header.match(/:(.*?);/)?.[1] || "application/pdf";
+                      const bytes = new Uint8Array(atob(base64).split("").map(c => c.charCodeAt(0)));
+                      const blob = new Blob([bytes], { type: mime });
+                      const url = URL.createObjectURL(blob);
+                      window.open(url, "_blank");
+                      setTimeout(() => URL.revokeObjectURL(url), 10000);
+                    }} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-primary/10 text-primary text-xs font-semibold hover:bg-primary/20 transition-colors">View</button>
+                    <button type="button" onClick={() => {
+                      const [header, base64] = doc.dataUrl.split(",");
+                      const mime = header.match(/:(.*?);/)?.[1] || "application/pdf";
+                      const bytes = new Uint8Array(atob(base64).split("").map(c => c.charCodeAt(0)));
+                      const blob = new Blob([bytes], { type: mime });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement("a"); a.href = url; a.download = doc.name; a.click();
+                      setTimeout(() => URL.revokeObjectURL(url), 5000);
+                    }} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-success/10 text-success text-xs font-semibold hover:bg-success/20 transition-colors">Download</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Insights */}
         {employee.idleHours > 1.5 && (

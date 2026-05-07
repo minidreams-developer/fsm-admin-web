@@ -20,7 +20,8 @@ export type Employee = {
   avgServiceTime: number;
   profilePhoto?: string;
   aadharNumber?: string;
-  aadharDocument?: string;
+  aadharDocument?: string; // legacy single base64
+  aadharDocuments?: { name: string; dataUrl: string }[]; // multiple PDFs
   isActive?: boolean;
   captain?: string; // Captain/Team Lead name
   inventoryItems?: Array<{

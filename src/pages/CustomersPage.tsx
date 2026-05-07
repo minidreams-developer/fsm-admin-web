@@ -1,4 +1,4 @@
-import { Search, Eye, Plus, Edit2, Trash2, ArrowLeft, Users, Briefcase } from "lucide-react";
+import { Search, Eye, Plus, Edit2, Trash2, ArrowLeft, Users, Briefcase, FileText } from "lucide-react";
 import { useState } from "react";
 import { StatusBadge } from "@/components/StatusBadge";
 import { CustomerFormModal } from "@/components/CustomerFormModal";
@@ -241,6 +241,27 @@ export const CustomerDetailPage = () => {
         <div className="flex items-center gap-2">
           <button
             type="button"
+            onClick={() => navigate("/create-work-order", {
+              state: {
+                prefillCustomer: {
+                  id: detail.id,
+                  name,
+                  phone: detail.mobile || detail.landline || "",
+                  email: detail.emailAddress || "",
+                  address: detail.siteAddress || detail.billingAddress || "",
+                  siteAddress: detail.siteAddress || "",
+                  billingAddress: detail.billingAddress || "",
+                }
+              }
+            })}
+            className="h-10 px-4 inline-flex items-center gap-2 rounded-lg text-white text-sm font-semibold hover:opacity-90 transition-all shadow-[0px_5px_12px_rgba(39,47,158,0.2)]"
+            style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}
+          >
+            <FileText className="w-4 h-4" />
+            Convert to Quotation
+          </button>
+          <button
+            type="button"
             onClick={() => setShowEdit(true)}
             className="h-10 px-4 inline-flex items-center gap-2 rounded-lg border border-border bg-card hover:bg-secondary transition-colors text-sm font-semibold text-card-foreground"
           >
@@ -331,23 +352,99 @@ export const CustomerDetailPage = () => {
         {/* Addresses */}
         <div className="mt-8 pt-8 border-t border-border grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-2">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Site Address</p>
-            <p className="text-sm font-semibold text-card-foreground">{detail.siteAddress || "—"}</p>
-          </div>
-          <div className="space-y-2">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Billing Address</p>
             <p className="text-sm font-semibold text-card-foreground">{detail.billingAddress || "—"}</p>
           </div>
-          {detail.companyDocument && (
+          {/* Primary site address */}
+          <div className="space-y-2">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Site Address 1</p>
+            <p className="text-sm font-semibold text-card-foreground">
+              {detail.siteAddressFields ? [
+                detail.siteAddressFields.street1,
+                detail.siteAddressFields.street2,
+                detail.siteAddressFields.city,
+                detail.siteAddressFields.state,
+                detail.siteAddressFields.pinCode,
+              ].filter(Boolean).join(", ") || detail.siteAddress || "—" : detail.siteAddress || "—"}
+            </p>
+          </div>
+          {/* Additional site addresses */}
+          {detail.additionalSiteAddressFields?.map((addr, idx) => (
+            <div key={idx} className="space-y-2">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Site Address {idx + 2}</p>
+              <p className="text-sm font-semibold text-card-foreground">
+                {[addr.street1, addr.street2, addr.city, addr.state, addr.pinCode].filter(Boolean).join(", ") || "—"}
+              </p>
+            </div>
+          ))}
+          {(detail.companyDocumentFiles?.length || detail.companyDocuments?.length || detail.companyDocument) && (
             <div className="space-y-2">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Company Document</p>
-              <div className="flex items-center gap-2">
-                <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-secondary border border-border">
-                  <svg className="w-4 h-4 text-red-500 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 1.5L18.5 9H13V3.5zM6 20V4h5v7h7v9H6z"/>
-                  </svg>
-                  <span className="text-sm font-medium text-card-foreground truncate max-w-[200px]">{detail.companyDocument}</span>
-                </div>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Company Documents</p>
+              <div className="space-y-2">
+                {(detail.companyDocumentFiles?.length
+                  ? detail.companyDocumentFiles
+                  : detail.companyDocuments?.length
+                  ? detail.companyDocuments.map(name => ({ name, dataUrl: undefined }))
+                  : detail.companyDocument
+                  ? [{ name: detail.companyDocument, dataUrl: undefined }]
+                  : []
+                ).map((doc, idx) => (
+                  <div key={idx} className="flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg bg-secondary border border-border">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <svg className="w-4 h-4 text-red-500 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 1.5L18.5 9H13V3.5zM6 20V4h5v7h7v9H6z"/>
+                      </svg>
+                      <span className="text-sm font-medium text-card-foreground truncate max-w-[200px]">{doc.name}</span>
+                    </div>
+                    {doc.dataUrl && (
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            // Convert base64 data URL to Blob URL for reliable browser viewing
+                            const [header, base64] = doc.dataUrl!.split(",");
+                            const mime = header.match(/:(.*?);/)?.[1] || "application/pdf";
+                            const binary = atob(base64);
+                            const bytes = new Uint8Array(binary.length);
+                            for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+                            const blob = new Blob([bytes], { type: mime });
+                            const blobUrl = URL.createObjectURL(blob);
+                            window.open(blobUrl, "_blank");
+                            // Revoke after a short delay to allow the tab to load
+                            setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
+                          }}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-primary/10 text-primary text-xs font-semibold hover:bg-primary/20 transition-colors"
+                          title="View document"
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                          View
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const [header, base64] = doc.dataUrl!.split(",");
+                            const mime = header.match(/:(.*?);/)?.[1] || "application/pdf";
+                            const binary = atob(base64);
+                            const bytes = new Uint8Array(binary.length);
+                            for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+                            const blob = new Blob([bytes], { type: mime });
+                            const blobUrl = URL.createObjectURL(blob);
+                            const a = document.createElement("a");
+                            a.href = blobUrl;
+                            a.download = doc.name;
+                            a.click();
+                            setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
+                          }}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-success/10 text-success text-xs font-semibold hover:bg-success/20 transition-colors"
+                          title="Download document"
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                          Download
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
             </div>
           )}
@@ -360,9 +457,7 @@ export const CustomerDetailPage = () => {
                     <p className="font-bold">{contact.name}</p>
                     {contact.phone && <p className="text-xs text-muted-foreground">Phone: {contact.phone}</p>}
                     {contact.email && <p className="text-xs text-muted-foreground">Email: {contact.email}</p>}
-                    {contact.city && <p className="text-xs text-muted-foreground">City: {contact.city}</p>}
-                    {contact.pincode && <p className="text-xs text-muted-foreground">Pincode: {contact.pincode}</p>}
-                    {contact.address && <p className="text-xs text-muted-foreground">Address: {contact.address}</p>}
+                    {(contact as any).designation && <p className="text-xs text-muted-foreground">Designation: {(contact as any).designation}</p>}
                   </div>
                 ))}
               </div>
