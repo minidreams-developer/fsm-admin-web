@@ -1,13 +1,14 @@
 import { useState } from "react";
 import { createPortal } from "react-dom";
 import { StatusBadge } from "@/components/StatusBadge";
-import { Plus, Search, Eye, EyeOff, X, Clock, CheckCircle2, Edit2, Users, TrendingUp, CheckCircle, XCircle, Bell } from "lucide-react";
+import { Plus, Search, Eye, EyeOff, X, Clock, CheckCircle2, Edit2, Users, TrendingUp, CheckCircle, XCircle, Bell, ArrowRightLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useLeadsStore, type LeadStatus, type Lead, type UrgencyLevel } from "@/store/leadsStore";
 import { LeadDetailsModal } from "@/components/LeadDetailsModal";
 import { ConvertLeadModal } from "@/components/ConvertLeadModal";
 import { useBranchesStore } from "@/store/branchesStore";
+import { useEmployeesStore } from "@/store/employeesStore";
 
 const statusBadge: Record<LeadStatus, "info" | "warning" | "success" | "error" | "neutral"> = {
   New: "info", Contacted: "warning", "Follow Up": "info", Converted: "success", Lost: "error",
@@ -27,6 +28,8 @@ const LeadsPage = () => {
   const navigate = useNavigate();
   const { leads, updateLead, addLead } = useLeadsStore();
   const { branches: branchList } = useBranchesStore();
+  const { employees } = useEmployeesStore();
+  const salesExecutives = employees.filter(e => e.role === "Sales Executive" && e.isActive !== false);
   const [filter, setFilter] = useState<LeadStatus | "All">("All");
   const [branchFilter, setBranchFilter] = useState("All");
   const [showForm, setShowForm] = useState(false);
@@ -45,6 +48,11 @@ const LeadsPage = () => {
   const [reminderDate, setReminderDate] = useState("");
   const [reminderTime, setReminderTime] = useState("");
   const [reminderText, setReminderText] = useState("");
+
+  // Bulk transfer state
+  const [selectedLeadIds, setSelectedLeadIds] = useState<Set<number>>(new Set());
+  const [showBulkTransfer, setShowBulkTransfer] = useState(false);
+  const [transferTo, setTransferTo] = useState("");
   
   // Form state for new lead
   const [formData, setFormData] = useState({
@@ -188,6 +196,35 @@ const LeadsPage = () => {
     });
     setShowMoreFields(false);
     setShowForm(false);
+  };
+
+  const handleBulkTransfer = () => {
+    if (!transferTo.trim()) {
+      toast.error("Please select a sales executive to transfer to");
+      return;
+    }
+    selectedLeadIds.forEach(id => updateLead(id, { assignedOwner: transferTo }));
+    toast.success(`${selectedLeadIds.size} enquir${selectedLeadIds.size === 1 ? "y" : "ies"} transferred to ${transferTo}`);
+    setSelectedLeadIds(new Set());
+    setShowBulkTransfer(false);
+    setTransferTo("");
+  };
+
+  const toggleSelectLead = (id: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedLeadIds(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedLeadIds.size === filtered.length) {
+      setSelectedLeadIds(new Set());
+    } else {
+      setSelectedLeadIds(new Set(filtered.map(l => l.id)));
+    }
   };
 
   return (
@@ -449,10 +486,40 @@ const LeadsPage = () => {
       </div>
 
       <div className="bg-card rounded-xl card-shadow overflow-hidden">
+        {/* Bulk transfer bar */}
+        {selectedLeadIds.size > 0 && (
+          <div className="flex items-center justify-between gap-3 px-4 py-3 bg-primary/5 border-b border-primary/20">
+            <span className="text-sm font-semibold text-primary">{selectedLeadIds.size} enquir{selectedLeadIds.size === 1 ? "y" : "ies"} selected</span>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowBulkTransfer(true)}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-white text-sm font-semibold hover:opacity-90 transition-all shadow-[0px_5px_12px_rgba(39,47,158,0.2)]"
+                style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}
+              >
+                <ArrowRightLeft className="w-4 h-4" />
+                Bulk Transfer
+              </button>
+              <button
+                onClick={() => setSelectedLeadIds(new Set())}
+                className="px-3 py-2 rounded-lg border border-border text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Clear
+              </button>
+            </div>
+          </div>
+        )}
         <div className="w-full">
           <table className="w-full text-sm">
             <thead><tr className="border-b border-border">
-              {["Enquiry ID", "Customer Name", "Services", "Urgency", "Enquiry Incharge", "Next Follow-Up-date", "Status", "Actions"].map((h) => (
+              <th className="px-3 py-2.5 w-10">
+                <input
+                  type="checkbox"
+                  checked={filtered.length > 0 && selectedLeadIds.size === filtered.length}
+                  onChange={toggleSelectAll}
+                  className="w-4 h-4 rounded border-border accent-primary cursor-pointer"
+                />
+              </th>
+              {["Enquiry ID", "Customer Name", "Services", "Urgency", "sales executive", "Next Follow-Up-date", "Status", "Actions"].map((h) => (
                 <th key={h} className="text-left px-3 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">{h}</th>
               ))}
             </tr></thead>
@@ -461,16 +528,24 @@ const LeadsPage = () => {
                 const serviceCount = getServiceCount(l);
                 return (
                   <tr key={l.id} onClick={() => navigate(`/leads/${l.id}`)} className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors cursor-pointer">
+                    <td className="px-3 py-2.5" onClick={e => toggleSelectLead(l.id, e)}>
+                      <input
+                        type="checkbox"
+                        checked={selectedLeadIds.has(l.id)}
+                        onChange={() => {}}
+                        className="w-4 h-4 rounded border-border accent-primary cursor-pointer"
+                      />
+                    </td>
                     <td className="px-3 py-2.5 font-semibold text-primary text-xs">{formatLeadId(l.id)}</td>
                   <td className="px-3 py-2.5">
                     <div className="flex items-center gap-1.5">
                       <span className="font-medium text-card-foreground text-xs">{l.name}</span>
                       <button
-                        onClick={(e) => { e.stopPropagation(); setSelectedLeadForDetails(l); setShowDetailsModal(true); }}
+                        onClick={(e) => { e.stopPropagation(); updateLead(l.id, { isViewed: true }); setSelectedLeadForDetails(l); setShowDetailsModal(true); }}
                         className="inline-flex items-center justify-center w-5 h-5 rounded hover:bg-secondary transition-colors flex-shrink-0"
-                        title="View details"
+                        title={l.isViewed ? "Viewed" : "View details"}
                       >
-                        <Eye className="w-3.5 h-3.5 text-muted-foreground hover:text-primary" />
+                        <Eye className={`w-3.5 h-3.5 ${l.isViewed ? "text-success" : "text-muted-foreground hover:text-primary"}`} />
                       </button>
                     </div>
                   </td>
@@ -494,16 +569,16 @@ const LeadsPage = () => {
                         <Edit2 className="w-4 h-4 text-muted-foreground" />
                       </button>
                       <div className="relative">
-                        <button
+                        {/* <button
                           onClick={(e) => { e.stopPropagation(); setReminderLeadId(reminderLeadId === l.id ? null : l.id); setReminderDate(""); setReminderTime(""); setReminderText(""); }}
                           className="relative inline-flex items-center justify-center w-8 h-8 rounded-lg border border-border bg-card hover:bg-secondary transition-colors"
-                          title="Add reminder"
+                          title=""
                         >
                           <Bell className="w-4 h-4 text-muted-foreground" />
                           {(l.reminders?.length ?? 0) > 0 && (
                             <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-primary text-white text-[9px] flex items-center justify-center">{l.reminders?.length}</span>
                           )}
-                        </button>
+                        </button> */}
                       </div>
                     </div>
                   </td>
@@ -521,7 +596,7 @@ const LeadsPage = () => {
           <div className="bg-card rounded-xl shadow-2xl w-full max-w-md border border-border animate-in zoom-in-95 duration-200">
             <div className="p-6 border-b border-border">
               <div className="flex items-center justify-between">
-                <h3 className="text-lg font-bold text-card-foreground">Add Reminder</h3>
+                <h3 className="text-lg font-bold text-card-foreground"></h3>
                 <button
                   onClick={() => setReminderLeadId(null)}
                   className="p-1 hover:bg-secondary rounded-lg transition-colors"
@@ -801,6 +876,72 @@ const LeadsPage = () => {
           setSelectedLeadForDetails(null);
         }}
       />
+
+      {/* Bulk Transfer Modal */}
+      {showBulkTransfer && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 animate-in fade-in duration-200">
+          <div className="bg-card rounded-[20px] shadow-2xl w-full max-w-md border border-border animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between p-6 border-b border-border">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-primary/10 rounded-lg">
+                  <ArrowRightLeft className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-card-foreground">Bulk Enquiry Transfer</h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">{selectedLeadIds.size} enquir{selectedLeadIds.size === 1 ? "y" : "ies"} selected</p>
+                </div>
+              </div>
+              <button onClick={() => setShowBulkTransfer(false)} className="p-1.5 hover:bg-secondary rounded-lg transition-colors">
+                <X className="w-5 h-5 text-muted-foreground" />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="bg-secondary/30 rounded-lg border border-border p-3 max-h-36 overflow-y-auto space-y-1">
+                {filtered.filter(l => selectedLeadIds.has(l.id)).map(l => (
+                  <div key={l.id} className="flex items-center justify-between text-xs">
+                    <span className="font-medium text-card-foreground">{l.name}</span>
+                    <span className="text-muted-foreground">{formatLeadId(l.id)}</span>
+                  </div>
+                ))}
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-2 block">Transfer to Sales Executive *</label>
+                <select
+                  value={transferTo}
+                  onChange={e => setTransferTo(e.target.value)}
+                  className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+                >
+                  <option value="">Select sales executive...</option>
+                  {salesExecutives.length > 0
+                    ? salesExecutives.map(e => (
+                        <option key={e.id} value={e.name}>{e.name} — {e.role}</option>
+                      ))
+                    : employees.map(e => (
+                        <option key={e.id} value={e.name}>{e.name} — {e.role}</option>
+                      ))
+                  }
+                </select>
+              </div>
+            </div>
+            <div className="flex gap-3 p-6 border-t border-border">
+              <button
+                onClick={() => { setShowBulkTransfer(false); setTransferTo(""); }}
+                className="flex-1 h-10 border border-border text-card-foreground text-sm font-medium hover:text-primary transition-colors rounded-lg"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleBulkTransfer}
+                className="flex-1 h-10 text-white text-sm font-semibold hover:opacity-90 transition-all rounded-lg shadow-[0px_5px_12px_rgba(39,47,158,0.2)]"
+                style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}
+              >
+                Transfer
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 };

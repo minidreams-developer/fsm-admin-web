@@ -4,7 +4,6 @@ import { useState } from "react";
 
 type Comment = {
   id: string;
-  date: string;
   text: string;
   createdAt: string;
 };
@@ -43,14 +42,16 @@ export function CommentsCard({ comments, onDelete }: Props) {
           Comments ({comments.length})
         </h3>
         <div className="space-y-3">
-          {[...comments].sort((a, b) => a.date.localeCompare(b.date)).map((r) => (
-            <div key={r.id} className="flex items-start justify-between gap-3 p-4 rounded-lg bg-secondary/30 border border-border">
+          {[...comments].sort((a, b) => a.createdAt.localeCompare(b.createdAt)).map((c) => (
+            <div key={c.id} className="flex items-start justify-between gap-3 p-4 rounded-lg bg-secondary/30 border border-border">
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-semibold text-primary mb-1">{r.date}{(r as any).time ? ` • ${(r as any).time}` : ""}</p>
-                <p className="text-sm text-card-foreground">{r.text}</p>
+                <p className="text-xs font-semibold text-primary mb-1">
+                  {new Date(c.createdAt).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}
+                </p>
+                <p className="text-sm text-card-foreground">{c.text}</p>
               </div>
               <button
-                onClick={() => setConfirmId(r.id)}
+                onClick={() => setConfirmId(c.id)}
                 className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors flex-shrink-0"
               >
                 <X className="w-3.5 h-3.5" />

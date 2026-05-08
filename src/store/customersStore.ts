@@ -12,9 +12,7 @@ export type ContactPerson = {
   name: string;
   phone: string;
   email: string;
-  city: string;
-  pincode: string;
-  address: string;
+  designation: string;
 };
 
 export type AddressFields = {
@@ -27,6 +25,11 @@ export type AddressFields = {
   pinCode: string;
   phone: string;
   fax: string;
+};
+
+export type CompanyDocument = {
+  name: string;
+  dataUrl?: string; // base64 data URL for preview/download
 };
 
 export type Customer = {
@@ -44,8 +47,11 @@ export type Customer = {
   siteAddress: string;
   billingAddressFields?: AddressFields;
   siteAddressFields?: AddressFields;
+  additionalSiteAddressFields?: AddressFields[];
   locationUrl?: string;
-  companyDocument?: string; // PDF filename
+  companyDocument?: string; // legacy single filename
+  companyDocuments?: string[]; // legacy filenames array
+  companyDocumentFiles?: CompanyDocument[]; // full file data for view/download
   customerLanguage?: string;
   panCardNumber?: string;
   contactPersonsDetails: ContactPerson[];

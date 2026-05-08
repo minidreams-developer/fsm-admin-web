@@ -1,6 +1,6 @@
 import { useNavigate, useLocation } from "react-router-dom";
 import { X, Edit2, Plus } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -215,21 +215,29 @@ const CreateWorkOrderPage = () => {
   };
 
   const leadData = (location.state as any)?.leadData;
+  const prefillCustomer = (location.state as any)?.prefillCustomer;
 
   const { register, handleSubmit, formState: { errors }, setValue } = useForm<WorkOrderFormData>({
     resolver: zodResolver(workOrderSchema),
     defaultValues: {
-      customer: leadData?.name || "",
-      phone: leadData?.phone || "",
-      address: leadData?.address || "",
+      customer: leadData?.name || prefillCustomer?.name || "",
+      phone: leadData?.phone || prefillCustomer?.phone || "",
+      address: leadData?.address || prefillCustomer?.address || "",
       subject: leadData?.services?.join(", ") || "",
       serviceType: leadData?.services?.[0] || "",
       status: "Authorization Pending",
       start: new Date().toISOString().split("T")[0],
-      siteAddress: "",
-      billingAddress: "",
+      siteAddress: prefillCustomer?.siteAddress || "",
+      billingAddress: prefillCustomer?.billingAddress || "",
     },
   });
+
+  // Auto-select the customer in the dropdown if coming from customer detail page
+  useEffect(() => {
+    if (prefillCustomer?.id) {
+      handleCustomerSelect(prefillCustomer.id);
+    }
+  }, []);
 
   const toggleService = (value: string) => {
     // Always add the service (allow duplicates)

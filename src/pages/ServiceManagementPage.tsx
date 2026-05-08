@@ -194,7 +194,7 @@ const ServiceManagementPage = () => {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border">
-                {["#", "Subject", "Active/Inactive", "Warranty", "Action"].map((h) => (
+                {["#", "Subject", "Active/Inactive", "Action"].map((h) => (
                   <th key={h} className="text-left px-3 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">{h}</th>
                 ))}
               </tr>
@@ -226,8 +226,6 @@ const ServiceManagementPage = () => {
                       <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${apt.status === "Completed" ? "translate-x-4" : "translate-x-1"}`} />
                     </button>
                   </td>
-                  <td className="px-3 py-2.5 text-xs text-card-foreground">{apt.warrantyPeriod || "—"}</td>
-
                   <td className="px-3 py-2.5">
                     <div className="flex items-center gap-2">
                       <button 

@@ -32,7 +32,8 @@ export type Lead = {
   leadIncharge?: string;
   nextFollowUpDate?: string;
   nextFollowUpTime?: string;
-  reminders?: { id: string; date: string; text: string; createdAt: string }[];
+  reminders?: { id: string; date: string; time?: string; text: string; createdAt: string }[];
+  comments?: { id: string; text: string; createdAt: string }[];
 };
 
 interface LeadsStore {
@@ -109,6 +110,11 @@ export const useLeadsStore = create<LeadsStore>()(
               quoteContract: typeof l.quoteContract === "string" ? l.quoteContract : undefined,
               quoteNotes: typeof l.quoteNotes === "string" ? l.quoteNotes : undefined,
               quoteLost: typeof l.quoteLost === "boolean" ? l.quoteLost : undefined,
+              reminders: Array.isArray(l.reminders) ? l.reminders : undefined,
+              comments: Array.isArray((l as any).comments) ? (l as any).comments : undefined,
+              assignedOwner: typeof l.assignedOwner === "string" ? l.assignedOwner : undefined,
+              leadIncharge: typeof l.leadIncharge === "string" ? l.leadIncharge : undefined,
+              nextFollowUpDate: typeof l.nextFollowUpDate === "string" ? l.nextFollowUpDate : undefined,
             };
           });
           return { leads: migratedLeads };

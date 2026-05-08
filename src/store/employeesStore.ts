@@ -1,6 +1,14 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
+export type CashCollection = {
+  id: string;
+  amount: number;
+  collectedAt: string;
+  note?: string;
+  collectedBy?: string;
+};
+
 export type Employee = {
   id: string;
   name: string;
@@ -9,6 +17,8 @@ export type Employee = {
   branch: string[];
   projects: number;
   cashBalance: string;
+  kmTraveled?: number;
+  kmRate?: number; // ₹ per km reimbursement rate
   performance: string;
   clockIn: string;
   clockOut: string;
@@ -20,9 +30,11 @@ export type Employee = {
   avgServiceTime: number;
   profilePhoto?: string;
   aadharNumber?: string;
-  aadharDocument?: string;
+  aadharDocument?: string; // legacy single base64
+  aadharDocuments?: { name: string; dataUrl: string }[]; // multiple PDFs
   isActive?: boolean;
-  captain?: string; // Captain/Team Lead name
+  captain?: string;
+  cashCollections?: CashCollection[];
   inventoryItems?: Array<{
     itemName: string;
     quantity: number;
@@ -46,6 +58,10 @@ const initialEmployees: Employee[] = [
     phone: "9876543210",
     role: "Senior Technician",
     branch: ["Kochi"],
+    projects: 5,
+    cashBalance: "₹ 1,600",
+    kmTraveled: 312,
+    kmRate: 8,
     performance: "92%",
     clockIn: "09:00 AM",
     clockOut: "06:30 PM",
@@ -56,6 +72,11 @@ const initialEmployees: Employee[] = [
     servicesCompleted: 3,
     avgServiceTime: 2.5,
     captain: "Suresh Babu",
+    cashCollections: [
+      { id: "COL-001", amount: 2500, collectedAt: "2026-04-25T10:30:00.000Z", note: "Collected from WO-1002" },
+      { id: "COL-002", amount: 1800, collectedAt: "2026-04-20T14:15:00.000Z", note: "Collected from WO-1005" },
+      { id: "COL-003", amount: 3200, collectedAt: "2026-04-15T09:45:00.000Z", note: "Collected from WO-1007" },
+    ],
     inventoryItems: [
       { itemName: "Cleaning Solution - 5L", quantity: 2, assignedDate: "2026-04-10" },
       { itemName: "Microfiber Cloth Set", quantity: 5, assignedDate: "2026-04-10" },
@@ -70,6 +91,8 @@ const initialEmployees: Employee[] = [
     branch: ["Calicut"],
     projects: 2,
     cashBalance: "₹ 2,100",
+    kmTraveled: 187,
+    kmRate: 8,
     performance: "88%",
     clockIn: "09:15 AM",
     clockOut: "06:00 PM",
@@ -80,6 +103,10 @@ const initialEmployees: Employee[] = [
     servicesCompleted: 2,
     avgServiceTime: 3.25,
     captain: "Deepak Menon",
+    cashCollections: [
+      { id: "COL-004", amount: 1500, collectedAt: "2026-04-22T11:00:00.000Z", note: "Collected from WO-1027" },
+      { id: "COL-005", amount: 900, collectedAt: "2026-04-18T16:30:00.000Z" },
+    ],
     inventoryItems: [
       { itemName: "Vacuum Cleaner", quantity: 1, assignedDate: "2026-04-08" },
       { itemName: "Mop & Bucket", quantity: 1, assignedDate: "2026-04-08" },
@@ -94,6 +121,8 @@ const initialEmployees: Employee[] = [
     branch: ["Kochi"],
     projects: 2,
     cashBalance: "₹ 950",
+    kmTraveled: 143,
+    kmRate: 8,
     performance: "85%",
     clockIn: "09:30 AM",
     clockOut: "05:45 PM",
@@ -104,6 +133,9 @@ const initialEmployees: Employee[] = [
     servicesCompleted: 2,
     avgServiceTime: 2.75,
     captain: "Suresh Babu",
+    cashCollections: [
+      { id: "COL-006", amount: 2200, collectedAt: "2026-04-23T10:00:00.000Z", note: "Collected from WO-1026" },
+    ],
     inventoryItems: [
       { itemName: "Floor Cleaner - 2L", quantity: 3, assignedDate: "2026-04-09" },
       { itemName: "Scrub Brush", quantity: 2, assignedDate: "2026-04-09" },
@@ -117,6 +149,8 @@ const initialEmployees: Employee[] = [
     branch: ["Thrissur"],
     projects: 1,
     cashBalance: "₹ 0",
+    kmTraveled: 58,
+    kmRate: 8,
     performance: "78%",
     clockIn: "10:00 AM",
     clockOut: "05:30 PM",
@@ -127,6 +161,7 @@ const initialEmployees: Employee[] = [
     servicesCompleted: 1,
     avgServiceTime: 4.5,
     captain: "Biju George",
+    cashCollections: [],
     inventoryItems: [
       { itemName: "Gloves - Box of 50", quantity: 1, assignedDate: "2026-04-13" },
       { itemName: "Trash Bags - Roll", quantity: 2, assignedDate: "2026-04-13" },
@@ -184,6 +219,10 @@ export const useEmployeesStore = create<EmployeesStore>()(
         return `EMP-${nextNum}`;
       },
     }),
-    { name: "employees-store", version: 0 },
+    {
+      name: "employees-store",
+      version: 3,
+      migrate: () => ({ employees: initialEmployees }),
+    },
   ),
 );

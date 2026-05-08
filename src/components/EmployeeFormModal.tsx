@@ -273,30 +273,94 @@ export function EmployeeFormModal({ open, mode, employee, onClose, onSaved }: Pr
               />
             </div>
 
-            <div>
-              <label className="text-xs font-medium text-muted-foreground mb-2 block">Aadhar Document (PDF)</label>
+            <div className="md:col-span-2">
+              <label className="text-xs font-medium text-muted-foreground mb-2 block"> Document (PDF)</label>
               <label className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg bg-secondary border border-border cursor-pointer hover:bg-secondary/80 transition-colors">
                 <Upload className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                <span className="text-sm text-muted-foreground truncate">
-                  {form.aadharDocument ? "Document uploaded" : "Click to upload PDF"}
-                </span>
+                <span className="text-sm text-muted-foreground">Click to upload PDF(s)</span>
                 <input
                   type="file"
                   accept="application/pdf"
+                  multiple
                   className="hidden"
                   onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (!file) return;
-                    const reader = new FileReader();
-                    reader.onload = () => setField("aadharDocument", reader.result as string);
-                    reader.readAsDataURL(file);
+                    const files = Array.from(e.target.files || []);
+                    files.forEach(file => {
+                      const reader = new FileReader();
+                      reader.onload = () => {
+                        const existing = form.aadharDocuments || [];
+                        setField("aadharDocuments", [
+                          ...existing,
+                          { name: file.name, dataUrl: reader.result as string },
+                        ]);
+                      };
+                      reader.readAsDataURL(file);
+                    });
+                    e.target.value = "";
                   }}
                 />
               </label>
-              {form.aadharDocument && (
-                <button type="button" onClick={() => setField("aadharDocument", undefined)} className="mt-1 text-xs text-destructive hover:opacity-80 transition-opacity">
-                  Remove
-                </button>
+              {/* Uploaded docs list */}
+              {(form.aadharDocuments?.length || form.aadharDocument) && (
+                <div className="mt-2 space-y-1.5">
+                  {/* Legacy single doc */}
+                  {form.aadharDocument && !form.aadharDocuments?.length && (
+                    <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-secondary/50 border border-border">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0" />
+                        <span className="text-xs text-muted-foreground truncate">aadhar_document.pdf</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        <button type="button" onClick={() => {
+                          const [header, base64] = form.aadharDocument!.split(",");
+                          const mime = header.match(/:(.*?);/)?.[1] || "application/pdf";
+                          const bytes = new Uint8Array(atob(base64).split("").map(c => c.charCodeAt(0)));
+                          const blob = new Blob([bytes], { type: mime });
+                          const url = URL.createObjectURL(blob);
+                          window.open(url, "_blank");
+                          setTimeout(() => URL.revokeObjectURL(url), 10000);
+                        }} className="text-xs text-primary font-semibold hover:opacity-80">View</button>
+                        <button type="button" onClick={() => setField("aadharDocument", undefined)} className="text-xs text-destructive hover:opacity-80">Remove</button>
+                      </div>
+                    </div>
+                  )}
+                  {/* Multiple docs */}
+                  {form.aadharDocuments?.map((doc, idx) => (
+                    <div key={idx} className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-primary/5 border border-primary/20">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <svg className="w-3.5 h-3.5 text-red-500 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 1.5L18.5 9H13V3.5zM6 20V4h5v7h7v9H6z"/></svg>
+                        <span className="text-xs text-card-foreground truncate">{doc.name}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        {/* <button type="button" onClick={() => {
+                          const [header, base64] = doc.dataUrl.split(",");
+                          const mime = header.match(/:(.*?);/)?.[1] || "application/pdf";
+                          const bytes = new Uint8Array(atob(base64).split("").map(c => c.charCodeAt(0)));
+                          const blob = new Blob([bytes], { type: mime });
+                          const url = URL.createObjectURL(blob);
+                          window.open(url, "_blank");
+                          setTimeout(() => URL.revokeObjectURL(url), 10000);
+                        }} className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-primary/10 text-primary text-xs font-semibold hover:bg-primary/20 transition-colors">View</button> */}
+                        {/* <button type="button" onClick={() => {
+                          const [header, base64] = doc.dataUrl.split(",");
+                          const mime = header.match(/:(.*?);/)?.[1] || "application/pdf";
+                          const bytes = new Uint8Array(atob(base64).split("").map(c => c.charCodeAt(0)));
+                          const blob = new Blob([bytes], { type: mime });
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement("a");
+                          a.href = url; a.download = doc.name; a.click();
+                          setTimeout(() => URL.revokeObjectURL(url), 5000);
+                        }} className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-success/10 text-success text-xs font-semibold hover:bg-success/20 transition-colors">Download</button> */}
+                        <button type="button" onClick={() =>
+                          setField("aadharDocuments", form.aadharDocuments!.filter((_, i) => i !== idx))
+                        } className="text-destructive hover:opacity-80 transition-opacity"><X className="w-3.5 h-3.5" /></button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {(form.aadharDocuments?.length || 0) > 0 && (
+                <p className="text-xs text-muted-foreground mt-1">{form.aadharDocuments!.length} document(s)</p>
               )}
             </div>
           </div>
