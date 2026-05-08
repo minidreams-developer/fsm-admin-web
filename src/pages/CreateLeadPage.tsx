@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { ArrowLeft, X, Plus } from "lucide-react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { ArrowLeft, X, Plus, Edit2 } from "lucide-react";
 import { toast } from "sonner";
 import Select from "react-select";
 import { useLeadsStore, type UrgencyLevel } from "@/store/leadsStore";
@@ -20,8 +20,17 @@ type AddressEntry = {
   pincode: string;
 };
 
+type AddressOption = {
+  label: string;
+  address: string;
+  city: string;
+  pincode: string;
+};
+
 const CreateLeadPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const prefillCustomer = (location.state as any)?.prefillCustomer;
   const { addLead } = useLeadsStore();
   const { employees } = useEmployeesStore();
   const { products } = useProductsStore();
@@ -30,9 +39,9 @@ const CreateLeadPage = () => {
   const serviceOptions = products.filter((p) => p.category === "Services" && p.status === "Active").map((p) => p.name);
 
   const [form, setForm] = useState({
-    name: "",
-    phone: "",
-    address: "",
+    name: prefillCustomer?.name || "",
+    phone: prefillCustomer?.phone || "",
+    address: prefillCustomer?.address || "",
     services: [] as string[],
     amount: "",
     leadSource: "",
@@ -92,16 +101,60 @@ const CreateLeadPage = () => {
     if (customer) {
       setField("name", `${customer.firstName} ${customer.lastName}`.trim());
       setField("phone", customer.mobile || customer.landline || "");
-      // Pre-fill first address from customer
-      if (customer.siteAddress || customer.billingAddress) {
-        setAddresses([{ id: crypto.randomUUID(), address: customer.siteAddress || customer.billingAddress, city: "", pincode: "" }]);
+
+      // Build structured address options from customer's saved address fields
+      const opts: AddressOption[] = [];
+
+      // Primary site address from structured fields
+      if (customer.siteAddressFields) {
+        const f = customer.siteAddressFields;
+        const street = [f.street1, f.street2].filter(Boolean).join(", ");
+        if (street || f.city) {
+          opts.push({ label: `Site: ${[street, f.city, f.state, f.pinCode].filter(Boolean).join(", ")}`, address: street, city: f.city, pincode: f.pinCode });
+        }
+      } else if (customer.siteAddress) {
+        opts.push({ label: `Site: ${customer.siteAddress}`, address: customer.siteAddress, city: "", pincode: "" });
       }
+
+      // Additional site addresses
+      if (customer.additionalSiteAddressFields) {
+        customer.additionalSiteAddressFields.forEach((f, idx) => {
+          const street = [f.street1, f.street2].filter(Boolean).join(", ");
+          if (street || f.city) {
+            opts.push({ label: `Site ${idx + 2}: ${[street, f.city, f.state, f.pinCode].filter(Boolean).join(", ")}`, address: street, city: f.city, pincode: f.pinCode });
+          }
+        });
+      }
+
+      // Billing address
+      if (customer.billingAddressFields) {
+        const f = customer.billingAddressFields;
+        const street = [f.street1, f.street2].filter(Boolean).join(", ");
+        if (street || f.city) {
+          opts.push({ label: `Billing: ${[street, f.city, f.state, f.pinCode].filter(Boolean).join(", ")}`, address: street, city: f.city, pincode: f.pinCode });
+        }
+      } else if (customer.billingAddress) {
+        opts.push({ label: `Billing: ${customer.billingAddress}`, address: customer.billingAddress, city: "", pincode: "" });
+      }
+
+      setCustomerAddressOptions(opts);
+      if (opts.length > 0) {
+        setAddresses([{ id: crypto.randomUUID(), address: opts[0].address, city: opts[0].city, pincode: opts[0].pincode }]);
+      } else {
+        setAddresses([{ id: crypto.randomUUID(), address: "", city: "", pincode: "" }]);
+      }
+    } else {
+      setCustomerAddressOptions([]);
     }
   };
 
   const [addresses, setAddresses] = useState<AddressEntry[]>([
-    { id: crypto.randomUUID(), address: "", city: "", pincode: "" }
+    { id: crypto.randomUUID(), address: prefillCustomer?.address || "", city: "", pincode: "" }
   ]);
+
+  const [customerAddressOptions, setCustomerAddressOptions] = useState<AddressOption[]>(
+    prefillCustomer?.address ? [{ label: prefillCustomer.address, address: prefillCustomer.address, city: "", pincode: "" }] : []
+  );
 
   const [customLeadSource, setCustomLeadSource] = useState("");
 
@@ -205,29 +258,46 @@ const CreateLeadPage = () => {
 
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-2 block">Customer Name *</label>
-            <Select
-              options={customerOptions}
-              value={customerOptions.find((opt) => opt.value === selectedCustomerId) || null}
-              onChange={(option) => {
-                if (option) {
-                  handleCustomerSelect(option.value);
-                } else {
-                  setSelectedCustomerId("");
-                  setField("name", "");
-                  setField("phone", "");
-                }
-              }}
-              onInputChange={(inputValue) => {
-                // Allow typing a new name not in the list
-                if (!selectedCustomerId) setField("name", inputValue);
-              }}
-              inputValue={selectedCustomerId ? undefined : form.name}
-              styles={customSelectStyles}
-              placeholder="Search existing customer or type new name..."
-              isClearable
-              isSearchable
-              noOptionsMessage={() => "No customers found — type to enter a new name"}
-            />
+            <div className="flex gap-2">
+              <div className="flex-1">
+                <Select
+                  options={customerOptions}
+                  value={customerOptions.find((opt) => opt.value === selectedCustomerId) || null}
+                  onChange={(option) => {
+                    if (option) {
+                      handleCustomerSelect(option.value);
+                    } else {
+                      setSelectedCustomerId("");
+                      setCustomerAddressOptions([]);
+                      setAddresses([{ id: crypto.randomUUID(), address: "", city: "", pincode: "" }]);
+                      setField("name", "");
+                      setField("phone", "");
+                    }
+                  }}
+                  onInputChange={(inputValue) => {
+                    // Allow typing a new name not in the list
+                    if (!selectedCustomerId) setField("name", inputValue);
+                  }}
+                  inputValue={selectedCustomerId ? undefined : form.name}
+                  styles={customSelectStyles}
+                  placeholder="Search existing customer or type new name..."
+                  isClearable
+                  isSearchable
+                  noOptionsMessage={() => "No customers found — type to enter a new name"}
+                />
+              </div>
+              {selectedCustomerId && (
+                <button
+                  type="button"
+                  onClick={() => navigate(`/customers/${selectedCustomerId}?edit=true`)}
+                  className="h-[38px] px-3 inline-flex items-center gap-1.5 rounded-lg border border-border bg-card hover:bg-secondary transition-colors text-xs font-semibold text-card-foreground flex-shrink-0"
+                  title="Edit customer"
+                >
+                  <Edit2 className="w-3.5 h-3.5" />
+                  Edit
+                </button>
+              )}
+            </div>
           </div>
 
           <div>
@@ -266,12 +336,51 @@ const CreateLeadPage = () => {
                       <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
                         Address {index + 1} *
                       </label>
-                      <input
-                        value={addr.address}
-                        onChange={(e) => updateAddress(addr.id, "address", e.target.value)}
-                        placeholder="e.g. 12 MG Road, Kochi"
-                        className="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
-                      />
+                      {customerAddressOptions.length > 0 ? (
+                        <>
+                          <select
+                            value={customerAddressOptions.findIndex(o => o.address === addr.address && o.city === addr.city && o.pincode === addr.pincode)}
+                            onChange={(e) => {
+                              const idx = parseInt(e.target.value);
+                              if (idx === -1) {
+                                // Custom — clear fields for manual entry
+                                setAddresses(prev => prev.map(a => a.id === addr.id
+                                  ? { ...a, address: "", city: "", pincode: "" }
+                                  : a
+                                ));
+                              } else {
+                                const opt = customerAddressOptions[idx];
+                                setAddresses(prev => prev.map(a => a.id === addr.id
+                                  ? { ...a, address: opt.address, city: opt.city, pincode: opt.pincode }
+                                  : a
+                                ));
+                              }
+                            }}
+                            className="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+                          >
+                            <option value={-1}>+ Enter custom address</option>
+                            {customerAddressOptions.map((opt, i) => (
+                              <option key={i} value={i}>{opt.label}</option>
+                            ))}
+                          </select>
+                          {/* Show manual inputs when custom is selected */}
+                          {customerAddressOptions.findIndex(o => o.address === addr.address && o.city === addr.city && o.pincode === addr.pincode) === -1 && (
+                            <input
+                              value={addr.address}
+                              onChange={(e) => updateAddress(addr.id, "address", e.target.value)}
+                              placeholder="Enter address"
+                              className="w-full mt-2 px-3 py-2 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+                            />
+                          )}
+                        </>
+                      ) : (
+                        <input
+                          value={addr.address}
+                          onChange={(e) => updateAddress(addr.id, "address", e.target.value)}
+                          placeholder="e.g. 12 MG Road, Kochi"
+                          className="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+                        />
+                      )}
                     </div>
                     <div>
                       <label className="text-xs font-medium text-muted-foreground mb-1.5 block">City</label>
@@ -348,7 +457,7 @@ const CreateLeadPage = () => {
           </div>
 
           <div>
-            <label className="text-xs font-medium text-muted-foreground mb-2 block">Enquiry Incharge</label>
+            <label className="text-xs font-medium text-muted-foreground mb-2 block">sales executive</label>
             <select value={form.leadIncharge} onChange={(e) => setField("leadIncharge", e.target.value)} className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20">
               <option value="">Unassigned</option>
               {employees.map((emp) => <option key={emp.id} value={emp.name}>{emp.name} — {emp.role}</option>)}

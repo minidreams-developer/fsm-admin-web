@@ -1,6 +1,7 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Plus, X, Edit2, FolderKanban } from "lucide-react";
-import { useState, useRef, useEffect } from "react";
+import { ArrowLeft, Plus, X, Edit2, FolderKanban, Bell } from "lucide-react";
+import { useState } from "react";
+import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import { useLeadsStore } from "@/store/leadsStore";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -23,24 +24,11 @@ export const LeadDetailPage = () => {
 
   const [showEdit, setShowEdit] = useState(false);
   const [showReminders, setShowReminders] = useState(false);
+  const [showComment, setShowComment] = useState(false);
   const [reminderDate, setReminderDate] = useState("");
   const [reminderTime, setReminderTime] = useState("");
   const [reminderText, setReminderText] = useState("");
-  const bellRef = useRef<HTMLButtonElement>(null);
-  const popoverRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (
-        popoverRef.current && !popoverRef.current.contains(e.target as Node) &&
-        bellRef.current && !bellRef.current.contains(e.target as Node)
-      ) {
-        setShowReminders(false);
-      }
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
+  const [commentText, setCommentText] = useState("");
 
   if (!lead) {
     return (
@@ -65,6 +53,17 @@ export const LeadDetailPage = () => {
     setReminderDate("");
     setReminderTime("");
     setReminderText("");
+    toast.success("Comment saved");
+  };
+
+  const saveComment = () => {
+    if (!commentText.trim()) {
+      toast.error("Please enter a comment");
+      return;
+    }
+    const newComment = { id: `CMT-${Date.now()}`, text: commentText.trim(), createdAt: new Date().toISOString() };
+    updateLead(lead.id, { comments: [...(lead.comments ?? []), newComment] });
+    setCommentText("");
     toast.success("Comment saved");
   };
 
@@ -104,45 +103,114 @@ export const LeadDetailPage = () => {
           {/* Bell / Reminders */}
           <div className="relative">
             <button
-              ref={bellRef}
               onClick={() => setShowReminders((v) => !v)}
               className="relative inline-flex items-center gap-2 h-10 px-4 rounded-lg border border-border bg-card hover:bg-secondary transition-colors text-sm font-semibold text-card-foreground"
-              title="Comments"
+              title="Add Reminder"
             >
-              <Plus className="w-4 h-4 text-muted-foreground" />
-              Comment
+              <Bell className="w-4 h-4 text-muted-foreground" />
+              Add Reminder
               {(lead.reminders?.length ?? 0) > 0 && (
                 <span className="w-4 h-4 rounded-full bg-primary text-white text-[10px] flex items-center justify-center">{lead.reminders?.length}</span>
-              )}            </button>
+              )}
+            </button>
+          </div>
 
-            {showReminders && (
-              <div ref={popoverRef} className="absolute right-0 top-12 z-50 w-80 bg-card border border-border rounded-xl shadow-2xl">
-                <div className="p-4 border-b border-border">
-                  <h4 className="text-sm font-semibold text-card-foreground">Add Comment</h4>
+          {/* Comment button */}
+          <button
+            onClick={() => setShowComment(true)}
+            className="relative inline-flex items-center gap-2 h-10 px-4 rounded-lg border border-border bg-card hover:bg-secondary transition-colors text-sm font-semibold text-card-foreground"
+            title="Add Comment"
+          >
+            <Plus className="w-4 h-4 text-muted-foreground" />
+            Comment
+          </button>
+
+          {showReminders && createPortal(
+            <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/50 animate-in fade-in duration-200">
+              <div className="bg-card rounded-xl shadow-2xl w-full max-w-md border border-border animate-in zoom-in-95 duration-200">
+                <div className="p-6 border-b border-border flex items-center justify-between">
+                  <h3 className="text-lg font-bold text-card-foreground">Add Reminder</h3>
+                  <button onClick={() => setShowReminders(false)} className="p-1 hover:bg-secondary rounded-lg transition-colors">
+                    <X className="w-5 h-5 text-muted-foreground" />
+                  </button>
                 </div>
-                <div className="p-4 space-y-2">
-                  <div className="grid grid-cols-2 gap-2">
+                <div className="p-6 space-y-4">
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground mb-2 block">Date *</label>
                     <input type="date" value={reminderDate} onChange={(e) => setReminderDate(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground mb-2 block">Time (Optional)</label>
                     <input type="time" value={reminderTime} onChange={(e) => setReminderTime(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20" />
                   </div>
-                  <input value={reminderText} onChange={(e) => setReminderText(e.target.value)} placeholder="Comment text..." className="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20" />
-                  <button onClick={saveReminder} className="w-full h-9 text-sm font-semibold hover:opacity-90 text-white rounded-lg shadow-[0px_5px_12px_rgba(39,47,158,0.2)] transition-all" style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}>
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground mb-2 block">Reminder Text *</label>
+                    <textarea value={reminderText} onChange={(e) => setReminderText(e.target.value)} placeholder="Enter reminder details..." rows={3} className="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none" />
+                  </div>
+                </div>
+                <div className="p-6 border-t border-border flex gap-3">
+                  <button onClick={() => setShowReminders(false)} className="flex-1 h-10 text-sm font-medium border border-border rounded-lg hover:bg-secondary transition-colors">
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => { saveReminder(); setShowReminders(false); }}
+                    className="flex-1 h-10 text-sm font-semibold hover:opacity-90 text-white rounded-lg transition-all shadow-[0px_5px_12px_rgba(39,47,158,0.2)]"
+                    style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}
+                  >
+                    Save Reminder
+                  </button>
+                </div>
+              </div>
+            </div>,
+            document.body
+          )}
+
+          {/* Comment modal */}
+          {showComment && createPortal(
+            <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/50 animate-in fade-in duration-200">
+              <div className="bg-card rounded-xl shadow-2xl w-full max-w-md border border-border animate-in zoom-in-95 duration-200">
+                <div className="p-6 border-b border-border flex items-center justify-between">
+                  <h3 className="text-lg font-bold text-card-foreground">Add Comment</h3>
+                  <button onClick={() => { setShowComment(false); setCommentText(""); }} className="p-1 hover:bg-secondary rounded-lg transition-colors">
+                    <X className="w-5 h-5 text-muted-foreground" />
+                  </button>
+                </div>
+                <div className="p-6">
+                  <label className="text-xs font-medium text-muted-foreground mb-2 block">Comment *</label>
+                  <textarea
+                    value={commentText}
+                    onChange={(e) => setCommentText(e.target.value)}
+                    placeholder="Enter your comment..."
+                    rows={4}
+                    className="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none"
+                  />
+                </div>
+                <div className="p-6 border-t border-border flex gap-3">
+                  <button onClick={() => { setShowComment(false); setCommentText(""); }} className="flex-1 h-10 text-sm font-medium border border-border rounded-lg hover:bg-secondary transition-colors">
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => { saveComment(); setShowComment(false); }}
+                    className="flex-1 h-10 text-sm font-semibold hover:opacity-90 text-white rounded-lg transition-all shadow-[0px_5px_12px_rgba(39,47,158,0.2)]"
+                    style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}
+                  >
                     Save Comment
                   </button>
                 </div>
               </div>
-            )}
-          </div>
+            </div>,
+            document.body
+          )}
 
           <button onClick={() => setShowEdit(true)} className="h-10 px-4 inline-flex items-center gap-2 rounded-lg border border-border bg-card hover:bg-secondary transition-colors text-sm font-semibold text-card-foreground">
             <Edit2 className="w-4 h-4" /> Edit
           </button>
-          <button
+          {/* <button
             onClick={() => navigate("/create-work-order", { state: { leadData: lead, isQuotation: true } })}
             className="h-10 px-4 inline-flex items-center gap-2 rounded-lg border border-border bg-card hover:bg-secondary transition-colors text-sm font-semibold text-card-foreground"
           >
             Convert to Quotation
-          </button>
+          </button> */}
           {lead.status !== "Converted" && lead.status !== "Lost" && (
             <button
               onClick={() => navigate("/create-work-order", { state: { leadData: lead } })}
@@ -210,8 +278,8 @@ export const LeadDetailPage = () => {
       </div>
 
       <CommentsCard
-        comments={lead.reminders ?? []}
-        onDelete={(remId) => updateLead(lead.id, { reminders: (lead.reminders ?? []).filter((r) => r.id !== remId) })}
+        comments={lead.comments ?? []}
+        onDelete={(id) => updateLead(lead.id, { comments: (lead.comments ?? []).filter((c) => c.id !== id) })}
       />
 
       <LeadDetailsModal open={showEdit} lead={lead} initialEdit onClose={() => setShowEdit(false)} />

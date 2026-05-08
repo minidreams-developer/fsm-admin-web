@@ -4,29 +4,21 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { useEmployeesStore } from "@/store/employeesStore";
 import { useProjectsStore } from "@/store/projectsStore";
-import { useTasksStore } from "@/store/tasksStore";
 
 export const EmployeeReassignPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { getEmployee, updateEmployee, employees } = useEmployeesStore();
   const { workOrders, updateWorkOrder } = useProjectsStore();
-  const { tasks, updateTask } = useTasksStore();
 
   const employee = id ? getEmployee(id) : null;
   const otherEmployees = employees.filter(e => e.id !== id && e.isActive !== false);
 
   const assignedProjects = workOrders.filter(wo => wo.assignedTech === employee?.name && wo.status !== "Completed");
-  const assignedTasks = tasks.filter(t => t.assignedTo === employee?.name && t.status !== "Completed");
 
   const [woReassign, setWoReassign] = useState<Record<string, string>>(() => {
     const init: Record<string, string> = {};
     assignedProjects.forEach(wo => { init[wo.id] = ""; });
-    return init;
-  });
-  const [taskReassign, setTaskReassign] = useState<Record<string, string>>(() => {
-    const init: Record<string, string> = {};
-    assignedTasks.forEach(t => { init[t.id] = ""; });
     return init;
   });
 
@@ -45,13 +37,11 @@ export const EmployeeReassignPage = () => {
 
   const handleConfirm = () => {
     const allWoAssigned = assignedProjects.every(wo => woReassign[wo.id]);
-    const allTaskAssigned = assignedTasks.every(t => taskReassign[t.id]);
-    if (!allWoAssigned || !allTaskAssigned) {
-      toast.error("Please reassign all work orders and services before inactivating.");
+    if (!allWoAssigned) {
+      toast.error("Please reassign all work orders before inactivating.");
       return;
     }
     assignedProjects.forEach(wo => updateWorkOrder(wo.id, { assignedTech: woReassign[wo.id] }));
-    assignedTasks.forEach(t => updateTask(t.id, { assignedTo: taskReassign[t.id] }));
     updateEmployee(employee.id, { isActive: false });
     toast.success(`${employee.name} has been marked Inactive and all assignments reassigned.`);
     navigate(`/employees/${employee.id}`);
@@ -106,35 +96,7 @@ export const EmployeeReassignPage = () => {
           </div>
         )}
 
-        {assignedTasks.length > 0 && (
-          <div className="bg-card rounded-xl card-shadow border border-border p-6">
-            <h3 className="text-sm font-semibold text-card-foreground mb-4">Services ({assignedTasks.length})</h3>
-            <div className="space-y-3">
-              {assignedTasks.map(t => (
-                <div key={t.id} className="p-4 rounded-lg bg-secondary/30 border border-border">
-                  <div className="flex items-center justify-between mb-3">
-                    <div>
-                      <p className="text-sm font-semibold text-card-foreground">{t.title}</p>
-                      <p className="text-xs text-muted-foreground">{t.workOrderId} — {t.status}</p>
-                    </div>
-                  </div>
-                  <select
-                    value={taskReassign[t.id] || ""}
-                    onChange={e => setTaskReassign(prev => ({ ...prev, [t.id]: e.target.value }))}
-                    className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
-                  >
-                    <option value="">Select new assignee</option>
-                    {otherEmployees.map(e => (
-                      <option key={e.id} value={e.name}>{e.name} — {e.role}</option>
-                    ))}
-                  </select>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {assignedProjects.length === 0 && assignedTasks.length === 0 && (
+        {assignedProjects.length === 0 && (
           <div className="bg-card rounded-xl card-shadow border border-border p-6">
             <p className="text-sm text-muted-foreground text-center">No active assignments found. You can inactivate this employee directly.</p>
           </div>

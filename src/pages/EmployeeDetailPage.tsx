@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, AlertCircle, Package, Briefcase, CheckCircle, XCircle, Edit2 } from "lucide-react";
+import { ArrowLeft, AlertCircle, Package, Briefcase, CheckCircle, XCircle, Edit2, DollarSign, Plus } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useEmployeesStore } from "@/store/employeesStore";
@@ -16,7 +16,7 @@ export const EmployeeDetailPage = () => {
   const { workOrders, updateWorkOrder } = useProjectsStore();
   const { inventory } = useInventoryStore();
   const { tasks, updateTask } = useTasksStore();
-  const [activeTab, setActiveTab] = useState<"projects" | "inventory">("projects");
+  const [activeTab, setActiveTab] = useState<"projects" | "inventory" | "cash">("projects");
   const [showEdit, setShowEdit] = useState(false);
   const [projectFilter, setProjectFilter] = useState<"All" | "Open" | "Scheduled" | "Completed">("All");
   const [inventoryFilter, setInventoryFilter] = useState<"All" | "OK" | "Low" | "Critical">("All");
@@ -24,6 +24,8 @@ export const EmployeeDetailPage = () => {
   const [dateTo, setDateTo] = useState("");
   const [appliedFrom, setAppliedFrom] = useState("");
   const [appliedTo, setAppliedTo] = useState("");
+  const [collectAmount, setCollectAmount] = useState("");
+  const [collectNote, setCollectNote] = useState("");
 
   const applyDateFilter = () => {
     setAppliedFrom(dateFrom);
@@ -257,7 +259,6 @@ export const EmployeeDetailPage = () => {
             <p className="text-lg font-bold text-card-foreground">{employee.projects}</p>
           </div>
 
-          {/* Financial */}
           <div className="space-y-2">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Cash Balance</p>
             <p className="text-lg font-bold text-primary">{employee.cashBalance}</p>
@@ -281,7 +282,43 @@ export const EmployeeDetailPage = () => {
               <p className="text-lg font-bold text-card-foreground">{employee.aadharNumber}</p>
             </div>
           )}
+          {employee.kmTraveled !== undefined && (
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">KM Traveled</p>
+              <p className="text-lg font-bold text-card-foreground">{employee.kmTraveled.toLocaleString()} km</p>
+            </div>
+          )}
+          {employee.kmTraveled !== undefined && (
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Travel Expense</p>
+              <p className="text-lg font-bold text-warning">
+                ₹ {(employee.kmTraveled * (employee.kmRate ?? 8)).toLocaleString()}
+              </p>
+              <p className="text-xs text-muted-foreground">@ ₹{employee.kmRate ?? 8}/km</p>
+            </div>
+          )}
         </div>
+
+        {/* Travel Expense Breakdown */}
+        {employee.kmTraveled !== undefined && (
+          <div className="mt-8 pt-8 border-t border-border">
+            <h3 className="text-sm font-bold text-card-foreground mb-4">Travel Expense Breakdown</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="bg-secondary/30 border border-border rounded-xl p-4 space-y-1">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Total KM</p>
+                <p className="text-2xl font-bold text-card-foreground">{employee.kmTraveled.toLocaleString()} <span className="text-sm font-medium text-muted-foreground">km</span></p>
+              </div>
+              <div className="bg-secondary/30 border border-border rounded-xl p-4 space-y-1">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Rate per KM</p>
+                <p className="text-2xl font-bold text-card-foreground">₹ {employee.kmRate ?? 8} <span className="text-sm font-medium text-muted-foreground">/km</span></p>
+              </div>
+              <div className="bg-warning/5 border border-warning/20 rounded-xl p-4 space-y-1">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Total Travel Expense</p>
+                <p className="text-2xl font-bold text-warning">₹ {(employee.kmTraveled * (employee.kmRate ?? 8)).toLocaleString()}</p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Aadhar Documents */}
         {(employee.aadharDocuments?.length || employee.aadharDocument) && (
@@ -413,6 +450,13 @@ export const EmployeeDetailPage = () => {
             <Package className="w-4 h-4" />
             Inventory Items Assigned ({(employee.inventoryItems?.length || 0) + employeeInventoryItems.length})
           </button>
+          <button
+            onClick={() => setActiveTab("cash")}
+            className={`flex items-center gap-2 px-6 py-4 text-sm font-semibold transition-colors ${activeTab === "cash" ? "text-primary border-b-2 border-primary" : "text-muted-foreground hover:text-foreground"}`}
+          >
+            <DollarSign className="w-4 h-4" />
+            Cash Collection
+          </button>
         </div>
 
         {/* Filter bar */}
@@ -524,6 +568,121 @@ export const EmployeeDetailPage = () => {
                 </div>
               )}
             </>
+          )}
+
+          {activeTab === "cash" && (
+            <div className="space-y-6">
+              {/* Cash Balance Summary */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="bg-primary/5 border border-primary/20 rounded-xl p-4">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Current Cash Balance</p>
+                  <p className="text-2xl font-bold text-primary">{employee.cashBalance}</p>
+                </div>
+                <div className="bg-success/5 border border-success/20 rounded-xl p-4">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Total Collected</p>
+                  <p className="text-2xl font-bold text-success">
+                    ₹ {(employee.cashCollections || []).reduce((sum, c) => sum + c.amount, 0).toLocaleString()}
+                  </p>
+                </div>
+                <div className="bg-secondary/50 border border-border rounded-xl p-4">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Collections</p>
+                  <p className="text-2xl font-bold text-card-foreground">{(employee.cashCollections || []).length}</p>
+                </div>
+              </div>
+
+              {/* Collect Cash Form */}
+              <div className="bg-secondary/20 border border-border rounded-xl p-5">
+                <h4 className="text-sm font-bold text-card-foreground mb-4 flex items-center gap-2">
+                  <Plus className="w-4 h-4 text-primary" />
+                  Record Cash Collection
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Amount (₹) *</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={collectAmount}
+                      onChange={e => setCollectAmount(e.target.value)}
+                      placeholder="e.g. 500"
+                      className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Note (optional)</label>
+                    <input
+                      type="text"
+                      value={collectNote}
+                      onChange={e => setCollectNote(e.target.value)}
+                      placeholder="e.g. Collected from WO-1025"
+                      className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    />
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const amt = parseFloat(collectAmount);
+                    if (!collectAmount || isNaN(amt) || amt <= 0) {
+                      toast.error("Enter a valid amount");
+                      return;
+                    }
+                    const newCollection = {
+                      id: `COL-${Date.now()}`,
+                      amount: amt,
+                      collectedAt: new Date().toISOString(),
+                      note: collectNote.trim() || undefined,
+                    };
+                    const existing = employee.cashCollections || [];
+                    // Deduct from cash balance
+                    const currentBalance = parseInt(employee.cashBalance.replace(/[₹,\s]/g, "")) || 0;
+                    const newBalance = Math.max(0, currentBalance - amt);
+                    updateEmployee(employee.id, {
+                      cashCollections: [...existing, newCollection],
+                      cashBalance: `₹ ${newBalance.toLocaleString()}`,
+                    });
+                    toast.success(`₹ ${amt.toLocaleString()} collected from ${employee.name}`);
+                    setCollectAmount("");
+                    setCollectNote("");
+                  }}
+                  className="mt-3 inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-white text-sm font-semibold hover:opacity-90 transition-all shadow-[0px_5px_12px_rgba(39,47,158,0.2)]"
+                  style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}
+                >
+                  <DollarSign className="w-4 h-4" />
+                  Collect Cash
+                </button>
+              </div>
+
+              {/* Collection History */}
+              <div>
+                <h4 className="text-sm font-bold text-card-foreground mb-3">Collection History</h4>
+                {(employee.cashCollections || []).length === 0 ? (
+                  <div className="text-center py-8">
+                    <DollarSign className="w-10 h-10 text-muted-foreground/30 mx-auto mb-2" />
+                    <p className="text-sm text-muted-foreground">No collections recorded yet.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {[...(employee.cashCollections || [])].reverse().map((col) => (
+                      <div key={col.id} className="flex items-center justify-between gap-3 px-4 py-3 rounded-lg bg-secondary/30 border border-border">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-8 h-8 rounded-full bg-success/10 flex items-center justify-center flex-shrink-0">
+                            <DollarSign className="w-4 h-4 text-success" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold text-success">₹ {col.amount.toLocaleString()}</p>
+                            {col.note && <p className="text-xs text-muted-foreground truncate">{col.note}</p>}
+                          </div>
+                        </div>
+                        <p className="text-xs text-muted-foreground flex-shrink-0">
+                          {new Date(col.collectedAt).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
           )}
         </div>
       </div>

@@ -18,7 +18,7 @@ function formatLeadId(id: number) {
 }
 
 const urgencyLevels: UrgencyLevel[] = ["Low", "Medium", "High"];
-const statuses: LeadStatus[] = ["New", "Contacted", "Quote Sent", "Follow Up", "Converted", "Lost"];
+const statuses: LeadStatus[] = ["New", "Contacted", "Follow Up", "Converted", "Lost"];
 const leadSources = ["Website", "Call", "Referral", "Walk-in", "Google", "Facebook/Instagram", "Other"];
 const branches = ["Kochi", "Calicut", "Thrissur", "Trivandrum", "Palakkad", "Munnar", "Other"];
 
@@ -118,7 +118,7 @@ export function LeadDetailsModal({ open, lead, onClose, initialEdit = false }: P
           {!isEditing && activeTab === "reminders" && (
             <div className="space-y-4">
               <div className="bg-secondary/30 rounded-xl p-4 border border-border space-y-3">
-                <h4 className="text-sm font-semibold text-card-foreground">Add Reminder</h4>
+                <h4 className="text-sm font-semibold text-card-foreground"></h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
                     <label className="text-xs font-medium text-muted-foreground mb-1 block">Reminder Date</label>
@@ -166,7 +166,7 @@ export function LeadDetailsModal({ open, lead, onClose, initialEdit = false }: P
                 ["Amount", typeof lead.amount === "number" ? `₹ ${lead.amount.toLocaleString()}` : "—"],
                 ["Enquiry Source", lead.leadSource || "—"],
                 ["Branch", lead.branch || "—"],
-                ["Lead Incharge", lead.leadIncharge || "—"],
+                ["Lead Incharge", lead.assignedOwner || lead.leadIncharge || "—"],
                 ["Next Follow Up Date", lead.nextFollowUpDate || "—"],
                 ["Date", lead.date],
                 ["Quote Amount", typeof lead.quoteAmount === "number" ? `₹ ${lead.quoteAmount.toLocaleString()}` : "—"],
@@ -247,8 +247,8 @@ export function LeadDetailsModal({ open, lead, onClose, initialEdit = false }: P
                 </select>
               </div>
               <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1 block">Enquiry Incharge</label>
-                <select value={form.leadIncharge ?? ""} onChange={(e) => setField("leadIncharge", e.target.value)} className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20">
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">sales executive</label>
+                <select value={form.assignedOwner ?? form.leadIncharge ?? ""} onChange={(e) => { setField("assignedOwner", e.target.value); setField("leadIncharge", e.target.value); }} className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20">
                   <option value="">Unassigned</option>
                   {employees.map((emp) => <option key={emp.id} value={emp.name}>{emp.name} — {emp.role}</option>)}
                 </select>

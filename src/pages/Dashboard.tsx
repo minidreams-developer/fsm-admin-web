@@ -339,7 +339,7 @@ function DashboardLeadsSection() {
                       <button
                         onClick={(e) => { e.stopPropagation(); setReminderLeadId(reminderLeadId === l.id ? null : l.id); setReminderDate(""); setReminderText(""); }}
                         className="relative inline-flex items-center justify-center w-8 h-8 rounded-lg border border-border bg-card hover:bg-secondary transition-colors"
-                        title="Add reminder"
+                        title=""
                       >
                         <Bell className="w-4 h-4 text-muted-foreground" />
                         {(l.reminders?.length ?? 0) > 0 && (
@@ -348,7 +348,7 @@ function DashboardLeadsSection() {
                       </button>
                       {reminderLeadId === l.id && (
                         <div className="absolute right-0 top-10 z-50 w-72 bg-card border border-border rounded-xl shadow-2xl p-4 space-y-2">
-                          <p className="text-xs font-semibold text-card-foreground">Add Reminder</p>
+                          <p className="text-xs font-semibold text-card-foreground"></p>
                           <input type="date" value={reminderDate} onChange={e => setReminderDate(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20" />
                           <input value={reminderText} onChange={e => setReminderText(e.target.value)} placeholder="Reminder text..." className="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20" />
                           <div className="flex gap-2">

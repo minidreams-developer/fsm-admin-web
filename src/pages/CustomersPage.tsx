@@ -1,10 +1,10 @@
-import { Search, Eye, Plus, Edit2, Trash2, ArrowLeft, Users, Briefcase, FileText } from "lucide-react";
+import { Search, Eye, Plus, Edit2, Trash2, ArrowLeft, Users, Briefcase, FileText, ClipboardList } from "lucide-react";
 import { useState } from "react";
 import { StatusBadge } from "@/components/StatusBadge";
 import { CustomerFormModal } from "@/components/CustomerFormModal";
 import { useCustomersStore, type Customer } from "@/store/customersStore";
 import { useProjectsStore, type WorkOrder } from "@/store/projectsStore";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 
 function buildDisplayName(c: Customer) {
   return `${c.firstName} ${c.lastName}`.trim().replace(/\s+/g, " ");
@@ -188,10 +188,11 @@ const CustomersPage = () => {
 export const CustomerDetailPage = () => {
   const navigate = useNavigate();
   const params = useParams();
+  const [searchParams] = useSearchParams();
   const customerId = params.id ?? "";
   const { customers, deleteCustomer } = useCustomersStore();
   const { workOrders } = useProjectsStore();
-  const [showEdit, setShowEdit] = useState(false);
+  const [showEdit, setShowEdit] = useState(searchParams.get("edit") === "true");
   const [activeTab, setActiveTab] = useState<"workorders" | "payments">("workorders");
 
   const detail = customers.find((c) => c.id === customerId) ?? null;
@@ -239,6 +240,22 @@ export const CustomerDetailPage = () => {
           <p className="text-sm text-muted-foreground">{detail.id}</p>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => navigate("/leads/new", {
+              state: {
+                prefillCustomer: {
+                  name,
+                  phone: detail.mobile || detail.landline || "",
+                  address: detail.siteAddress || detail.billingAddress || "",
+                }
+              }
+            })}
+            className="h-10 px-4 inline-flex items-center gap-2 rounded-lg border border-border bg-card hover:bg-secondary transition-colors text-sm font-semibold text-card-foreground"
+          >
+            <ClipboardList className="w-4 h-4" />
+            Add Enquiry
+          </button>
           <button
             type="button"
             onClick={() => navigate("/create-work-order", {
