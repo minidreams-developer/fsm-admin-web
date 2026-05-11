@@ -48,11 +48,21 @@ interface InventoryStore {
 }
 
 const initialInventory: InventoryItem[] = [
-  { id: 1, name: "Cypermethrin 10% EC", branch: "Kochi", stock: 45, unit: "Liters", unitPrice: 850, reorder: 20, status: "OK" },
-  { id: 2, name: "Bifenthrin 2.5% SC", branch: "Kochi", stock: 12, unit: "Liters", unitPrice: 1200, reorder: 20, status: "Low" },
-  { id: 3, name: "Gel Bait (Maxforce)", branch: "Kochi", stock: 8, unit: "Tubes", unitPrice: 450, reorder: 15, status: "Low" },
-  { id: 4, name: "Termiticide (Imida)", branch: "Calicut", stock: 32, unit: "Liters", unitPrice: 950, reorder: 10, status: "OK" },
-  { id: 5, name: "Rodent Blocks", branch: "Kochi", stock: 5, unit: "Packs", unitPrice: 320, reorder: 10, status: "Critical" },
+  { id: 1, name: "Cypermethrin 10% EC", branch: "Kochi", stock: 45, unit: "Liters", unitPrice: 850, reorder: 20, status: "OK", allocations: [
+    { employeeId: "EMP-1001", employeeName: "Safeeq", quantity: 3, allocatedAt: "2026-04-28T09:00:00.000Z" },
+  ]},
+  { id: 2, name: "Bifenthrin 2.5% SC", branch: "Kochi", stock: 12, unit: "Liters", unitPrice: 1200, reorder: 20, status: "Low", allocations: [
+    { employeeId: "EMP-1001", employeeName: "Safeeq", quantity: 2, allocatedAt: "2026-04-25T10:00:00.000Z" },
+  ]},
+  { id: 3, name: "Gel Bait (Maxforce)", branch: "Kochi", stock: 8, unit: "Tubes", unitPrice: 450, reorder: 15, status: "Low", allocations: [
+    { employeeId: "EMP-1001", employeeName: "Safeeq", quantity: 5, allocatedAt: "2026-04-27T11:30:00.000Z" },
+  ]},
+  { id: 4, name: "Termiticide (Imida)", branch: "Calicut", stock: 32, unit: "Liters", unitPrice: 950, reorder: 10, status: "OK", allocations: [
+    { employeeId: "EMP-1001", employeeName: "Safeeq", quantity: 4, allocatedAt: "2026-04-20T08:00:00.000Z" },
+  ]},
+  { id: 5, name: "Rodent Blocks", branch: "Kochi", stock: 5, unit: "Packs", unitPrice: 320, reorder: 10, status: "Critical", allocations: [
+    { employeeId: "EMP-1001", employeeName: "Safeeq", quantity: 2, allocatedAt: "2026-04-22T14:00:00.000Z" },
+  ]},
   { id: 6, name: "Pyrethrin Spray", branch: "Calicut", stock: 28, unit: "Cans", unitPrice: 280, reorder: 10, status: "OK" },
 ];
 
@@ -276,7 +286,7 @@ export const useInventoryStore = create<InventoryStore>()(
     }),
     {
       name: "inventory-store",
-      version: 3,
+      version: 4,
       migrate: () => ({
         inventory: initialInventory,
         history: initialHistory,

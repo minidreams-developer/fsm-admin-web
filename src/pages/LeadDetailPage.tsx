@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Plus, X, Edit2, FolderKanban, Bell } from "lucide-react";
+import { ArrowLeft, Plus, X, Edit2, FolderKanban, Bell, ChevronDown, FileText, CheckCircle } from "lucide-react";
 import { useState } from "react";
 import { createPortal } from "react-dom";
 import { toast } from "sonner";
@@ -23,6 +23,7 @@ export const LeadDetailPage = () => {
   const lead = leads.find((l) => String(l.id) === id) ?? null;
 
   const [showEdit, setShowEdit] = useState(false);
+  const [showActions, setShowActions] = useState(false);
   const [showReminders, setShowReminders] = useState(false);
   const [showComment, setShowComment] = useState(false);
   const [reminderDate, setReminderDate] = useState("");
@@ -100,30 +101,74 @@ export const LeadDetailPage = () => {
           <p className="text-sm text-muted-foreground">{formatLeadId(lead.id)}</p>
         </div>
         <div className="flex items-center gap-2">
-          {/* Bell / Reminders */}
+          {/* Actions dropdown */}
           <div className="relative">
             <button
-              onClick={() => setShowReminders((v) => !v)}
-              className="relative inline-flex items-center gap-2 h-10 px-4 rounded-lg border border-border bg-card hover:bg-secondary transition-colors text-sm font-semibold text-card-foreground"
-              title="Add Reminder"
+              onClick={() => setShowActions(v => !v)}
+              className="h-10 px-4 inline-flex items-center gap-2 rounded-lg text-white text-sm font-semibold hover:opacity-90 transition-all shadow-[0px_5px_12px_rgba(39,47,158,0.2)]"
+              style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}
             >
-              <Bell className="w-4 h-4 text-muted-foreground" />
-              Add Reminder
-              {(lead.reminders?.length ?? 0) > 0 && (
-                <span className="w-4 h-4 rounded-full bg-primary text-white text-[10px] flex items-center justify-center">{lead.reminders?.length}</span>
-              )}
+              Actions
+              <ChevronDown className={`w-4 h-4 transition-transform ${showActions ? "rotate-180" : ""}`} />
             </button>
+            {showActions && (
+              <>
+                <div className="fixed inset-0 z-10" onClick={() => setShowActions(false)} />
+                <div className="absolute right-0 top-12 z-20 w-56 bg-card border border-border rounded-xl shadow-2xl py-1 animate-in fade-in slide-in-from-top-2 duration-150">
+                  <button
+                    onClick={() => { setShowActions(false); setShowReminders(true); }}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-card-foreground hover:bg-secondary transition-colors"
+                  >
+                    <Bell className="w-4 h-4 text-muted-foreground" />
+                    Add Reminder
+                    {(lead.reminders?.length ?? 0) > 0 && (
+                      <span className="ml-auto w-4 h-4 rounded-full bg-primary text-white text-[10px] flex items-center justify-center">{lead.reminders?.length}</span>
+                    )}
+                  </button>
+                  <button
+                    onClick={() => { setShowActions(false); setShowComment(true); }}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-card-foreground hover:bg-secondary transition-colors"
+                  >
+                    <Plus className="w-4 h-4 text-muted-foreground" />
+                    Add Comment
+                  </button>
+                  <div className="h-px bg-border mx-2 my-1" />
+                  <button
+                    onClick={() => { setShowActions(false); setShowEdit(true); }}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-card-foreground hover:bg-secondary transition-colors"
+                  >
+                    <Edit2 className="w-4 h-4 text-muted-foreground" />
+                    Edit Enquiry
+                  </button>
+                  {lead.status !== "Converted" && lead.status !== "Lost" && (
+                    <>
+                      <button
+                        onClick={() => { setShowActions(false); navigate("/create-work-order", { state: { leadData: lead, isQuotation: true } }); }}
+                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-card-foreground hover:bg-secondary transition-colors"
+                      >
+                        <FileText className="w-4 h-4 text-muted-foreground" />
+                        Convert to Quotation
+                      </button>
+                      <button
+                        onClick={() => { setShowActions(false); navigate("/create-work-order", { state: { leadData: lead } }); }}
+                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-card-foreground hover:bg-secondary transition-colors"
+                      >
+                        <FolderKanban className="w-4 h-4 text-muted-foreground" />
+                        Convert to Work Order
+                      </button>
+                    </>
+                  )}
+                  {lead.status === "Converted" && (
+                    <div className="px-4 py-2.5 flex items-center gap-2 text-sm font-semibold text-success">
+                      <CheckCircle className="w-4 h-4" /> Converted
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
           </div>
-
-          {/* Comment button */}
-          <button
-            onClick={() => setShowComment(true)}
-            className="relative inline-flex items-center gap-2 h-10 px-4 rounded-lg border border-border bg-card hover:bg-secondary transition-colors text-sm font-semibold text-card-foreground"
-            title="Add Comment"
-          >
-            <Plus className="w-4 h-4 text-muted-foreground" />
-            Comment
-          </button>
+        </div>
+      </div>
 
           {showReminders && createPortal(
             <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/50 animate-in fade-in duration-200">
@@ -201,32 +246,6 @@ export const LeadDetailPage = () => {
             </div>,
             document.body
           )}
-
-          <button onClick={() => setShowEdit(true)} className="h-10 px-4 inline-flex items-center gap-2 rounded-lg border border-border bg-card hover:bg-secondary transition-colors text-sm font-semibold text-card-foreground">
-            <Edit2 className="w-4 h-4" /> Edit
-          </button>
-          {/* <button
-            onClick={() => navigate("/create-work-order", { state: { leadData: lead, isQuotation: true } })}
-            className="h-10 px-4 inline-flex items-center gap-2 rounded-lg border border-border bg-card hover:bg-secondary transition-colors text-sm font-semibold text-card-foreground"
-          >
-            Convert to Quotation
-          </button> */}
-          {lead.status !== "Converted" && lead.status !== "Lost" && (
-            <button
-              onClick={() => navigate("/create-work-order", { state: { leadData: lead } })}
-              className="h-10 px-4 inline-flex items-center gap-2 rounded-lg text-sm font-semibold text-white hover:opacity-90 transition-all shadow-[0px_5px_12px_rgba(148,43,244,0.3)]"
-              style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}
-            >
-              <FolderKanban className="w-4 h-4" /> Convert to Work Order
-            </button>
-          )}
-          {lead.status === "Converted" && (
-            <span className="inline-flex items-center gap-1.5 h-10 px-4 rounded-lg text-sm font-semibold text-success bg-success/10 border border-success/20">
-              ✓ Converted
-            </span>
-          )}
-        </div>
-      </div>
 
       {/* Main card */}
       <div className="bg-card rounded-xl p-8 card-shadow border border-border">

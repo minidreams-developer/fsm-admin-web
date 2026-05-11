@@ -4,17 +4,23 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { useEmployeesStore } from "@/store/employeesStore";
 import { useProjectsStore } from "@/store/projectsStore";
+import { useTasksStore } from "@/store/tasksStore";
 
 export const EmployeeReassignPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { getEmployee, updateEmployee, employees } = useEmployeesStore();
   const { workOrders, updateWorkOrder } = useProjectsStore();
+  const { getTasksByWorkOrder } = useTasksStore();
 
   const employee = id ? getEmployee(id) : null;
   const otherEmployees = employees.filter(e => e.id !== id && e.isActive !== false);
 
-  const assignedProjects = workOrders.filter(wo => wo.assignedTech === employee?.name && wo.status !== "Completed");
+  const assignedProjects = workOrders.filter(wo => {
+    if (!employee?.name) return false;
+    const techs = wo.assignedTech?.split(",").map(t => t.trim()).filter(Boolean) ?? [];
+    return techs.includes(employee.name) && wo.status !== "Completed";
+  });
 
   const [woReassign, setWoReassign] = useState<Record<string, string>>(() => {
     const init: Record<string, string> = {};
@@ -62,12 +68,12 @@ export const EmployeeReassignPage = () => {
       <div className="space-y-6">
         {assignedProjects.length > 0 && (
           <div className="bg-card rounded-xl card-shadow border border-border p-6">
-            <h3 className="text-sm font-semibold text-card-foreground mb-4">Work Orders ({assignedProjects.length})</h3>
+            <h3 className="text-sm font-semibold text-card-foreground mb-4">Work Orders and services ({assignedProjects.length})</h3>
             <div className="space-y-3">
               {assignedProjects.map(wo => (
                 <div key={wo.id} className="p-4 rounded-lg bg-secondary/30 border border-border">
                   <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <button
                         type="button"
                         onClick={() => navigate(`/work-order/${wo.id}`)}
@@ -76,10 +82,24 @@ export const EmployeeReassignPage = () => {
                         {wo.id}
                         <ExternalLink className="w-3.5 h-3.5" />
                       </button>
-                      <p className="text-xs text-muted-foreground">{wo.customer} — {wo.serviceType}</p>
+                      <p className="text-xs text-muted-foreground">{wo.customer}</p>
                     </div>
                     <span className="text-xs font-semibold px-2 py-1 rounded-lg bg-warning/10 text-warning border border-warning/20">{wo.status}</span>
                   </div>
+                  {/* Show all services/tasks for this work order */}
+                  {(() => {
+                    const tasks = getTasksByWorkOrder(wo.id);
+                    const services = tasks.length > 0
+                      ? tasks.map(t => t.title)
+                      : (wo.serviceTypes?.length ? wo.serviceTypes : [wo.serviceType]).filter(Boolean);
+                    return (
+                      <div className="flex flex-wrap gap-1.5 mb-3">
+                        {services.map((svc, i) => (
+                          <span key={i} className="inline-flex items-center px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-medium border border-primary/20">{svc}</span>
+                        ))}
+                      </div>
+                    );
+                  })()}
                   <select
                     value={woReassign[wo.id] || ""}
                     onChange={e => setWoReassign(prev => ({ ...prev, [wo.id]: e.target.value }))}

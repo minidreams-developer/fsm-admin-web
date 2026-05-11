@@ -16,7 +16,7 @@ type Props = {
 };
 
 const LABELS = {
-  title: "add Customer",
+  title: "Add Customer",
   customerId: "Customer ID ( Automated Generated )",
   customerType: "Customer Type ( Residential / Commercial )",
   firstName: "First Name",
@@ -304,7 +304,7 @@ export function CustomerFormModal({ open, mode, customer, prefill, onClose, onSa
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-border bg-card flex-shrink-0">
           <div>
-            <h3 className="text-lg sm:text-xl font-bold text-card-foreground">{LABELS.title}</h3>
+            <h3 className="text-lg sm:text-xl font-bold text-card-foreground">{mode === "edit" ? "Edit Customer" : "Add Customer"}</h3>
             {mode === "create" && (
               <p className="text-xs text-muted-foreground mt-1">Save once to use this customer anywhere (including Work Orders).</p>
             )}
