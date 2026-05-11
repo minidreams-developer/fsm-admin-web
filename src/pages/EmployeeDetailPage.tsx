@@ -84,6 +84,13 @@ export const EmployeeDetailPage = () => {
     
   const filteredInventory = inventoryFilter === "All" ? employeeInventoryItems : employeeInventoryItems.filter(i => i.status === inventoryFilter);
 
+  // Calculate current inventory balance (allocated qty × unit price)
+  const inventoryBalance = employeeInventoryItems.reduce((sum, item) => {
+    return sum + (item.allocatedQuantity * (item.unitPrice ?? 0));
+  }, 0);
+  // Also include items from employee.inventoryItems (legacy assigned items)
+  const legacyInventoryCount = employee?.inventoryItems?.reduce((sum, i) => sum + i.quantity, 0) ?? 0;
+
   const assignedTasks = tasks.filter(t => t.assignedTo === employee?.name && t.status !== "Completed");
   const otherEmployees = employees.filter(e => e.id !== employee?.id && e.isActive !== false);
 
@@ -264,6 +271,19 @@ export const EmployeeDetailPage = () => {
             <p className="text-lg font-bold text-primary">{employee.cashBalance}</p>
           </div>
           <div className="space-y-2">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Inventory Balance</p>
+            <p className="text-lg font-bold text-card-foreground">
+              {inventoryBalance > 0
+                ? `₹ ${inventoryBalance.toLocaleString()}`
+                : legacyInventoryCount > 0
+                ? `${legacyInventoryCount} items`
+                : "—"}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {employeeInventoryItems.length + (employee.inventoryItems?.length || 0)} item type(s) allocated
+            </p>
+          </div>
+          <div className="space-y-2">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Revenue Generated</p>
             <p className="text-lg font-bold text-success">
               ₹ {assignedProjects.reduce((sum, wo) => {
@@ -323,7 +343,7 @@ export const EmployeeDetailPage = () => {
         {/* Aadhar Documents */}
         {(employee.aadharDocuments?.length || employee.aadharDocument) && (
           <div className="mt-8 pt-8 border-t border-border">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Aadhar Documents</p>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Documents</p>
             <div className="space-y-2">
               {/* Legacy single doc */}
               {employee.aadharDocument && !employee.aadharDocuments?.length && (
@@ -448,7 +468,7 @@ export const EmployeeDetailPage = () => {
             className={`flex items-center gap-2 px-6 py-4 text-sm font-semibold transition-colors ${activeTab === "inventory" ? "text-primary border-b-2 border-primary" : "text-muted-foreground hover:text-foreground"}`}
           >
             <Package className="w-4 h-4" />
-            Inventory Items Assigned ({(employee.inventoryItems?.length || 0) + employeeInventoryItems.length})
+            Inventory Items Assigned ({employeeInventoryItems.length})
           </button>
           <button
             onClick={() => setActiveTab("cash")}
@@ -513,58 +533,31 @@ export const EmployeeDetailPage = () => {
 
           {activeTab === "inventory" && (
             <>
-              {/* Dummy Inventory Items from Employee Record */}
-              {employee.inventoryItems && employee.inventoryItems.length > 0 && (
-                <div className="mb-6">
-                  <h3 className="text-sm font-semibold text-card-foreground mb-3">Assigned Items</h3>
-                  <div className="space-y-3">
-                    {employee.inventoryItems.map((item, idx) => (
-                      <div key={idx} className="p-4 rounded-lg bg-secondary/30 border border-border">
-                        <div className="flex items-start justify-between mb-2">
-                          <div className="flex-1">
-                            <p className="font-semibold text-card-foreground">{item.itemName}</p>
-                            <p className="text-xs text-muted-foreground">Quantity: {item.quantity}</p>
-                          </div>
-                          <StatusBadge label="Assigned" variant="success" />
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                          Assigned on: {new Date(item.assignedDate).toLocaleDateString()}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Inventory from Store Allocations */}
-              {filteredInventory.length === 0 && (!employee.inventoryItems || employee.inventoryItems.length === 0) ? (
+              {filteredInventory.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-6">No inventory items allocated.</p>
-              ) : filteredInventory.length > 0 && (
-                <div>
-                  <h3 className="text-sm font-semibold text-card-foreground mb-3">Stock Allocations</h3>
-                  <div className="space-y-3">
-                    {filteredInventory.map((item) => (
-                      <div key={item.id} className="p-4 rounded-lg bg-secondary/30 border border-border">
-                        <div className="flex items-start justify-between mb-2">
-                          <div className="flex-1">
-                            <p className="font-semibold text-card-foreground">{item.name}</p>
-                            <p className="text-xs text-muted-foreground">Branch: {item.branch}</p>
-                          </div>
-                          <StatusBadge label={item.status} variant={item.status === "OK" ? "success" : item.status === "Low" ? "warning" : "destructive"} />
+              ) : (
+                <div className="space-y-3">
+                  {filteredInventory.map((item) => (
+                    <div key={item.id} className="p-4 rounded-lg bg-secondary/30 border border-border">
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex-1">
+                          <p className="font-semibold text-card-foreground">{item.name}</p>
+                          <p className="text-xs text-muted-foreground">Branch: {item.branch}</p>
                         </div>
-                        <div className="grid grid-cols-3 gap-2 text-xs">
-                          <div><p className="text-muted-foreground">Allocated</p><p className="font-semibold text-primary">{item.allocatedQuantity} {item.unit}</p></div>
-                          <div><p className="text-muted-foreground">Available Stock</p><p className="font-semibold text-card-foreground">{item.stock} {item.unit}</p></div>
-                          <div><p className="text-muted-foreground">Unit</p><p className="font-semibold text-card-foreground">{item.unit}</p></div>
-                        </div>
-                        {item.allocatedAt && (
-                          <p className="text-xs text-muted-foreground mt-2">
-                            Allocated on: {new Date(item.allocatedAt).toLocaleDateString()}
-                          </p>
-                        )}
+                        <StatusBadge label={item.status} variant={item.status === "OK" ? "success" : item.status === "Low" ? "warning" : "neutral"} />
                       </div>
-                    ))}
-                  </div>
+                      <div className="grid grid-cols-3 gap-2 text-xs">
+                        <span><p className="text-muted-foreground">balance</p><p className="font-semibold text-primary">{item.allocatedQuantity} {item.unit}</p></span>
+                        <span><p className="text-muted-foreground">Available Stock</p><p className="font-semibold text-card-foreground">{item.stock} {item.unit}</p></span>
+                        <div><p className="text-muted-foreground">Unit</p><p className="font-semibold text-card-foreground">{item.unit}</p></div>
+                      </div>
+                      {item.allocatedAt && (
+                        <p className="text-xs text-muted-foreground mt-2">
+                          Allocated on: {new Date(item.allocatedAt).toLocaleDateString()}
+                        </p>
+                      )}
+                    </div>
+                  ))}
                 </div>
               )}
             </>

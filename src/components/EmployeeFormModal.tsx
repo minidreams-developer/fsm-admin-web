@@ -241,16 +241,25 @@ export function EmployeeFormModal({ open, mode, employee, onClose, onSaved }: Pr
 
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-2 block">{LABELS.role}</label>
-              <select
-                value={form.role}
-                onChange={(e) => setField("role", e.target.value)}
-                className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
-              >
-                <option value="">Select role</option>
-                {activeRoles.map((r) => (
-                  <option key={r.id} value={r.name}>{r.name}</option>
-                ))}
-              </select>
+              {activeRoles.length > 0 ? (
+                <select
+                  value={form.role}
+                  onChange={(e) => setField("role", e.target.value)}
+                  className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+                >
+                  <option value="">Select role</option>
+                  {activeRoles.map((r) => (
+                    <option key={r.id} value={r.name}>{r.name}</option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  value={form.role}
+                  onChange={(e) => setField("role", e.target.value)}
+                  placeholder="Enter role (e.g. Technician)"
+                  className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+                />
+              )}
             </div>
 
             <div className="md:col-span-2">

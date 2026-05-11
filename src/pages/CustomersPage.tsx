@@ -1,4 +1,4 @@
-import { Search, Eye, Plus, Edit2, Trash2, ArrowLeft, Users, Briefcase, FileText, ClipboardList } from "lucide-react";
+import { Search, Eye, Plus, Edit2, Trash2, ArrowLeft, Users, Briefcase, FileText, ClipboardList, FolderKanban, ChevronDown } from "lucide-react";
 import { useState } from "react";
 import { StatusBadge } from "@/components/StatusBadge";
 import { CustomerFormModal } from "@/components/CustomerFormModal";
@@ -194,6 +194,7 @@ export const CustomerDetailPage = () => {
   const { workOrders } = useProjectsStore();
   const [showEdit, setShowEdit] = useState(searchParams.get("edit") === "true");
   const [activeTab, setActiveTab] = useState<"workorders" | "payments">("workorders");
+  const [showActions, setShowActions] = useState(false);
 
   const detail = customers.find((c) => c.id === customerId) ?? null;
 
@@ -240,59 +241,67 @@ export const CustomerDetailPage = () => {
           <p className="text-sm text-muted-foreground">{detail.id}</p>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => navigate("/leads/new", {
-              state: {
-                prefillCustomer: {
-                  name,
-                  phone: detail.mobile || detail.landline || "",
-                  address: detail.siteAddress || detail.billingAddress || "",
-                }
-              }
-            })}
-            className="h-10 px-4 inline-flex items-center gap-2 rounded-lg border border-border bg-card hover:bg-secondary transition-colors text-sm font-semibold text-card-foreground"
-          >
-            <ClipboardList className="w-4 h-4" />
-            Add Enquiry
-          </button>
-          <button
-            type="button"
-            onClick={() => navigate("/create-work-order", {
-              state: {
-                prefillCustomer: {
-                  id: detail.id,
-                  name,
-                  phone: detail.mobile || detail.landline || "",
-                  email: detail.emailAddress || "",
-                  address: detail.siteAddress || detail.billingAddress || "",
-                  siteAddress: detail.siteAddress || "",
-                  billingAddress: detail.billingAddress || "",
-                }
-              }
-            })}
-            className="h-10 px-4 inline-flex items-center gap-2 rounded-lg text-white text-sm font-semibold hover:opacity-90 transition-all shadow-[0px_5px_12px_rgba(39,47,158,0.2)]"
-            style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}
-          >
-            <FileText className="w-4 h-4" />
-            Convert to Quotation
-          </button>
-          <button
-            type="button"
-            onClick={() => setShowEdit(true)}
-            className="h-10 px-4 inline-flex items-center gap-2 rounded-lg border border-border bg-card hover:bg-secondary transition-colors text-sm font-semibold text-card-foreground"
-          >
-            <Edit2 className="w-4 h-4" />
-            Edit
-          </button>
-          <button
-            type="button"
-            onClick={() => { deleteCustomer(detail.id); navigate("/customers"); }}
-            className="h-10 px-4 inline-flex items-center gap-2 rounded-lg border border-destructive/30 bg-card hover:bg-destructive/10 transition-colors text-sm font-semibold text-destructive"
-          >
-            <Trash2 className="w-4 h-4" />
-            Delete
-          </button>
+          {/* Actions dropdown */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setShowActions(v => !v)}
+              className="h-10 px-4 inline-flex items-center gap-2 rounded-lg text-white text-sm font-semibold hover:opacity-90 transition-all shadow-[0px_5px_12px_rgba(39,47,158,0.2)]"
+              style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}
+            >
+              Actions
+              <ChevronDown className={`w-4 h-4 transition-transform ${showActions ? "rotate-180" : ""}`} />
+            </button>
+            {showActions && (
+              <>
+                {/* Backdrop */}
+                <div className="fixed inset-0 z-10" onClick={() => setShowActions(false)} />
+                <div className="absolute right-0 top-12 z-20 w-56 bg-card border border-border rounded-xl shadow-2xl py-1 animate-in fade-in slide-in-from-top-2 duration-150">
+                  <button
+                    type="button"
+                    onClick={() => { setShowActions(false); navigate("/leads/new", { state: { prefillCustomer: { name, phone: detail.mobile || detail.landline || "", address: detail.siteAddress || detail.billingAddress || "" } } }); }}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-card-foreground hover:bg-secondary transition-colors"
+                  >
+                    <ClipboardList className="w-4 h-4 text-muted-foreground" />
+                    Add Enquiry
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setShowActions(false); navigate("/create-work-order", { state: { prefillCustomer: { id: detail.id, name, phone: detail.mobile || detail.landline || "", email: detail.emailAddress || "", address: detail.siteAddress || detail.billingAddress || "", siteAddress: detail.siteAddress || "", billingAddress: detail.billingAddress || "" } } }); }}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-card-foreground hover:bg-secondary transition-colors"
+                  >
+                    <FileText className="w-4 h-4 text-muted-foreground" />
+                    Convert to Quotation
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setShowActions(false); navigate("/create-work-order", { state: { prefillCustomer: { id: detail.id, name, phone: detail.mobile || detail.landline || "", email: detail.emailAddress || "", address: detail.siteAddress || detail.billingAddress || "", siteAddress: detail.siteAddress || "", billingAddress: detail.billingAddress || "" } } }); }}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-card-foreground hover:bg-secondary transition-colors"
+                  >
+                    <FolderKanban className="w-4 h-4 text-muted-foreground" />
+                    Convert to Work Order
+                  </button>
+                  <div className="h-px bg-border mx-2 my-1" />
+                  <button
+                    type="button"
+                    onClick={() => { setShowActions(false); setShowEdit(true); }}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-card-foreground hover:bg-secondary transition-colors"
+                  >
+                    <Edit2 className="w-4 h-4 text-muted-foreground" />
+                    Edit Customer
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setShowActions(false); deleteCustomer(detail.id); navigate("/customers"); }}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    Delete Customer
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
 

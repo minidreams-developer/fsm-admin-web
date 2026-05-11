@@ -1,6 +1,7 @@
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate, useLocation } from "react-router-dom";
-import { ArrowLeft, X, Plus, Edit2, Trash2 } from "lucide-react";
+import { ArrowLeft, X, Plus, Edit2 } from "lucide-react";
 import { toast } from "sonner";
 import Select from "react-select";
 import { useLeadsStore, type UrgencyLevel } from "@/store/leadsStore";
@@ -175,11 +176,11 @@ const CreateLeadPage = () => {
   // Service items table state
   type ServiceItem = {
     id: string;
-    serviceType: string;
+    title: string;
     name: string;
     description: string;
     unitPrice: number;
-    qty: number;
+    quantity: number;
     amount: number;
   };
   type ServiceSchedule = {
@@ -192,6 +193,8 @@ const CreateLeadPage = () => {
   };
   const [serviceItems, setServiceItems] = useState<ServiceItem[]>([]);
   const [serviceSchedules, setServiceSchedules] = useState<ServiceSchedule[]>([]);
+  const [selectedServices, setSelectedServices] = useState<string[]>([]);
+  const [editingItem, setEditingItem] = useState<ServiceItem | null>(null);
 
   const setField = <K extends keyof typeof form>(key: K, value: typeof form[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -214,17 +217,31 @@ const CreateLeadPage = () => {
     ));
   };
 
-  const toggleService = (s: string) => {
-    setForm((prev) => ({
-      ...prev,
-      services: prev.services.includes(s)
-        ? prev.services.filter((x) => x !== s)
-        : [...prev.services, s],
-    }));
+  const toggleService = (value: string) => {
+    // Always add the service (allow duplicates)
+    const svc = uniqueServiceOptions.find(s => s.name === value);
+    setSelectedServices(prev => [...prev, value]);
+    setServiceItems(prev => [...prev, {
+      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      title: value,
+      name: value,
+      description: svc?.description || "",
+      unitPrice: svc?.unitPrice || 0,
+      quantity: 1,
+      amount: svc?.unitPrice || 0,
+    }]);
   };
 
-  const removeService = (s: string) =>
-    setForm((prev) => ({ ...prev, services: prev.services.filter((x) => x !== s) }));
+  const removeService = (index: number) => {
+    setSelectedServices(prev => prev.filter((_, i) => i !== index));
+    setServiceItems(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const updateServiceItem = (updated: ServiceItem) => {
+    setServiceItems(prev => prev.map(i => i.id === updated.id ? updated : i));
+    setEditingItem(null);
+    toast.success("Service updated");
+  };
 
   const handleSave = () => {
     if (!form.name.trim() || !form.phone.trim() || serviceItems.length === 0) {
@@ -393,7 +410,7 @@ const CreateLeadPage = () => {
                             }}
                             className="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
                           >
-                            <option value={-1}>+ Enter custom address</option>
+                            {/* <option value={-1}>+ Enter custom address</option> */}
                             {customerAddressOptions.map((opt, i) => (
                               <option key={i} value={i}>{opt.label}</option>
                             ))}
@@ -510,177 +527,486 @@ const CreateLeadPage = () => {
           </div>
 
           <div className="md:col-span-2">
-            <label className="text-xs font-medium text-muted-foreground mb-2 block">Services * (select from list)</label>
+            <label className="text-xs font-medium text-muted-foreground mb-2 block">Notes</label>
+            <textarea value={form.notes} onChange={(e) => setField("notes", e.target.value)} rows={3} placeholder="Additional notes..." className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none" />
+          </div>
+
+          <div className="md:col-span-2">
+            <label className="text-xs font-medium text-muted-foreground mb-2 block">Service Type *</label>
             <select
               onChange={(e) => {
-                const name = e.target.value;
-                if (!name) return;
-                const svc = uniqueServiceOptions.find(s => s.name === name);
-                const newItem: ServiceItem = {
-                  id: `${Date.now()}-${Math.random().toString(36).substr(2,6)}`,
-                  serviceType: name,
-                  name,
-                  description: svc?.description || "",
-                  unitPrice: svc?.unitPrice || 0,
-                  qty: 1,
-                  amount: svc?.unitPrice || 0,
-                };
-                setServiceItems(prev => [...prev, newItem]);
+                if (e.target.value) {
+                  toggleService(e.target.value);
+                }
                 e.target.value = "";
               }}
-              className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 mb-3"
-              defaultValue=""
+              className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 mb-2"
+              value=""
             >
-              <option value="" disabled>Select a service to add...</option>
+              <option value="" disabled>Select service type (can add multiple times)...</option>
               {serviceOptions.map((s) => (
                 <option key={s} value={s}>{s}</option>
               ))}
             </select>
-
-            {/* Services Table */}
-            {serviceItems.length > 0 && (
-              <div className="rounded-xl border border-border overflow-hidden mb-4">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-border bg-secondary/30">
-                      {["Service Type", "Service", "Description", "Unit Price", "Qty", "Amount", "Action"].map(h => (
-                        <th key={h} className="text-left px-3 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {serviceItems.map((item) => (
-                      <tr key={item.id} className="border-b border-border last:border-0 hover:bg-secondary/10 transition-colors">
-                        <td className="px-3 py-2.5 text-xs text-card-foreground font-medium">{item.serviceType}</td>
-                        <td className="px-3 py-2.5">
-                          <input
-                            value={item.name}
-                            onChange={e => setServiceItems(prev => prev.map(i => i.id === item.id ? { ...i, name: e.target.value } : i))}
-                            className="w-full px-2 py-1 rounded bg-secondary border border-border text-xs text-card-foreground focus:outline-none focus:ring-1 focus:ring-primary/20"
-                          />
-                        </td>
-                        <td className="px-3 py-2.5">
-                          <input
-                            value={item.description}
-                            onChange={e => setServiceItems(prev => prev.map(i => i.id === item.id ? { ...i, description: e.target.value } : i))}
-                            placeholder="Description"
-                            className="w-full px-2 py-1 rounded bg-secondary border border-border text-xs text-card-foreground focus:outline-none focus:ring-1 focus:ring-primary/20"
-                          />
-                        </td>
-                        <td className="px-3 py-2.5">
-                          <input
-                            type="number"
-                            min="0"
-                            value={item.unitPrice}
-                            onChange={e => {
-                              const unitPrice = Math.max(0, parseFloat(e.target.value) || 0);
-                              setServiceItems(prev => prev.map(i => i.id === item.id ? { ...i, unitPrice, amount: unitPrice * i.qty } : i));
-                            }}
-                            className="w-20 px-2 py-1 rounded bg-secondary border border-border text-xs text-card-foreground focus:outline-none focus:ring-1 focus:ring-primary/20"
-                          />
-                        </td>
-                        <td className="px-3 py-2.5">
-                          <div className="flex items-center gap-1">
-                            <button type="button" onClick={() => setServiceItems(prev => prev.map(i => i.id === item.id ? { ...i, qty: Math.max(1, i.qty - 1), amount: i.unitPrice * Math.max(1, i.qty - 1) } : i))} className="w-6 h-6 flex items-center justify-center rounded border border-border hover:bg-secondary text-xs">−</button>
-                            <span className="text-xs font-semibold text-card-foreground w-6 text-center">{item.qty}</span>
-                            <button type="button" onClick={() => setServiceItems(prev => prev.map(i => i.id === item.id ? { ...i, qty: i.qty + 1, amount: i.unitPrice * (i.qty + 1) } : i))} className="w-6 h-6 flex items-center justify-center rounded border border-border hover:bg-secondary text-xs">+</button>
-                          </div>
-                        </td>
-                        <td className="px-3 py-2.5 text-xs font-bold text-card-foreground">₹ {item.amount.toLocaleString()}</td>
-                        <td className="px-3 py-2.5">
-                          <button type="button" onClick={() => setServiceItems(prev => prev.filter(i => i.id !== item.id))} className="p-1.5 rounded border border-border hover:bg-destructive/10 transition-colors">
-                            <Trash2 className="w-3.5 h-3.5 text-destructive" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                {/* Summary */}
-                <div className="border-t border-border bg-secondary/10 px-4 py-3 flex justify-end">
-                  <div className="space-y-1 text-right">
-                    <div className="flex justify-between gap-8 text-xs text-muted-foreground">
-                      <span>Subtotal</span>
-                      <span className="font-semibold text-card-foreground">₹ {serviceItems.reduce((s, i) => s + i.amount, 0).toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between gap-8 text-sm font-bold">
-                      <span className="text-card-foreground">Total</span>
-                      <span className="text-primary">₹ {serviceItems.reduce((s, i) => s + i.amount, 0).toLocaleString()}</span>
-                    </div>
+            {selectedServices.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {selectedServices.map((s, index) => (
+                  <div key={`${s}-${index}`} className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 border border-primary/20 rounded-lg">
+                    <span className="text-xs font-medium text-primary">{s}</span>
+                    {selectedServices.filter(service => service === s).length > 1 && (
+                      <span className="text-xs text-primary/70">#{selectedServices.slice(0, index + 1).filter(service => service === s).length}</span>
+                    )}
+                    <button type="button" onClick={() => removeService(index)} className="text-primary hover:text-primary/70">
+                      <X className="w-3 h-3" />
+                    </button>
                   </div>
-                </div>
+                ))}
               </div>
             )}
           </div>
+        </div>
 
-          {/* Service Appointments Schedule */}
-          {serviceItems.length > 0 && (
-            <div className="md:col-span-2">
-              <div className="rounded-xl border border-border overflow-hidden">
-                <div className="px-4 py-3 border-b border-border bg-secondary/10">
-                  <h3 className="text-sm font-bold text-card-foreground">Service Appointments Schedule</h3>
-                  <p className="text-xs text-muted-foreground mt-0.5">Schedule service visits</p>
+      {/* Services Section — inside main card */}
+      {serviceItems.length > 0 && (() => {
+        const subtotal = serviceItems.reduce((sum, t) => sum + (t.amount || 0), 0);
+        return (
+          <div className="mt-8 pt-8 border-t border-border">
+            <div className="mb-4">
+              <h2 className="text-base font-bold text-card-foreground">Services</h2>
+              <p className="text-xs text-muted-foreground mt-0.5">Services added</p>
+            </div>
+            <div className="overflow-x-auto rounded-xl border border-border">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border bg-secondary/30">
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">#</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Service</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Description</th>
+                    <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Unit Price</th>
+                    <th className="text-center px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Qty</th>
+                    <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Amount</th>
+                    <th className="text-center px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {serviceItems.map((item, index) => (
+                    <tr key={item.id} className="border-b border-border last:border-0 hover:bg-secondary/10 transition-colors">
+                      <td className="px-4 py-3 text-xs text-muted-foreground">{index + 1}</td>
+                      <td className="px-4 py-3 font-medium text-card-foreground text-xs">{item.title}</td>
+                      <td className="px-4 py-3 text-muted-foreground text-xs max-w-xs truncate">{item.description || "—"}</td>
+                      <td className="px-4 py-3 text-right text-card-foreground text-xs font-semibold">₹ {item.unitPrice?.toLocaleString() || 0}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center justify-center gap-2">
+                          <button type="button" onClick={() => { const q = Math.max(1, item.quantity - 1); setServiceItems(prev => prev.map(t => t.id === item.id ? { ...t, quantity: q, amount: item.unitPrice * q } : t)); }} className="w-6 h-6 flex items-center justify-center rounded border border-border hover:bg-secondary transition-colors"><span className="text-xs">−</span></button>
+                          <span className="text-xs font-semibold text-card-foreground min-w-[2rem] text-center">{item.quantity || 1}</span>
+                          <button type="button" onClick={() => { const q = item.quantity + 1; setServiceItems(prev => prev.map(t => t.id === item.id ? { ...t, quantity: q, amount: item.unitPrice * q } : t)); }} className="w-6 h-6 flex items-center justify-center rounded border border-border hover:bg-secondary transition-colors"><span className="text-xs">+</span></button>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-right text-card-foreground text-xs font-bold">₹ {item.amount?.toLocaleString() || 0}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center justify-center gap-1">
+                          <button type="button" onClick={() => setEditingItem({ ...item })} className="p-1.5 rounded-md border border-border hover:bg-secondary transition-colors"><Edit2 className="w-3.5 h-3.5 text-muted-foreground" /></button>
+                          <button type="button" onClick={() => removeService(index)} className="p-1.5 rounded-md border border-border hover:bg-destructive/10 transition-colors"><X className="w-3.5 h-3.5 text-destructive" /></button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="mt-3 flex justify-end">
+              <div className="w-full max-w-xs space-y-2 bg-secondary/10 rounded-xl border border-border px-4 py-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs font-medium text-muted-foreground">Subtotal</span>
+                  <span className="text-sm font-semibold text-card-foreground">₹ {Math.round(subtotal).toLocaleString()}</span>
                 </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-border bg-secondary/30">
-                        {["#", "Service", "Schedule Date", "From Time", "To Time", "Required Employees"].map(h => (
-                          <th key={h} className="text-left px-3 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {serviceItems.map((item, index) => {
-                        const sched = serviceSchedules.find(s => s.id === item.id) || { id: item.id, service: item.name, scheduleDate: "", fromTime: "", toTime: "", requiredEmployees: 1 };
-                        const updateSched = (field: string, value: string | number) => {
-                          setServiceSchedules(prev => {
-                            const existing = prev.find(s => s.id === item.id);
-                            if (existing) return prev.map(s => s.id === item.id ? { ...s, [field]: value } : s);
-                            return [...prev, { ...sched, [field]: value }];
-                          });
-                        };
-                        return (
-                          <tr key={item.id} className="border-b border-border last:border-0 hover:bg-secondary/10 transition-colors">
-                            <td className="px-3 py-2.5 text-xs text-muted-foreground">{index + 1}</td>
-                            <td className="px-3 py-2.5 text-xs font-medium text-card-foreground">{item.name}</td>
-                            <td className="px-3 py-2.5">
-                              <input type="date" value={sched.scheduleDate} onChange={e => updateSched("scheduleDate", e.target.value)} className="w-full px-2 py-1.5 rounded-lg bg-secondary text-xs border border-border focus:outline-none focus:ring-1 focus:ring-primary/20 text-card-foreground" />
-                            </td>
-                            <td className="px-3 py-2.5">
-                              <input type="time" value={sched.fromTime} onChange={e => updateSched("fromTime", e.target.value)} className="w-full px-2 py-1.5 rounded-lg bg-secondary text-xs border border-border focus:outline-none focus:ring-1 focus:ring-primary/20 text-card-foreground" />
-                            </td>
-                            <td className="px-3 py-2.5">
-                              <input type="time" value={sched.toTime} onChange={e => updateSched("toTime", e.target.value)} className="w-full px-2 py-1.5 rounded-lg bg-secondary text-xs border border-border focus:outline-none focus:ring-1 focus:ring-primary/20 text-card-foreground" />
-                            </td>
-                            <td className="px-3 py-2.5">
-                              <div className="flex items-center gap-2">
-                                <button type="button" onClick={() => updateSched("requiredEmployees", Math.max(0, sched.requiredEmployees - 1))} className="w-7 h-7 flex items-center justify-center rounded border border-border hover:bg-secondary text-sm">−</button>
-                                <span className="text-xs font-semibold text-card-foreground min-w-[2rem] text-center">{sched.requiredEmployees}</span>
-                                <button type="button" onClick={() => updateSched("requiredEmployees", sched.requiredEmployees + 1)} className="w-7 h-7 flex items-center justify-center rounded border border-border hover:bg-secondary text-sm">+</button>
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                <div className="pt-2 border-t border-border flex justify-between items-center">
+                  <span className="text-sm font-bold text-card-foreground">Total Amount</span>
+                  <span className="text-lg font-bold text-primary">₹ {Math.round(subtotal).toLocaleString()}</span>
                 </div>
               </div>
             </div>
-          )}
+          </div>
+        );
+      })()}
 
-          <div className="md:col-span-2">
-            <label className="text-xs font-medium text-muted-foreground mb-2 block">Notes</label>
-            <textarea value={form.notes} onChange={(e) => setField("notes", e.target.value)} rows={3} placeholder="Additional notes..." className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none" />
+      {/* Service Appointments Schedule — inside main card */}
+      {serviceItems.length > 0 && (
+        <div className="mt-8 pt-8 border-t border-border">
+          <div className="mb-4">
+            <h2 className="text-base font-bold text-card-foreground">Service Appointments Schedule</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">Schedule service visits for this enquiry</p>
+          </div>
+          <div className="overflow-x-auto rounded-xl border border-border">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border bg-secondary/30">
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-12">#</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Service</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Schedule Date</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">From Time</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">To Time</th>
+                  <th className="text-center px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Required Employees</th>
+                </tr>
+              </thead>
+              <tbody>
+                {serviceItems.map((item, index) => {
+                  const schedule = serviceSchedules.find(s => s.id === item.id) || { id: item.id, service: item.title, scheduleDate: "", fromTime: "", toTime: "", requiredEmployees: 1 };
+                  const upd = (field: string, val: string | number) => setServiceSchedules(prev => { const ex = prev.find(s => s.id === item.id); if (ex) return prev.map(s => s.id === item.id ? { ...s, [field]: val } : s); return [...prev, { ...schedule, [field]: val }]; });
+                  return (
+                    <tr key={item.id} className="border-b border-border last:border-0 hover:bg-secondary/10 transition-colors">
+                      <td className="px-4 py-3 text-xs text-muted-foreground">{index + 1}</td>
+                      <td className="px-4 py-3 font-medium text-card-foreground text-sm">{item.title}</td>
+                      <td className="px-4 py-3"><input type="date" value={schedule.scheduleDate} onChange={e => upd("scheduleDate", e.target.value)} className="w-full px-3 py-1.5 rounded-lg bg-secondary text-xs border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground" /></td>
+                      <td className="px-4 py-3"><input type="time" value={schedule.fromTime} onChange={e => upd("fromTime", e.target.value)} className="w-full px-3 py-1.5 rounded-lg bg-secondary text-xs border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground" /></td>
+                      <td className="px-4 py-3"><input type="time" value={schedule.toTime} onChange={e => upd("toTime", e.target.value)} className="w-full px-3 py-1.5 rounded-lg bg-secondary text-xs border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground" /></td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center justify-center gap-2">
+                          <button type="button" onClick={() => upd("requiredEmployees", Math.max(0, (serviceSchedules.find(s => s.id === item.id)?.requiredEmployees ?? 1) - 1))} className="w-7 h-7 flex items-center justify-center rounded border border-border hover:bg-secondary transition-colors"><span className="text-sm">−</span></button>
+                          <span className="text-sm font-semibold text-card-foreground min-w-[2.5rem] text-center">{schedule.requiredEmployees}</span>
+                          <button type="button" onClick={() => upd("requiredEmployees", (serviceSchedules.find(s => s.id === item.id)?.requiredEmployees ?? 1) + 1)} className="w-7 h-7 flex items-center justify-center rounded border border-border hover:bg-secondary transition-colors"><span className="text-sm">+</span></button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         </div>
+      )}
 
         <div className="flex gap-3 mt-8 pt-6 border-t border-border">
           <button onClick={() => navigate("/leads")} className="flex-1 h-10 border border-border text-card-foreground text-sm font-medium hover:text-primary transition-colors rounded-lg">Cancel</button>
           <button onClick={handleSave} className="flex-1 h-10 text-sm font-semibold hover:opacity-90 text-white shadow-[0px_5px_12px_rgba(39,47,158,0.2)] transition-all rounded-lg" style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}>Save Enquiry</button>
         </div>
       </div>
+
+      {/* Edit Service Modal */}
+      {editingItem && createPortal(
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75">
+          <div className="bg-card rounded-[20px] shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-6 border-b border-border sticky top-0 bg-card z-10">
+              <h2 className="text-lg font-bold text-card-foreground">Edit Service</h2>
+              <button onClick={() => setEditingItem(null)} className="p-1 hover:bg-secondary rounded-lg transition-colors"><X className="w-5 h-5 text-muted-foreground" /></button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div><label className="text-xs font-medium text-muted-foreground mb-2 block">Service</label><input value={editingItem.title} readOnly className="w-full px-3 py-2 rounded-lg bg-secondary/50 text-sm border border-border text-card-foreground" /></div>
+              <div><label className="text-xs font-medium text-muted-foreground mb-2 block">Description</label><textarea value={editingItem.description} onChange={(e) => setEditingItem({ ...editingItem, description: e.target.value })} rows={3} className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground resize-none" /></div>
+              <div><label className="text-xs font-medium text-muted-foreground mb-2 block">Unit Price (₹)</label><input type="number" min="0" value={editingItem.unitPrice} onChange={(e) => { const unitPrice = Math.max(0, parseFloat(e.target.value) || 0); setEditingItem({ ...editingItem, unitPrice, amount: unitPrice * editingItem.quantity }); }} className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground" /></div>
+              <div><label className="text-xs font-medium text-muted-foreground mb-2 block">Quantity</label><input type="number" min="1" value={editingItem.quantity} onChange={(e) => { const quantity = Math.max(1, parseInt(e.target.value) || 1); setEditingItem({ ...editingItem, quantity, amount: editingItem.unitPrice * quantity }); }} className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground" /></div>
+              <div><label className="text-xs font-medium text-muted-foreground mb-2 block">Amount (₹)</label><input type="text" value={`₹ ${editingItem.amount?.toLocaleString() || 0}`} readOnly className="w-full px-3 py-2 rounded-lg bg-secondary/50 text-sm border border-border text-card-foreground font-bold" /></div>
+              <div className="flex gap-3 pt-2">
+                <button type="button" onClick={() => setEditingItem(null)} className="flex-1 px-4 py-2.5 border border-border text-card-foreground text-sm font-medium hover:text-primary transition-colors rounded-lg">Cancel</button>
+                <button type="button" onClick={() => updateServiceItem(editingItem)} className="flex-1 px-4 py-2.5 text-white text-sm font-semibold rounded-lg hover:opacity-90 transition-all" style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}>Save Changes</button>
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+    </div>
+  );
+};
+
+export default CreateLeadPage;
+                <thead>
+                  <tr className="border-b border-border bg-secondary/30">
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">#</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Service</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Description</th>
+                    <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Unit Price</th>
+                    <th className="text-center px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Qty</th>
+                    <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Amount</th>
+                    <th className="text-center px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {serviceItems.map((item, index) => (
+                    <tr key={item.id} className="border-b border-border last:border-0 hover:bg-secondary/10 transition-colors">
+                      <td className="px-4 py-3 text-xs text-muted-foreground">{index + 1}</td>
+                      <td className="px-4 py-3 font-medium text-card-foreground text-xs">{item.title}</td>
+                      <td className="px-4 py-3 text-muted-foreground text-xs max-w-xs truncate">{item.description || "—"}</td>
+                      <td className="px-4 py-3 text-right text-card-foreground text-xs font-semibold">₹ {item.unitPrice?.toLocaleString() || 0}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center justify-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const newQuantity = Math.max(1, item.quantity - 1);
+                              const newAmount = item.unitPrice * newQuantity;
+                              setServiceItems(prev => prev.map(t => t.id === item.id ? { ...t, quantity: newQuantity, amount: newAmount } : t));
+                            }}
+                            className="w-6 h-6 flex items-center justify-center rounded border border-border hover:bg-secondary transition-colors"
+                          >
+                            <span className="text-xs">−</span>
+                          </button>
+                          <span className="text-xs font-semibold text-card-foreground min-w-[2rem] text-center">{item.quantity || 1}</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const newQuantity = item.quantity + 1;
+                              const newAmount = item.unitPrice * newQuantity;
+                              setServiceItems(prev => prev.map(t => t.id === item.id ? { ...t, quantity: newQuantity, amount: newAmount } : t));
+                            }}
+                            className="w-6 h-6 flex items-center justify-center rounded border border-border hover:bg-secondary transition-colors"
+                          >
+                            <span className="text-xs">+</span>
+                          </button>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-right text-card-foreground text-xs font-bold">₹ {item.amount?.toLocaleString() || 0}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center justify-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => setEditingItem({ ...item })}
+                            className="p-1.5 rounded-md border border-border hover:bg-secondary transition-colors"
+                            title="Edit service"
+                          >
+                            <Edit2 className="w-3.5 h-3.5 text-muted-foreground" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => removeService(index)}
+                            className="p-1.5 rounded-md border border-border hover:bg-destructive/10 transition-colors"
+                            title="Remove service"
+                          >
+                            <X className="w-3.5 h-3.5 text-destructive" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {/* Summary */}
+            <div className="border-t border-border bg-secondary/10 px-6 py-4">
+              <div className="ml-auto w-full max-w-xs space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs font-medium text-muted-foreground">Subtotal</span>
+                  <span className="text-sm font-semibold text-card-foreground">₹ {Math.round(subtotal).toLocaleString()}</span>
+                </div>
+                <div className="pt-2 border-t border-border flex justify-between items-center">
+                  <span className="text-sm font-bold text-card-foreground">Total Amount</span>
+                  <span className="text-lg font-bold text-primary">₹ {Math.round(subtotal).toLocaleString()}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Service Appointments Schedule */}
+      {serviceItems.length > 0 && (
+        <div className="bg-card rounded-xl card-shadow border border-border overflow-hidden">
+          <div className="px-6 py-4 border-b border-border">
+            <h2 className="text-base font-bold text-card-foreground">Service Appointments Schedule</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">Schedule service visits for this enquiry</p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border bg-secondary/30">
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-12">#</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Service</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Schedule Date</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">From Time</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">To Time</th>
+                  <th className="text-center px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Required Employees</th>
+                </tr>
+              </thead>
+              <tbody>
+                {serviceItems.map((item, index) => {
+                  const schedule = serviceSchedules.find(s => s.id === item.id) || {
+                    id: item.id,
+                    service: item.title,
+                    scheduleDate: "",
+                    fromTime: "",
+                    toTime: "",
+                    requiredEmployees: 1,
+                  };
+                  return (
+                    <tr key={item.id} className="border-b border-border last:border-0 hover:bg-secondary/10 transition-colors">
+                      <td className="px-4 py-3 text-xs text-muted-foreground">{index + 1}</td>
+                      <td className="px-4 py-3 font-medium text-card-foreground text-sm">{item.title}</td>
+                      <td className="px-4 py-3">
+                        <input
+                          type="date"
+                          value={schedule.scheduleDate}
+                          onChange={(e) => {
+                            setServiceSchedules(prev => {
+                              const existing = prev.find(s => s.id === item.id);
+                              if (existing) return prev.map(s => s.id === item.id ? { ...s, scheduleDate: e.target.value } : s);
+                              return [...prev, { ...schedule, scheduleDate: e.target.value }];
+                            });
+                          }}
+                          className="w-full px-3 py-1.5 rounded-lg bg-secondary text-xs border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
+                        />
+                      </td>
+                      <td className="px-4 py-3">
+                        <input
+                          type="time"
+                          value={schedule.fromTime}
+                          onChange={(e) => {
+                            setServiceSchedules(prev => {
+                              const existing = prev.find(s => s.id === item.id);
+                              if (existing) return prev.map(s => s.id === item.id ? { ...s, fromTime: e.target.value } : s);
+                              return [...prev, { ...schedule, fromTime: e.target.value }];
+                            });
+                          }}
+                          className="w-full px-3 py-1.5 rounded-lg bg-secondary text-xs border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
+                        />
+                      </td>
+                      <td className="px-4 py-3">
+                        <input
+                          type="time"
+                          value={schedule.toTime}
+                          onChange={(e) => {
+                            setServiceSchedules(prev => {
+                              const existing = prev.find(s => s.id === item.id);
+                              if (existing) return prev.map(s => s.id === item.id ? { ...s, toTime: e.target.value } : s);
+                              return [...prev, { ...schedule, toTime: e.target.value }];
+                            });
+                          }}
+                          className="w-full px-3 py-1.5 rounded-lg bg-secondary text-xs border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
+                        />
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center justify-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setServiceSchedules(prev => {
+                                const existing = prev.find(s => s.id === item.id);
+                                const newQty = Math.max(0, (existing?.requiredEmployees ?? 1) - 1);
+                                if (existing) return prev.map(s => s.id === item.id ? { ...s, requiredEmployees: newQty } : s);
+                                return [...prev, { ...schedule, requiredEmployees: newQty }];
+                              });
+                            }}
+                            className="w-7 h-7 flex items-center justify-center rounded border border-border hover:bg-secondary transition-colors"
+                          >
+                            <span className="text-sm">−</span>
+                          </button>
+                          <span className="text-sm font-semibold text-card-foreground min-w-[2.5rem] text-center">
+                            {schedule.requiredEmployees}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setServiceSchedules(prev => {
+                                const existing = prev.find(s => s.id === item.id);
+                                const newQty = (existing?.requiredEmployees ?? 1) + 1;
+                                if (existing) return prev.map(s => s.id === item.id ? { ...s, requiredEmployees: newQty } : s);
+                                return [...prev, { ...schedule, requiredEmployees: newQty }];
+                              });
+                            }}
+                            className="w-7 h-7 flex items-center justify-center rounded border border-border hover:bg-secondary transition-colors"
+                          >
+                            <span className="text-sm">+</span>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Service Modal */}
+      {editingItem && createPortal(
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75">
+          <div className="bg-card rounded-[20px] shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-6 border-b border-border sticky top-0 bg-card z-10">
+              <h2 className="text-lg font-bold text-card-foreground">Edit Service</h2>
+              <button onClick={() => setEditingItem(null)} className="p-1 hover:bg-secondary rounded-lg transition-colors">
+                <X className="w-5 h-5 text-muted-foreground" />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-2 block">Service</label>
+                <input value={editingItem.title} readOnly className="w-full px-3 py-2 rounded-lg bg-secondary/50 text-sm border border-border text-card-foreground" />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-2 block">Description</label>
+                <textarea
+                  value={editingItem.description}
+                  onChange={(e) => setEditingItem({ ...editingItem, description: e.target.value })}
+                  placeholder="Service description..."
+                  rows={3}
+                  className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground resize-none"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-2 block">Unit Price (₹)</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={editingItem.unitPrice}
+                  onChange={(e) => {
+                    const unitPrice = Math.max(0, parseFloat(e.target.value) || 0);
+                    const amount = unitPrice * editingItem.quantity;
+                    setEditingItem({ ...editingItem, unitPrice, amount });
+                  }}
+                  placeholder="0"
+                  className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-2 block">Quantity</label>
+                <input
+                  type="number"
+                  min="1"
+                  value={editingItem.quantity}
+                  onChange={(e) => {
+                    const quantity = Math.max(1, parseInt(e.target.value) || 1);
+                    const amount = editingItem.unitPrice * quantity;
+                    setEditingItem({ ...editingItem, quantity, amount });
+                  }}
+                  className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-2 block">Amount (₹)</label>
+                <input
+                  type="text"
+                  value={`₹ ${editingItem.amount?.toLocaleString() || 0}`}
+                  readOnly
+                  className="w-full px-3 py-2 rounded-lg bg-secondary/50 text-sm border border-border text-card-foreground font-bold"
+                />
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setEditingItem(null)}
+                  className="flex-1 px-4 py-2.5 border border-border text-card-foreground text-sm font-medium hover:text-primary transition-colors rounded-lg"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => updateServiceItem(editingItem)}
+                  className="flex-1 px-4 py-2.5 text-white text-sm font-semibold rounded-lg hover:opacity-90 transition-all"
+                  style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}
+                >
+                  Save Changes
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+      
+        <div className="flex gap-3 mt-8 pt-6 border-t border-border">
+          <button onClick={() => navigate("/leads")} className="flex-1 h-10 border border-border text-card-foreground text-sm font-medium hover:text-primary transition-colors rounded-lg">Cancel</button>
+          <button onClick={handleSave} className="flex-1 h-10 text-sm font-semibold hover:opacity-90 text-white shadow-[0px_5px_12px_rgba(39,47,158,0.2)] transition-all rounded-lg" style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}>Save Enquiry</button>
+        </div>
     </div>
   );
 };

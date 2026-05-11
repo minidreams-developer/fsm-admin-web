@@ -33,6 +33,6 @@ export const useRolesStore = create<RolesStore>()(
       updateRole: (id, updates) => set((state) => ({ roles: state.roles.map((r) => r.id === id ? { ...r, ...updates } : r) })),
       deleteRole: (id) => set((state) => ({ roles: state.roles.filter((r) => r.id !== id) })),
     }),
-    { name: "roles-store", version: 0 }
+    { name: "roles-store", version: 1, migrate: () => ({ roles: initialRoles }) }
   )
 );
