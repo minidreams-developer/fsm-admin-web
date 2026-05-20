@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { useLeadsStore, type Lead, type LeadStatus, type UrgencyLevel } from "@/store/leadsStore";
 import { useEmployeesStore } from "@/store/employeesStore";
 import { useProductsStore } from "@/store/productsStore";
+import { TimeInput12Hour } from "@/components/TimeInput12Hour";
 
 type Props = {
   open: boolean;
@@ -70,7 +71,7 @@ export function LeadDetailsModal({ open, lead, onClose, initialEdit = false }: P
       return;
     }
     updateLead(lead.id, form);
-    toast.success("Enquiry updated");
+    toast.success("Leads updated");
     setIsEditing(false);
     onClose();
   };
@@ -82,7 +83,7 @@ export function LeadDetailsModal({ open, lead, onClose, initialEdit = false }: P
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-border bg-card flex-shrink-0">
           <div>
-            <h3 className="text-lg sm:text-xl font-bold text-card-foreground">{isEditing ? "Edit Enquiry" : "Enquiry Details"}</h3>
+            <h3 className="text-lg sm:text-xl font-bold text-card-foreground">{isEditing ? "Edit Leads" : "Leads Details"}</h3>
             <p className="text-xs text-muted-foreground mt-1">{lead.name}</p>
           </div>
           <button onClick={onClose} className="p-2 hover:bg-secondary rounded-lg transition-colors flex-shrink-0">
@@ -157,14 +158,14 @@ export function LeadDetailsModal({ open, lead, onClose, initialEdit = false }: P
           {!isEditing && activeTab === "details" && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {([
-                ["Enquiry ID", formatLeadId(lead.id)],
+                ["Leads ID", formatLeadId(lead.id)],
                 ["Customer Name", lead.name],
                 ["Phone", lead.phone],
                 ["Address", lead.address],
                 ["Status", lead.status],
                 ["Urgency Level", lead.urgencyLevel],
                 ["Amount", typeof lead.amount === "number" ? `₹ ${lead.amount.toLocaleString()}` : "—"],
-                ["Enquiry Source", lead.leadSource || "—"],
+                ["Leads Source", lead.leadSource || "—"],
                 ["Branch", lead.branch || "—"],
                 ["Lead Incharge", lead.assignedOwner || lead.leadIncharge || "—"],
                 ["Next Follow Up Date", lead.nextFollowUpDate || "—"],
@@ -233,7 +234,7 @@ export function LeadDetailsModal({ open, lead, onClose, initialEdit = false }: P
                 <input type="number" value={form.amount ?? ""} onChange={(e) => setField("amount", e.target.value ? Number(e.target.value) : null)} placeholder="e.g. 5000" className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20" />
               </div>
               <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1 block">Enquiry Source</label>
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">Leads Source</label>
                 <select value={form.leadSource ?? ""} onChange={(e) => setField("leadSource", e.target.value)} className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20">
                   <option value="">Select source</option>
                   {leadSources.map((s) => <option key={s} value={s}>{s}</option>)}
@@ -259,7 +260,7 @@ export function LeadDetailsModal({ open, lead, onClose, initialEdit = false }: P
               </div>
               <div>
                 <label className="text-xs font-medium text-muted-foreground mb-1 block">Next Follow Up Time</label>
-                <input type="time" value={(form as any).nextFollowUpTime ?? ""} onChange={(e) => setField("nextFollowUpTime" as any, e.target.value)} className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                <TimeInput12Hour value={(form as any).nextFollowUpTime ?? ""} onChange={(e) => setField("nextFollowUpTime" as any, e)} className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20" />
               </div>
               <div className="md:col-span-2">
                 <label className="text-xs font-medium text-muted-foreground mb-1 block">Services (select from list)</label>

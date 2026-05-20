@@ -123,15 +123,23 @@ export const useCustomersStore = create<CustomersStore>()(
     (set, get) => ({
       customers: initialCustomers,
 
-      addCustomer: (customer) =>
-        set((state) => ({
-          customers: [...state.customers, customer],
-        })),
+      addCustomer: (customer) => {
+        console.log("Adding customer to store:", customer);
+        set((state) => {
+          const updated = [...state.customers, customer];
+          console.log("Updated customers list:", updated);
+          return { customers: updated };
+        });
+      },
 
-      updateCustomer: (id, updates) =>
-        set((state) => ({
-          customers: state.customers.map((c) => (c.id === id ? { ...c, ...updates } : c)),
-        })),
+      updateCustomer: (id, updates) => {
+        console.log("Updating customer in store:", id, updates);
+        set((state) => {
+          const updated = state.customers.map((c) => (c.id === id ? { ...c, ...updates } : c));
+          console.log("Updated customers list:", updated);
+          return { customers: updated };
+        });
+      },
 
       deleteCustomer: (id) =>
         set((state) => ({
@@ -148,7 +156,14 @@ export const useCustomersStore = create<CustomersStore>()(
         return `CUST-${nextNum}`;
       },
     }),
-    { name: "customers-store", version: 0 },
+    {
+      name: "customers-store",
+      version: 0,
+      // Ensure proper rehydration
+      onRehydrateStorage: () => (state) => {
+        console.log("Store rehydrated:", state);
+      },
+    },
   ),
 );
 

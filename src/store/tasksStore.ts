@@ -11,6 +11,14 @@ export type Task = {
   assignedTo: string;
   assignedEmployees: string[];
   status: "Pending" | "In Progress" | "Completed" | "Overdue" | "Verified";
+  unitPrice?: number;
+  quantity?: number;
+  amount?: number;
+  gst?: string;
+  cgst?: string;
+  igst?: string;
+  fromTime?: string;
+  toTime?: string;
 };
 
 interface TasksStore {

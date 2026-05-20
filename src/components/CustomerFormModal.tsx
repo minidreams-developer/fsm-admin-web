@@ -190,31 +190,56 @@ export function CustomerFormModal({ open, mode, customer, prefill, onClose, onSa
         ? [{ name: customer.companyDocument }]
         : [];
       setExistingDocFiles(existing);
+      console.log("Modal opened in edit mode for customer:", customer.id);
       return;
     }
     setExistingDocFiles([]);
     setBillingFields(emptyAddress());
     setSiteFields(emptyAddress());
     setExtraSiteFields([]);
-    const nextId = getNextCustomerId();
-    const next = {
-      id: nextId,
-      customerType: "Residential",
-      firstName: "",
-      lastName: "",
-      emailAddress: "",
-      landline: "",
-      mobile: "",
-      gstNumber: "",
-      placeOfSupply: "",
-      paymentTerms: "",
-      billingAddress: "",
-      siteAddress: "",
-      contactPersonsDetails: [{ name: "", phone: "", email: "", designation: "" }],
-      customerDocuments: [],
-    } satisfies Customer;
-    const merged: Customer = { ...next, ...prefill, id: nextId };
-    setForm(merged);
+    try {
+      const nextId = getNextCustomerId();
+      console.log("Generated next customer ID:", nextId);
+      const next = {
+        id: nextId,
+        customerType: "Residential",
+        firstName: "",
+        lastName: "",
+        emailAddress: "",
+        landline: "",
+        mobile: "",
+        gstNumber: "",
+        placeOfSupply: "",
+        paymentTerms: "",
+        billingAddress: "",
+        siteAddress: "",
+        contactPersonsDetails: [{ name: "", phone: "", email: "", designation: "" }],
+        customerDocuments: [],
+      } satisfies Customer;
+      const merged: Customer = { ...next, ...prefill, id: nextId };
+      setForm(merged);
+      console.log("Modal opened in create mode with form:", merged);
+    } catch (error) {
+      console.error("Error initializing form:", error);
+      // Fallback to default form
+      const defaultForm: Customer = {
+        id: "CUST-1004",
+        customerType: "Residential",
+        firstName: "",
+        lastName: "",
+        emailAddress: "",
+        landline: "",
+        mobile: "",
+        gstNumber: "",
+        placeOfSupply: "",
+        paymentTerms: "",
+        billingAddress: "",
+        siteAddress: "",
+        contactPersonsDetails: [{ name: "", phone: "", email: "", designation: "" }],
+        customerDocuments: [],
+      };
+      setForm(defaultForm);
+    }
   }, [open, mode, customer, getNextCustomerId, prefill]);
 
   const setField = <K extends keyof Customer>(key: K, value: Customer[K]) => {
@@ -238,62 +263,77 @@ export function CustomerFormModal({ open, mode, customer, prefill, onClose, onSa
   };
 
   const save = () => {
+    // Validate required fields
+    const errors: string[] = [];
+    
     if (!form.firstName.trim()) {
-      toast.error(`${LABELS.firstName} is required`);
-      return;
+      errors.push(`${LABELS.firstName} is required`);
     }
     if (!form.mobile.trim()) {
-      toast.error(`${LABELS.mobile} is required`);
+      errors.push(`${LABELS.mobile} is required`);
+    }
+    
+    if (errors.length > 0) {
+      errors.forEach(error => toast.error(error));
+      console.warn("Validation errors:", errors);
       return;
     }
 
-    const derivedSiteAddress = addressToString(siteFields) || form.siteAddress.trim();
-    const allSiteAddresses = [
-      derivedSiteAddress,
-      ...extraSiteFields.map(f => addressToString(f)).filter(Boolean),
-    ].filter(Boolean).join(" | ");
-    const derivedBillingAddress = addressToString(billingFields) || derivedSiteAddress;
+    try {
+      const derivedSiteAddress = addressToString(siteFields) || form.siteAddress.trim();
+      const allSiteAddresses = [
+        derivedSiteAddress,
+        ...extraSiteFields.map(f => addressToString(f)).filter(Boolean),
+      ].filter(Boolean).join(" | ");
+      const derivedBillingAddress = addressToString(billingFields) || derivedSiteAddress;
 
-    const normalized: Customer = {
-      ...form,
-      firstName: form.firstName.trim(),
-      lastName: form.lastName.trim(),
-      emailAddress: form.emailAddress.trim(),
-      landline: form.landline.trim(),
-      mobile: form.mobile.trim(),
-      gstNumber: form.gstNumber.trim(),
-      placeOfSupply: form.placeOfSupply.trim(),
-      paymentTerms: form.paymentTerms.trim(),
-      billingAddress: derivedBillingAddress,
-      siteAddress: allSiteAddresses || derivedSiteAddress,
-      billingAddressFields: billingFields,
-      siteAddressFields: siteFields,
-      additionalSiteAddressFields: extraSiteFields,
-      contactPersonsDetails: form.contactPersonsDetails,
-      companyDocument: commercialDocs.length > 0 ? commercialDocs[0].file.name : (existingDocFiles[0]?.name || form.companyDocument || ""),
-      companyDocuments: [
-        ...existingDocFiles.map(d => d.name),
-        ...commercialDocs.map(d => d.file.name),
-      ].filter(Boolean),
-      companyDocumentFiles: [
-        ...existingDocFiles,
-        ...commercialDocs.map(d => ({ name: d.file.name, dataUrl: d.dataUrl })),
-      ],
-      customerLanguage: form.customerLanguage || "",
-    };
+      const normalized: Customer = {
+        ...form,
+        firstName: form.firstName.trim(),
+        lastName: form.lastName.trim(),
+        emailAddress: form.emailAddress.trim(),
+        landline: form.landline.trim(),
+        mobile: form.mobile.trim(),
+        gstNumber: form.gstNumber.trim(),
+        placeOfSupply: form.placeOfSupply.trim(),
+        paymentTerms: form.paymentTerms.trim(),
+        billingAddress: derivedBillingAddress,
+        siteAddress: allSiteAddresses || derivedSiteAddress,
+        billingAddressFields: billingFields,
+        siteAddressFields: siteFields,
+        additionalSiteAddressFields: extraSiteFields,
+        contactPersonsDetails: form.contactPersonsDetails,
+        companyDocument: commercialDocs.length > 0 ? commercialDocs[0].file.name : (existingDocFiles[0]?.name || form.companyDocument || ""),
+        companyDocuments: [
+          ...existingDocFiles.map(d => d.name),
+          ...commercialDocs.map(d => d.file.name),
+        ].filter(Boolean),
+        companyDocumentFiles: [
+          ...existingDocFiles,
+          ...commercialDocs.map(d => ({ name: d.file.name, dataUrl: d.dataUrl })),
+        ],
+        customerLanguage: form.customerLanguage || "",
+      };
 
-    if (mode === "edit") {
-      updateCustomer(normalized.id, normalized);
-      toast.success(`Customer updated: ${buildDisplayName(normalized.firstName, normalized.lastName)}`);
+      console.log("Saving customer:", normalized);
+
+      if (mode === "edit") {
+        updateCustomer(normalized.id, normalized);
+        console.log("Customer updated successfully");
+        toast.success(`Customer updated: ${buildDisplayName(normalized.firstName, normalized.lastName)}`);
+      } else {
+        addCustomer(normalized);
+        console.log("Customer added successfully");
+        toast.success(`Customer added: ${buildDisplayName(normalized.firstName, normalized.lastName)}`);
+      }
+      
+      // Call onSaved callback and close modal
       onSaved?.(normalized);
       onClose();
-      return;
+    } catch (error) {
+      console.error("Error saving customer:", error);
+      toast.error("Failed to save customer. Please try again.");
     }
-
-    addCustomer(normalized);
-    toast.success(`Customer added: ${buildDisplayName(normalized.firstName, normalized.lastName)}`);
-    onSaved?.(normalized);
-    onClose();
   };
 
   if (!open) return null;
@@ -363,15 +403,15 @@ export function CustomerFormModal({ open, mode, customer, prefill, onClose, onSa
               </select>
             </div>
 
-            {/* Company Document - Multiple PDF uploads */}
+            {/* Company Document - Multiple file uploads */}
             <div className="md:col-span-2">
-              <label className="text-xs font-medium text-muted-foreground mb-2 block">Company Documents (PDF only)</label>
+              <label className="text-xs font-medium text-muted-foreground mb-2 block">Company Documents</label>
               <label className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg bg-secondary border border-border cursor-pointer hover:bg-secondary/80 transition-colors">
                 <Upload className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                <span className="text-sm text-muted-foreground">Click to upload PDF(s)</span>
+                <span className="text-sm text-muted-foreground">Click to upload files</span>
                 <input
                   type="file"
-                  accept="application/pdf"
+                  accept="*/*"
                   multiple
                   className="hidden"
                   onChange={(e) => {

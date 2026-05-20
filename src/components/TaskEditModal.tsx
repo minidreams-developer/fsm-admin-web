@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { useTasksStore, type Task } from "@/store/tasksStore";
 import { useEmployeesStore } from "@/store/employeesStore";
 import { useState } from "react";
+import { TimeInput12Hour } from "@/components/TimeInput12Hour";
 
 const taskSchema = z.object({
   title: z.string().min(1, "Task title is required"),
@@ -114,9 +115,9 @@ export function TaskEditModal({ task, isOpen, onClose, onSave }: TaskEditModalPr
 
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-2 block">Start Time *</label>
-            <input
-              type="time"
-              {...register("startTime")}
+            <TimeInput12Hour
+              value={watch("startTime") || ""}
+              onChange={(value) => setValue("startTime", value)}
               className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
             />
             {errors.startTime && <p className="text-xs text-red-500 mt-1">{errors.startTime.message}</p>}
@@ -124,9 +125,9 @@ export function TaskEditModal({ task, isOpen, onClose, onSave }: TaskEditModalPr
 
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-2 block">End Time *</label>
-            <input
-              type="time"
-              {...register("endTime")}
+            <TimeInput12Hour
+              value={watch("endTime") || ""}
+              onChange={(value) => setValue("endTime", value)}
               className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
             />
             {errors.endTime && <p className="text-xs text-red-500 mt-1">{errors.endTime.message}</p>}

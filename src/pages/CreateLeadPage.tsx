@@ -9,6 +9,7 @@ import { useEmployeesStore } from "@/store/employeesStore";
 import { useProductsStore } from "@/store/productsStore";
 import { useCustomersStore } from "@/store/customersStore";
 import { useServicesStore } from "@/store/servicesStore";
+import { TimeInput12Hour } from "@/components/TimeInput12Hour";
 
 const urgencyLevels: UrgencyLevel[] = ["Low", "Medium", "High"];
           
@@ -288,7 +289,7 @@ const CreateLeadPage = () => {
       quoteIsViewed: false,
       quoteViewedAt: null,
     });
-    toast.success("Enquiry created successfully!");
+    toast.success("Leads created successfully!");
     navigate("/leads");
   };
 
@@ -300,8 +301,8 @@ const CreateLeadPage = () => {
           Back
         </button>
         <div>
-          <h2 className="text-lg sm:text-xl font-bold text-card-foreground">Add New Enquiry</h2>
-          <p className="text-sm text-muted-foreground">Fill in the details to create a new enquiry</p>
+          <h2 className="text-lg sm:text-xl font-bold text-card-foreground">Add New Leads</h2>
+          <p className="text-sm text-muted-foreground">Fill in the details to create a new Leads</p>
         </div>
       </div>
 
@@ -361,14 +362,14 @@ const CreateLeadPage = () => {
           <div className="md:col-span-2">
             <div className="flex items-center justify-between mb-3">
               <label className="text-xs font-medium text-muted-foreground"></label>
-              <button
+              {/* <button
                 type="button"
                 onClick={addAddress}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-primary bg-primary/10 hover:bg-primary/20 rounded-lg transition-colors border border-primary/20"
               >
                 <Plus className="w-3.5 h-3.5" />
                 Add Address
-              </button>
+              </button> */}
             </div>
             <div className="space-y-4">
               {addresses.map((addr, index) => (
@@ -383,75 +384,55 @@ const CreateLeadPage = () => {
                       <X className="w-4 h-4" />
                     </button>
                   )}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    <div className="md:col-span-3">
-                      <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
-                        Address {index + 1} *
-                      </label>
-                      {customerAddressOptions.length > 0 ? (
-                        <>
-                          <select
-                            value={customerAddressOptions.findIndex(o => o.address === addr.address && o.city === addr.city && o.pincode === addr.pincode)}
-                            onChange={(e) => {
-                              const idx = parseInt(e.target.value);
-                              if (idx === -1) {
-                                // Custom — clear fields for manual entry
-                                setAddresses(prev => prev.map(a => a.id === addr.id
-                                  ? { ...a, address: "", city: "", pincode: "" }
-                                  : a
-                                ));
-                              } else {
-                                const opt = customerAddressOptions[idx];
-                                setAddresses(prev => prev.map(a => a.id === addr.id
-                                  ? { ...a, address: opt.address, city: opt.city, pincode: opt.pincode }
-                                  : a
-                                ));
-                              }
-                            }}
-                            className="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
-                          >
-                            {/* <option value={-1}>+ Enter custom address</option> */}
-                            {customerAddressOptions.map((opt, i) => (
-                              <option key={i} value={i}>{opt.label}</option>
-                            ))}
-                          </select>
-                          {/* Show manual inputs when custom is selected */}
-                          {customerAddressOptions.findIndex(o => o.address === addr.address && o.city === addr.city && o.pincode === addr.pincode) === -1 && (
-                            <input
-                              value={addr.address}
-                              onChange={(e) => updateAddress(addr.id, "address", e.target.value)}
-                              placeholder="Enter address"
-                              className="w-full mt-2 px-3 py-2 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
-                            />
-                          )}
-                        </>
-                      ) : (
-                        <input
-                          value={addr.address}
-                          onChange={(e) => updateAddress(addr.id, "address", e.target.value)}
-                          placeholder="e.g. 12 MG Road, Kochi"
+                  <div className="md:col-span-2">
+                    <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+                      Address {index + 1} *
+                    </label>
+                    {customerAddressOptions.length > 0 ? (
+                      <>
+                        <select
+                          value={customerAddressOptions.findIndex(o => o.address === addr.address && o.city === addr.city && o.pincode === addr.pincode)}
+                          onChange={(e) => {
+                            const idx = parseInt(e.target.value);
+                            if (idx === -1) {
+                              // Custom — clear fields for manual entry
+                              setAddresses(prev => prev.map(a => a.id === addr.id
+                                ? { ...a, address: "", city: "", pincode: "" }
+                                : a
+                              ));
+                            } else {
+                              const opt = customerAddressOptions[idx];
+                              setAddresses(prev => prev.map(a => a.id === addr.id
+                                ? { ...a, address: opt.address, city: opt.city, pincode: opt.pincode }
+                                : a
+                              ));
+                            }
+                          }}
                           className="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
-                        />
-                      )}
-                    </div>
-                    <div>
-                      <label className="text-xs font-medium text-muted-foreground mb-1.5 block">City</label>
+                        >
+                          {/* <option value={-1}>+ Enter custom address</option> */}
+                          {customerAddressOptions.map((opt, i) => (
+                            <option key={i} value={i}>{opt.label}</option>
+                          ))}
+                        </select>
+                        {/* Show manual inputs when custom is selected */}
+                        {customerAddressOptions.findIndex(o => o.address === addr.address && o.city === addr.city && o.pincode === addr.pincode) === -1 && (
+                          <input
+                            value={addr.address}
+                            onChange={(e) => updateAddress(addr.id, "address", e.target.value)}
+                            placeholder="Enter address"
+                            className="w-full mt-2 px-3 py-2 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+                          />
+                        )}
+                      </>
+                    ) : (
                       <input
-                        value={addr.city}
-                        onChange={(e) => updateAddress(addr.id, "city", e.target.value)}
-                        placeholder="e.g. Kochi"
+                        value={addr.address}
+                        onChange={(e) => updateAddress(addr.id, "address", e.target.value)}
+                        placeholder="e.g. 12 MG Road, Kochi"
                         className="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
                       />
-                    </div>
-                    <div>
-                      <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Pincode</label>
-                      <input
-                        value={addr.pincode}
-                        onChange={(e) => updateAddress(addr.id, "pincode", e.target.value)}
-                        placeholder="e.g. 682001"
-                        className="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
-                      />
-                    </div>
+                    )}
                   </div>
                 </div>
               ))}
@@ -471,7 +452,7 @@ const CreateLeadPage = () => {
           </div>
 
           <div>
-            <label className="text-xs font-medium text-muted-foreground mb-2 block">Enquiry Source</label>
+            <label className="text-xs font-medium text-muted-foreground mb-2 block">Leads Source</label>
             <select 
               value={form.leadSource} 
               onChange={(e) => {
@@ -633,11 +614,11 @@ const CreateLeadPage = () => {
       {/* Service Appointments Schedule — inside main card */}
       {serviceItems.length > 0 && (
         <div className="mt-8 pt-8 border-t border-border">
-          <div className="mb-4">
+          {/* <div className="mb-4">
             <h2 className="text-base font-bold text-card-foreground">Service Appointments Schedule</h2>
-            <p className="text-xs text-muted-foreground mt-0.5">Schedule service visits for this enquiry</p>
-          </div>
-          <div className="overflow-x-auto rounded-xl border border-border">
+            <p className="text-xs text-muted-foreground mt-0.5">Schedule service visits for this Leads</p>
+          </div> */}
+          {/* <div className="overflow-x-auto rounded-xl border border-border">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border bg-secondary/30">
@@ -658,8 +639,8 @@ const CreateLeadPage = () => {
                       <td className="px-4 py-3 text-xs text-muted-foreground">{index + 1}</td>
                       <td className="px-4 py-3 font-medium text-card-foreground text-sm">{item.title}</td>
                       <td className="px-4 py-3"><input type="date" value={schedule.scheduleDate} onChange={e => upd("scheduleDate", e.target.value)} className="w-full px-3 py-1.5 rounded-lg bg-secondary text-xs border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground" /></td>
-                      <td className="px-4 py-3"><input type="time" value={schedule.fromTime} onChange={e => upd("fromTime", e.target.value)} className="w-full px-3 py-1.5 rounded-lg bg-secondary text-xs border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground" /></td>
-                      <td className="px-4 py-3"><input type="time" value={schedule.toTime} onChange={e => upd("toTime", e.target.value)} className="w-full px-3 py-1.5 rounded-lg bg-secondary text-xs border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground" /></td>
+                      <td className="px-4 py-3"><TimeInput12Hour value={schedule.fromTime} onChange={e => upd("fromTime", e)} className="w-full px-3 py-1.5 rounded-lg bg-secondary text-xs border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground" /></td>
+                      <td className="px-4 py-3"><TimeInput12Hour value={schedule.toTime} onChange={e => upd("toTime", e)} className="w-full px-3 py-1.5 rounded-lg bg-secondary text-xs border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground" /></td>
                       <td className="px-4 py-3">
                         <div className="flex items-center justify-center gap-2">
                           <button type="button" onClick={() => upd("requiredEmployees", Math.max(0, (serviceSchedules.find(s => s.id === item.id)?.requiredEmployees ?? 1) - 1))} className="w-7 h-7 flex items-center justify-center rounded border border-border hover:bg-secondary transition-colors"><span className="text-sm">−</span></button>
@@ -672,13 +653,13 @@ const CreateLeadPage = () => {
                 })}
               </tbody>
             </table>
-          </div>
+          </div> */}
         </div>
       )}
 
         <div className="flex gap-3 mt-8 pt-6 border-t border-border">
           <button onClick={() => navigate("/leads")} className="flex-1 h-10 border border-border text-card-foreground text-sm font-medium hover:text-primary transition-colors rounded-lg">Cancel</button>
-          <button onClick={handleSave} className="flex-1 h-10 text-sm font-semibold hover:opacity-90 text-white shadow-[0px_5px_12px_rgba(39,47,158,0.2)] transition-all rounded-lg" style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}>Save Enquiry</button>
+          <button onClick={handleSave} className="flex-1 h-10 text-sm font-semibold hover:opacity-90 text-white shadow-[0px_5px_12px_rgba(39,47,158,0.2)] transition-all rounded-lg" style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}>Save Leads</button>
         </div>
       </div>
 

@@ -1,11 +1,12 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, AlertCircle, Package, Briefcase, CheckCircle, XCircle, Edit2, DollarSign, Plus } from "lucide-react";
+import { ArrowLeft, AlertCircle, Package, Briefcase, CheckCircle, XCircle, Edit2, DollarSign, Plus, X } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useEmployeesStore } from "@/store/employeesStore";
 import { useProjectsStore } from "@/store/projectsStore";
 import { useInventoryStore } from "@/store/inventoryStore";
 import { useTasksStore } from "@/store/tasksStore";
+import { useSettingsStore } from "@/store/settingsStore";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EmployeeFormModal } from "@/components/EmployeeFormModal";
 
@@ -16,6 +17,7 @@ export const EmployeeDetailPage = () => {
   const { workOrders, updateWorkOrder } = useProjectsStore();
   const { inventory } = useInventoryStore();
   const { tasks, updateTask } = useTasksStore();
+  const { settings } = useSettingsStore();
   const [activeTab, setActiveTab] = useState<"projects" | "inventory" | "cash">("projects");
   const [showEdit, setShowEdit] = useState(false);
   const [projectFilter, setProjectFilter] = useState<"All" | "Open" | "Scheduled" | "Completed">("All");
@@ -26,6 +28,7 @@ export const EmployeeDetailPage = () => {
   const [appliedTo, setAppliedTo] = useState("");
   const [collectAmount, setCollectAmount] = useState("");
   const [collectNote, setCollectNote] = useState("");
+  const [editingCollectionId, setEditingCollectionId] = useState<string | null>(null);
 
   const applyDateFilter = () => {
     setAppliedFrom(dateFrom);
@@ -312,9 +315,9 @@ export const EmployeeDetailPage = () => {
             <div className="space-y-2">
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Travel Expense</p>
               <p className="text-lg font-bold text-warning">
-                ₹ {(employee.kmTraveled * (employee.kmRate ?? 8)).toLocaleString()}
+                ₹ {(employee.kmTraveled * (employee.kmRate ?? settings.kmPrice)).toLocaleString()}
               </p>
-              <p className="text-xs text-muted-foreground">@ ₹{employee.kmRate ?? 8}/km</p>
+              <p className="text-xs text-muted-foreground">@ ₹{employee.kmRate ?? settings.kmPrice}/km</p>
             </div>
           )}
         </div>
@@ -330,11 +333,14 @@ export const EmployeeDetailPage = () => {
               </div>
               <div className="bg-secondary/30 border border-border rounded-xl p-4 space-y-1">
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Rate per KM</p>
-                <p className="text-2xl font-bold text-card-foreground">₹ {employee.kmRate ?? 8} <span className="text-sm font-medium text-muted-foreground">/km</span></p>
+                <p className="text-2xl font-bold text-card-foreground">₹ {employee.kmRate ?? settings.kmPrice} <span className="text-sm font-medium text-muted-foreground">/km</span></p>
+                {!employee.kmRate && (
+                  <p className="text-xs text-muted-foreground">(Global rate)</p>
+                )}
               </div>
               <div className="bg-warning/5 border border-warning/20 rounded-xl p-4 space-y-1">
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Total Travel Expense</p>
-                <p className="text-2xl font-bold text-warning">₹ {(employee.kmTraveled * (employee.kmRate ?? 8)).toLocaleString()}</p>
+                <p className="text-2xl font-bold text-warning">₹ {(employee.kmTraveled * (employee.kmRate ?? settings.kmPrice)).toLocaleString()}</p>
               </div>
             </div>
           </div>
@@ -518,7 +524,7 @@ export const EmployeeDetailPage = () => {
                         <p className="font-semibold text-card-foreground">{project.id}</p>
                         <p className="text-sm text-muted-foreground">{project.customer}</p>
                       </div>
-                      <StatusBadge label={project.status} variant={project.status === "Completed" ? "neutral" : project.status === "Scheduled" ? "success" : "warning"} />
+                      <StatusBadge label={project.status} variant={project.status === "Completed" ? "neutral" : project.status === "Upcoming" ? "success" : "warning"} />
                     </div>
                     <p className="text-xs text-muted-foreground mb-2">{project.serviceType}</p>
                     <div className="flex items-center justify-between text-xs">
@@ -548,7 +554,7 @@ export const EmployeeDetailPage = () => {
                       </div>
                       <div className="grid grid-cols-3 gap-2 text-xs">
                         <span><p className="text-muted-foreground">balance</p><p className="font-semibold text-primary">{item.allocatedQuantity} {item.unit}</p></span>
-                        <span><p className="text-muted-foreground">Available Stock</p><p className="font-semibold text-card-foreground">{item.stock} {item.unit}</p></span>
+                        <span><p className="text-muted-foreground">Allocate Stock</p><p className="font-semibold text-card-foreground">{item.allocatedQuantity} {item.unit}</p></span>
                         <div><p className="text-muted-foreground">Unit</p><p className="font-semibold text-card-foreground">{item.unit}</p></div>
                       </div>
                       {item.allocatedAt && (
@@ -620,21 +626,50 @@ export const EmployeeDetailPage = () => {
                       toast.error("Enter a valid amount");
                       return;
                     }
-                    const newCollection = {
-                      id: `COL-${Date.now()}`,
-                      amount: amt,
-                      collectedAt: new Date().toISOString(),
-                      note: collectNote.trim() || undefined,
-                    };
-                    const existing = employee.cashCollections || [];
-                    // Deduct from cash balance
-                    const currentBalance = parseInt(employee.cashBalance.replace(/[₹,\s]/g, "")) || 0;
-                    const newBalance = Math.max(0, currentBalance - amt);
-                    updateEmployee(employee.id, {
-                      cashCollections: [...existing, newCollection],
-                      cashBalance: `₹ ${newBalance.toLocaleString()}`,
-                    });
-                    toast.success(`₹ ${amt.toLocaleString()} collected from ${employee.name}`);
+                    
+                    if (editingCollectionId) {
+                      // Edit mode
+                      const existing = employee.cashCollections || [];
+                      const oldCollection = existing.find(c => c.id === editingCollectionId);
+                      if (!oldCollection) return;
+                      
+                      const updated = existing.map(c => 
+                        c.id === editingCollectionId 
+                          ? { ...c, amount: amt, note: collectNote.trim() || undefined }
+                          : c
+                      );
+                      
+                      // Recalculate balance
+                      const currentBalance = parseInt(employee.cashBalance.replace(/[₹,\s]/g, "")) || 0;
+                      const amountDifference = amt - oldCollection.amount;
+                      const newBalance = Math.max(0, currentBalance - amountDifference);
+                      
+                      updateEmployee(employee.id, {
+                        cashCollections: updated,
+                        cashBalance: `₹ ${newBalance.toLocaleString()}`,
+                      });
+                      
+                      setEditingCollectionId(null);
+                      toast.success("Collection updated");
+                    } else {
+                      // New collection mode
+                      const newCollection = {
+                        id: `COL-${Date.now()}`,
+                        amount: amt,
+                        collectedAt: new Date().toISOString(),
+                        note: collectNote.trim() || undefined,
+                      };
+                      const existing = employee.cashCollections || [];
+                      // Deduct from cash balance
+                      const currentBalance = parseInt(employee.cashBalance.replace(/[₹,\s]/g, "")) || 0;
+                      const newBalance = Math.max(0, currentBalance - amt);
+                      updateEmployee(employee.id, {
+                        cashCollections: [...existing, newCollection],
+                        cashBalance: `₹ ${newBalance.toLocaleString()}`,
+                      });
+                      toast.success(`₹ ${amt.toLocaleString()} collected from ${employee.name}`);
+                    }
+                    
                     setCollectAmount("");
                     setCollectNote("");
                   }}
@@ -642,8 +677,21 @@ export const EmployeeDetailPage = () => {
                   style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}
                 >
                   <DollarSign className="w-4 h-4" />
-                  Collect Cash
+                  {editingCollectionId ? "Update Collection" : "Collect Cash"}
                 </button>
+                {editingCollectionId && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditingCollectionId(null);
+                      setCollectAmount("");
+                      setCollectNote("");
+                    }}
+                    className="mt-3 inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-card-foreground text-sm font-semibold border border-border hover:bg-secondary transition-all"
+                  >
+                    Cancel
+                  </button>
+                )}
               </div>
 
               {/* Collection History */}
@@ -667,9 +715,39 @@ export const EmployeeDetailPage = () => {
                             {col.note && <p className="text-xs text-muted-foreground truncate">{col.note}</p>}
                           </div>
                         </div>
-                        <p className="text-xs text-muted-foreground flex-shrink-0">
-                          {new Date(col.collectedAt).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}
-                        </p>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <p className="text-xs text-muted-foreground">
+                            {new Date(col.collectedAt).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}
+                          </p>
+                          <button
+                            onClick={() => {
+                              setEditingCollectionId(col.id);
+                              setCollectAmount(col.amount.toString());
+                              setCollectNote(col.note || "");
+                            }}
+                            className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-secondary transition-colors"
+                            title="Edit collection"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => {
+                              const existing = employee.cashCollections || [];
+                              const updated = existing.filter(c => c.id !== col.id);
+                              const currentBalance = parseInt(employee.cashBalance.replace(/[₹,\s]/g, "")) || 0;
+                              const newBalance = currentBalance + col.amount;
+                              updateEmployee(employee.id, {
+                                cashCollections: updated,
+                                cashBalance: `₹ ${newBalance.toLocaleString()}`,
+                              });
+                              toast.success("Collection deleted");
+                            }}
+                            className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                            title="Delete collection"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -679,6 +757,7 @@ export const EmployeeDetailPage = () => {
           )}
         </div>
       </div>
+
       <EmployeeFormModal
         open={showEdit}
         mode="edit"

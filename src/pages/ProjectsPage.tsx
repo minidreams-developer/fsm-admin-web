@@ -181,7 +181,7 @@ const ProjectsPage = () => {
       {showSuccessMessage && (
         <div className="bg-success/10 border border-success/20 rounded-lg p-4 animate-in fade-in slide-in-from-top-2 duration-300">
           <p className="text-sm font-medium text-success">
-            ✓ Enquiry "{convertedLeadName}" has been converted to a Work Order. Now assign a technician to start the service.
+            ✓ Leads "{convertedLeadName}" has been converted to a Work Order. Now assign a technician to start the service.
           </p>
         </div>
       )}

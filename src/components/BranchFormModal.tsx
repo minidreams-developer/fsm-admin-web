@@ -4,6 +4,7 @@ import { X } from "lucide-react";
 import { toast } from "sonner";
 import { useBranchesStore, type Branch } from "@/store/branchesStore";
 import { useEmployeesStore } from "@/store/employeesStore";
+import { TimeInput12Hour } from "@/components/TimeInput12Hour";
 
 type Mode = "create" | "edit";
 
@@ -278,20 +279,18 @@ export function BranchFormModal({ open, mode, branch, onClose, onSaved }: Props)
 
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-2 block">{LABELS.operatingHoursFrom}</label>
-              <input
-                value={form.operatingHoursFrom}
-                onChange={(e) => setField("operatingHoursFrom", e.target.value)}
-                type="time"
+              <TimeInput12Hour
+                value={form.operatingHoursFrom || ""}
+                onChange={(e) => setField("operatingHoursFrom", e)}
                 className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
               />
             </div>
 
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-2 block">{LABELS.operatingHoursTo}</label>
-              <input
-                value={form.operatingHoursTo}
-                onChange={(e) => setField("operatingHoursTo", e.target.value)}
-                type="time"
+              <TimeInput12Hour
+                value={form.operatingHoursTo || ""}
+                onChange={(e) => setField("operatingHoursTo", e)}
                 className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
               />
             </div>

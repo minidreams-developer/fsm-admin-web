@@ -34,6 +34,7 @@ import QuantCalendarPage from "./pages/QuantCalendarPage";
 import TaskManagementPage from "./pages/TaskManagementPage";
 import WorkOrderSignaturePage from "./pages/WorkOrderSignaturePage";
 import BulkAssignPage from "./pages/BulkAssignPage";
+import { SettingsPage } from "./pages/SettingsPage";
 
 const queryClient = new QueryClient();
 
@@ -76,6 +77,7 @@ const App = () => (
               <Route path="/roles" element={<RolesPage />} />
               <Route path="/quant-calendar" element={<QuantCalendarPage />} />
               <Route path="/task-management" element={<TaskManagementPage />} />
+              <Route path="/settings" element={<SettingsPage />} />
             </Route>
           </Route>
           <Route path="*" element={<NotFound />} />

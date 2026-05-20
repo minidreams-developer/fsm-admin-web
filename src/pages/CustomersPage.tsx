@@ -173,13 +173,18 @@ const CustomersPage = () => {
         open={showAdd}
         mode="create"
         onClose={() => setShowAdd(false)}
-        onSaved={(c) => navigate(`/customers/${c.id}`)}
+        onSaved={(c) => {
+          setShowAdd(false);
+          // Use setTimeout to ensure store persists before navigation
+          setTimeout(() => navigate(`/customers/${c.id}`), 100);
+        }}
       />
       <CustomerFormModal
         open={!!editCustomer}
         mode="edit"
         customer={editCustomer ?? undefined}
         onClose={() => setEditCustomer(null)}
+        onSaved={() => setEditCustomer(null)}
       />
     </div>
   );
@@ -263,7 +268,7 @@ export const CustomerDetailPage = () => {
                     className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-card-foreground hover:bg-secondary transition-colors"
                   >
                     <ClipboardList className="w-4 h-4 text-muted-foreground" />
-                    Add Enquiry
+                    Add Leads
                   </button>
                   <button
                     type="button"

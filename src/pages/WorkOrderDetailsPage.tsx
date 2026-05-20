@@ -526,6 +526,105 @@ export const WorkOrderDetailsPage = () => {
           )}
         </div>
 
+        {/* Services Pricing Table */}
+        {tasks.length > 0 && tasks.some(t => t.unitPrice !== undefined) && (
+          <div className="mb-8 pb-8 border-b border-border overflow-x-auto">
+            <h3 className="text-lg font-bold text-card-foreground mb-4">Service Pricing Details</h3>
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border bg-secondary/30">
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">#</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Service</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Description</th>
+                  <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Unit Price</th>
+                  <th className="text-center px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Qty</th>
+                  <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Amount</th>
+                  {tasks.some(t => t.gst) && <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">GST</th>}
+                  {tasks.some(t => t.cgst) && <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">CGST</th>}
+                  {tasks.some(t => t.igst) && <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">IGST</th>}
+                  {tasks.some(t => t.gst || t.cgst || t.igst) && <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Total</th>}
+                </tr>
+              </thead>
+              <tbody>
+                {tasks.map((task, index) => {
+                  const gstAmt = (task.amount || 0) * (parseFloat(task.gst || "0") / 100);
+                  const cgstAmt = (task.amount || 0) * (parseFloat(task.cgst || "0") / 100);
+                  const igstAmt = (task.amount || 0) * (parseFloat(task.igst || "0") / 100);
+                  const rowTotal = (task.amount || 0) + gstAmt + cgstAmt + igstAmt;
+                  return (
+                    <tr key={task.id} className="border-b border-border last:border-0 hover:bg-secondary/10 transition-colors">
+                      <td className="px-4 py-3 text-xs text-muted-foreground">{index + 1}</td>
+                      <td className="px-4 py-3 font-medium text-card-foreground text-xs">{task.title}</td>
+                      <td className="px-4 py-3 text-muted-foreground text-xs max-w-xs truncate">{task.description || "—"}</td>
+                      <td className="px-4 py-3 text-right text-card-foreground text-xs font-semibold">₹ {(task.unitPrice || 0).toLocaleString()}</td>
+                      <td className="px-4 py-3 text-center text-card-foreground text-xs font-semibold">{task.quantity || 1}</td>
+                      <td className="px-4 py-3 text-right text-card-foreground text-xs font-bold">₹ {(task.amount || 0).toLocaleString()}</td>
+                      {tasks.some(t => t.gst) && <td className="px-4 py-3 text-right text-xs text-muted-foreground">{task.gst ? `${task.gst}% (₹ ${Math.round(gstAmt).toLocaleString()})` : "—"}</td>}
+                      {tasks.some(t => t.cgst) && <td className="px-4 py-3 text-right text-xs text-muted-foreground">{task.cgst ? `${task.cgst}% (₹ ${Math.round(cgstAmt).toLocaleString()})` : "—"}</td>}
+                      {tasks.some(t => t.igst) && <td className="px-4 py-3 text-right text-xs text-muted-foreground">{task.igst ? `${task.igst}% (₹ ${Math.round(igstAmt).toLocaleString()})` : "—"}</td>}
+                      {tasks.some(t => t.gst || t.cgst || t.igst) && <td className="px-4 py-3 text-right text-xs font-bold text-primary">₹ {Math.round(rowTotal).toLocaleString()}</td>}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+
+            {/* Summary */}
+            <div className="border-t border-border bg-secondary/10 px-6 py-4 mt-4">
+              <div className="ml-auto w-full max-w-xs space-y-2">
+                {(() => {
+                  const subtotal = tasks.reduce((sum, t) => sum + (t.amount || 0), 0);
+                  const totalGst = tasks.reduce((sum, t) => {
+                    const rate = parseFloat(t.gst || "0") / 100;
+                    return sum + (t.amount || 0) * rate;
+                  }, 0);
+                  const totalCgst = tasks.reduce((sum, t) => {
+                    const rate = parseFloat(t.cgst || "0") / 100;
+                    return sum + (t.amount || 0) * rate;
+                  }, 0);
+                  const totalIgst = tasks.reduce((sum, t) => {
+                    const rate = parseFloat(t.igst || "0") / 100;
+                    return sum + (t.amount || 0) * rate;
+                  }, 0);
+                  const totalTax = totalGst + totalCgst + totalIgst;
+                  const grandTotal = subtotal + totalTax;
+
+                  return (
+                    <>
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs font-medium text-muted-foreground">Subtotal</span>
+                        <span className="text-sm font-semibold text-card-foreground">₹ {Math.round(subtotal).toLocaleString()}</span>
+                      </div>
+                      {totalGst > 0 && (
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs font-medium text-muted-foreground">GST</span>
+                          <span className="text-sm font-semibold text-card-foreground">₹ {Math.round(totalGst).toLocaleString()}</span>
+                        </div>
+                      )}
+                      {totalCgst > 0 && (
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs font-medium text-muted-foreground">CGST</span>
+                          <span className="text-sm font-semibold text-card-foreground">₹ {Math.round(totalCgst).toLocaleString()}</span>
+                        </div>
+                      )}
+                      {totalIgst > 0 && (
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs font-medium text-muted-foreground">IGST</span>
+                          <span className="text-sm font-semibold text-card-foreground">₹ {Math.round(totalIgst).toLocaleString()}</span>
+                        </div>
+                      )}
+                      <div className="pt-2 border-t border-border flex justify-between items-center">
+                        <span className="text-sm font-bold text-card-foreground">Total Amount</span>
+                        <span className="text-lg font-bold text-primary">₹ {Math.round(grandTotal).toLocaleString()}</span>
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Services Grid */}
         {tasks.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
