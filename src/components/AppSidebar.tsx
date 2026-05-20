@@ -1,7 +1,7 @@
 import { useLocation, Link, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, Users, FolderKanban, Wrench, CreditCard,
-  Package, UserCog, UserCircle, FileText, LogOut, Bug, Building2, Boxes, ChevronDown, Shield, CalendarDays
+  Package, UserCog, UserCircle, FileText, LogOut, Bug, Building2, Boxes, ChevronDown, Shield, CalendarDays, Settings
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { FC } from "react";
@@ -12,14 +12,15 @@ const menuItems = [
   { label: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
   { label: "Customers", icon: UserCircle, path: "/customers" },
   { label: "Employees", icon: UserCog, path: "/employees" },
-  { label: "Enquiries", icon: Users, path: "/leads" },
+  { label: "Leads", icon: Users, path: "/leads" },
   { label: "Service list", icon: Wrench, path: "/service-management" },
-  { label: " Gantt Calendar", icon: CalendarDays, path: "/quant-calendar" },
+  { label: " Service appointment", icon: CalendarDays, path: "/quant-calendar" },
   // { label: "Service Appointments", icon: Wrench, path: "/services" },
   
   { label: "Work Orders", icon: FolderKanban, path: "/projects" },
   { label: "Task Management", icon: FileText, path: "/task-management" },
   { label: "Payments", icon: CreditCard, path: "/payments" },
+  { label: "Settings", icon: Settings, path: "/settings" },
   // { label: "Role", icon: Shield, path: "/roles" },
   // { label: "Reports", icon: FileText, path: "/reports" },
 ];

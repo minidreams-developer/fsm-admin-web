@@ -13,6 +13,7 @@ import { useProductsStore } from "@/store/productsStore";
 import { useEmployeesStore } from "@/store/employeesStore";
 import { useCustomersStore } from "@/store/customersStore";
 import { useServicesStore } from "@/store/servicesStore";
+import { TimeInput12Hour } from "@/components/TimeInput12Hour";
 
 const workOrderSchema = z.object({
   customer: z.string().min(1, "Customer name is required"),
@@ -54,6 +55,9 @@ type Task = {
   assignedTo: string;
   assignedEmployees: string[];
   status: TaskStatus;
+  gst?: string;
+  igst?: string;
+  cgst?: string;
 };
 
 type ServiceSchedule = {
@@ -83,9 +87,28 @@ const EditWorkOrderPage = () => {
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
   const [selectedEmployees, setSelectedEmployees] = useState<string[]>([]);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>("");
+  const [customerState, setCustomerState] = useState<string>("");
   const [extraSiteAddresses, setExtraSiteAddresses] = useState<string[]>([]);
+  const [isCustomFrequency, setIsCustomFrequency] = useState(false);
+  
+  // Address options for site address selection
+  type AddressOption = {
+    label: string;
+    address: string;
+  };
+  const [siteAddressOptions, setSiteAddressOptions] = useState<AddressOption[]>([]);
+  
+  // Service Appointments Schedule state
   const [serviceSchedules, setServiceSchedules] = useState<ServiceSchedule[]>([]);
   const [termsAccepted, setTermsAccepted] = useState(false);
+  const [isEditingTerms, setIsEditingTerms] = useState(false);
+  const [termsList, setTermsList] = useState([
+    "Services will be performed as per the scheduled appointments",
+    "Customer must provide access to all areas requiring treatment",
+    "Payment is due within 30 days of invoice date",
+    "24-hour advance notice required for rescheduling",
+    "Service warranty valid for 30 days after each treatment",
+  ]);
   const [isInitialized, setIsInitialized] = useState(false);
 
   // Get services from both Products and Service Appointments - memoized to prevent recalculation
@@ -195,7 +218,7 @@ const EditWorkOrderPage = () => {
   };
 
   // Initialize form first
-  const { register, handleSubmit, formState: { errors }, setValue } = useForm<WorkOrderFormData>({
+  const { register, handleSubmit, formState: { errors }, setValue, watch } = useForm<WorkOrderFormData>({
     resolver: zodResolver(workOrderSchema),
     defaultValues: workOrder ? {
       customer: workOrder.customer,
@@ -231,6 +254,48 @@ const EditWorkOrderPage = () => {
       setValue("address", customer.siteAddress || customer.billingAddress || "");
       setValue("siteAddress", customer.siteAddress || "", { shouldValidate: true, shouldDirty: true });
       setValue("billingAddress", customer.billingAddress || "", { shouldValidate: true, shouldDirty: true });
+      // Capture customer state for tax calculation
+      const state = customer.placeOfSupply || customer.siteAddressFields?.state || customer.billingAddressFields?.state || "";
+      setCustomerState(state);
+
+      // Build address options from customer's saved addresses
+      const opts: AddressOption[] = [];
+
+      // Primary site address
+      if (customer.siteAddressFields) {
+        const f = customer.siteAddressFields;
+        const street = [f.street1, f.street2].filter(Boolean).join(", ");
+        if (street || f.city) {
+          opts.push({ label: `Site: ${[street, f.city, f.state, f.pinCode].filter(Boolean).join(", ")}`, address: street });
+        }
+      } else if (customer.siteAddress) {
+        opts.push({ label: `Site: ${customer.siteAddress}`, address: customer.siteAddress });
+      }
+
+      // Additional site addresses
+      if (customer.additionalSiteAddressFields) {
+        customer.additionalSiteAddressFields.forEach((f, idx) => {
+          const street = [f.street1, f.street2].filter(Boolean).join(", ");
+          if (street || f.city) {
+            opts.push({ label: `Site ${idx + 2}: ${[street, f.city, f.state, f.pinCode].filter(Boolean).join(", ")}`, address: street });
+          }
+        });
+      }
+
+      // Billing address
+      if (customer.billingAddressFields) {
+        const f = customer.billingAddressFields;
+        const street = [f.street1, f.street2].filter(Boolean).join(", ");
+        if (street || f.city) {
+          opts.push({ label: `Billing: ${[street, f.city, f.state, f.pinCode].filter(Boolean).join(", ")}`, address: street });
+        }
+      } else if (customer.billingAddress) {
+        opts.push({ label: `Billing: ${customer.billingAddress}`, address: customer.billingAddress });
+      }
+
+      setSiteAddressOptions(opts);
+    } else {
+      setSiteAddressOptions([]);
     }
   };
 
@@ -252,6 +317,42 @@ const EditWorkOrderPage = () => {
       );
       if (customer) {
         setSelectedCustomerId(customer.id);
+        // Build address options from customer's saved addresses
+        const opts: AddressOption[] = [];
+
+        // Primary site address
+        if (customer.siteAddressFields) {
+          const f = customer.siteAddressFields;
+          const street = [f.street1, f.street2].filter(Boolean).join(", ");
+          if (street || f.city) {
+            opts.push({ label: `Site: ${[street, f.city, f.state, f.pinCode].filter(Boolean).join(", ")}`, address: street });
+          }
+        } else if (customer.siteAddress) {
+          opts.push({ label: `Site: ${customer.siteAddress}`, address: customer.siteAddress });
+        }
+
+        // Additional site addresses
+        if (customer.additionalSiteAddressFields) {
+          customer.additionalSiteAddressFields.forEach((f, idx) => {
+            const street = [f.street1, f.street2].filter(Boolean).join(", ");
+            if (street || f.city) {
+              opts.push({ label: `Site ${idx + 2}: ${[street, f.city, f.state, f.pinCode].filter(Boolean).join(", ")}`, address: street });
+            }
+          });
+        }
+
+        // Billing address
+        if (customer.billingAddressFields) {
+          const f = customer.billingAddressFields;
+          const street = [f.street1, f.street2].filter(Boolean).join(", ");
+          if (street || f.city) {
+            opts.push({ label: `Billing: ${[street, f.city, f.state, f.pinCode].filter(Boolean).join(", ")}`, address: street });
+          }
+        } else if (customer.billingAddress) {
+          opts.push({ label: `Billing: ${customer.billingAddress}`, address: customer.billingAddress });
+        }
+
+        setSiteAddressOptions(opts);
       }
 
       // Parse multiple site addresses
@@ -498,21 +599,54 @@ const EditWorkOrderPage = () => {
           <div className="text-xs font-medium text-muted-foreground mb-2 block">
             <div className="flex items-center justify-between mb-2">
               <label className="text-xs font-medium text-muted-foreground block">Site Address</label>
-              <button
+              {/* <button
                 type="button"
                 onClick={() => setExtraSiteAddresses(prev => [...prev, ""])}
                 className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:opacity-80 transition-opacity"
               >
                 <Plus className="w-3.5 h-3.5" />
                 Add
-              </button>
+              </button> */}
             </div>
-            <textarea
-              {...register("siteAddress")}
-              placeholder="e.g. 12 MG Road, Kochi"
-              rows={2}
-              className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none"
-            />
+            {siteAddressOptions.length > 0 ? (
+              <>
+                <select
+                  value={siteAddressOptions.findIndex(o => o.address === (watch?.("siteAddress") || ""))}
+                  onChange={(e) => {
+                    const idx = parseInt(e.target.value);
+                    if (idx === -1) {
+                      // Custom — clear field for manual entry
+                      setValue("siteAddress", "");
+                    } else {
+                      const opt = siteAddressOptions[idx];
+                      setValue("siteAddress", opt.address);
+                    }
+                  }}
+                  className="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+                >
+                  <option value={-1}>select site address</option>
+                  {siteAddressOptions.map((opt, i) => (
+                    <option key={i} value={i}>{opt.label}</option>
+                  ))}
+                </select>
+                {/* Show manual input when custom is selected */}
+                {siteAddressOptions.findIndex(o => o.address === (watch?.("siteAddress") || "")) === -1 && (
+                  <textarea
+                    {...register("siteAddress")}
+                    placeholder="e.g. 12 MG Road, Kochi"
+                    rows={2}
+                    className="w-full mt-2 px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none"
+                  />
+                )}
+              </>
+            ) : (
+              <textarea
+                {...register("siteAddress")}
+                placeholder="e.g. 12 MG Road, Kochi"
+                rows={2}
+                className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none"
+              />
+            )}
             {extraSiteAddresses.map((addr, idx) => (
               <div key={idx} className="relative mt-2">
                 <textarea
@@ -533,9 +667,41 @@ const EditWorkOrderPage = () => {
             ))}
           </div>
 
-          <div>
+          <div className={isCustomFrequency ? "md:col-span-2" : ""}>
             <label className="text-xs font-medium text-muted-foreground mb-2 block">Frequency</label>
-            <input type="text" placeholder="e.g., Monthly" {...register("frequency")} className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground" />
+            <div className={isCustomFrequency ? "flex gap-2" : ""}>
+              <select
+                value={isCustomFrequency ? "custom" : (watch?.("frequency") || "")}
+                onChange={(e) => {
+                  if (e.target.value === "custom") {
+                    setIsCustomFrequency(true);
+                    setValue("frequency", "");
+                  } else {
+                    setIsCustomFrequency(false);
+                    setValue("frequency", e.target.value);
+                  }
+                }}
+                className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
+              >
+                <option value="">Select frequency</option>
+                <option value="Daily">Daily</option>
+                <option value="Weekly">Weekly</option>
+                <option value="Bi-weekly">Bi-weekly</option>
+                <option value="Monthly">Monthly</option>
+                <option value="Quarterly">Quarterly</option>
+                <option value="Half-yearly">Half-yearly</option>
+                <option value="Yearly">Yearly</option>
+                <option value="custom">Custom</option>
+              </select>
+              {isCustomFrequency && (
+                <input
+                  type="text"
+                  {...register("frequency")}
+                  placeholder="Enter custom frequency"
+                  className="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+                />
+              )}
+            </div>
           </div>
 
           <div>
@@ -810,38 +976,36 @@ const EditWorkOrderPage = () => {
                             className="w-full px-3 py-1.5 rounded-lg bg-secondary text-xs border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
                           />
                         </td>
-                        <td className="px-4 py-3">
-                          <input
-                            type="time"
-                            value={schedule.fromTime}
-                            onChange={(e) => {
-                              setServiceSchedules(prev => {
-                                const existing = prev.find(s => s.id === task.id);
-                                if (existing) {
-                                  return prev.map(s => s.id === task.id ? { ...s, fromTime: e.target.value } : s);
-                                }
-                                return [...prev, { ...schedule, fromTime: e.target.value }];
-                              });
-                            }}
-                            className="w-full px-3 py-1.5 rounded-lg bg-secondary text-xs border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
-                          />
-                        </td>
-                        <td className="px-4 py-3">
-                          <input
-                            type="time"
-                            value={schedule.toTime}
-                            onChange={(e) => {
-                              setServiceSchedules(prev => {
-                                const existing = prev.find(s => s.id === task.id);
-                                if (existing) {
-                                  return prev.map(s => s.id === task.id ? { ...s, toTime: e.target.value } : s);
-                                }
-                                return [...prev, { ...schedule, toTime: e.target.value }];
-                              });
-                            }}
-                            className="w-full px-3 py-1.5 rounded-lg bg-secondary text-xs border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
-                          />
-                        </td>
+                      <td className="px-4 py-3">
+                        <TimeInput12Hour
+                          value={schedule.fromTime}
+                          onChange={(e) => {
+                            setServiceSchedules(prev => {
+                              const existing = prev.find(s => s.id === task.id);
+                              if (existing) {
+                                return prev.map(s => s.id === task.id ? { ...s, fromTime: e } : s);
+                              }
+                              return [...prev, { ...schedule, fromTime: e }];
+                            });
+                          }}
+                          className="w-full px-3 py-1.5 rounded-lg bg-secondary text-xs border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
+                        />
+                      </td>
+                      <td className="px-4 py-3">
+                        <TimeInput12Hour
+                          value={schedule.toTime}
+                          onChange={(e) => {
+                            setServiceSchedules(prev => {
+                              const existing = prev.find(s => s.id === task.id);
+                              if (existing) {
+                                return prev.map(s => s.id === task.id ? { ...s, toTime: e } : s);
+                              }
+                              return [...prev, { ...schedule, toTime: e }];
+                            });
+                          }}
+                          className="w-full px-3 py-1.5 rounded-lg bg-secondary text-xs border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
+                        />
+                      </td>
                         <td className="px-4 py-3">
                           <div className="flex items-center justify-center gap-2">
                             <button 
@@ -1009,19 +1173,17 @@ const EditWorkOrderPage = () => {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs font-medium text-muted-foreground mb-2 block">From Time</label>
-                  <input 
-                    type="time" 
+                  <TimeInput12Hour 
                     value={editingTask.fromTime || ""} 
-                    onChange={(e) => setEditingTask({ ...editingTask, fromTime: e.target.value })} 
+                    onChange={(e) => setEditingTask({ ...editingTask, fromTime: e })} 
                     className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground" 
                   />
                 </div>
                 <div>
                   <label className="text-xs font-medium text-muted-foreground mb-2 block">To Time</label>
-                  <input 
-                    type="time" 
+                  <TimeInput12Hour 
                     value={editingTask.toTime || ""} 
-                    onChange={(e) => setEditingTask({ ...editingTask, toTime: e.target.value })} 
+                    onChange={(e) => setEditingTask({ ...editingTask, toTime: e })} 
                     className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground" 
                   />
                 </div>

@@ -9,6 +9,7 @@ import { LeadDetailsModal } from "@/components/LeadDetailsModal";
 import { ConvertLeadModal } from "@/components/ConvertLeadModal";
 import { useBranchesStore } from "@/store/branchesStore";
 import { useEmployeesStore } from "@/store/employeesStore";
+import { TimeInput12Hour } from "@/components/TimeInput12Hour";
 
 const statusBadge: Record<LeadStatus, "info" | "warning" | "success" | "error" | "neutral"> = {
   New: "info", Contacted: "warning", "Follow Up": "info", Converted: "success", Lost: "error",
@@ -21,7 +22,7 @@ const leadSources = ["Website", "Call", "Referral", "Walk-in", "Google", "Facebo
 const branches = ["Kochi", "Calicut", "Thrissur", "Trivandrum", "Palakkad", "Munnar", "Other"] as const;
 
 function formatLeadId(id: number) {
-  return `ENQ-${String(id).padStart(4, "0")}`;
+  return `LEAD-${String(id).padStart(4, "0")}`;
 }
 
 const LeadsPage = () => {
@@ -30,8 +31,11 @@ const LeadsPage = () => {
   const { branches: branchList } = useBranchesStore();
   const { employees } = useEmployeesStore();
   const salesExecutives = employees.filter(e => e.role === "Sales Executive" && e.isActive !== false);
+  const activeEmployees = employees.filter(e => e.isActive !== false);
   const [filter, setFilter] = useState<LeadStatus | "All">("All");
   const [branchFilter, setBranchFilter] = useState("All");
+  const [employeeFilter, setEmployeeFilter] = useState("All");
+  const [dateFilter, setDateFilter] = useState({ startDate: "", endDate: "" });
   const [showForm, setShowForm] = useState(false);
   const [search, setSearch] = useState("");
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
@@ -74,7 +78,24 @@ const LeadsPage = () => {
     const matchStatus = filter === "All" || l.status === filter;
     const matchSearch = l.name.toLowerCase().includes(search.toLowerCase()) || l.phone.includes(search);
     const matchBranch = branchFilter === "All" || l.branch === branchFilter;
-    return matchStatus && matchSearch && matchBranch;
+    const matchEmployee = employeeFilter === "All" || l.assignedOwner === employeeFilter;
+    
+    // Date filter logic
+    let matchDate = true;
+    if (dateFilter.startDate || dateFilter.endDate) {
+      const leadDate = new Date(l.date);
+      if (dateFilter.startDate) {
+        const startDate = new Date(dateFilter.startDate);
+        matchDate = matchDate && leadDate >= startDate;
+      }
+      if (dateFilter.endDate) {
+        const endDate = new Date(dateFilter.endDate);
+        endDate.setHours(23, 59, 59, 999); // Include entire end date
+        matchDate = matchDate && leadDate <= endDate;
+      }
+    }
+    
+    return matchStatus && matchSearch && matchBranch && matchEmployee && matchDate;
   }).sort((a, b) => {
     const statusOrder: Record<LeadStatus, number> = {
       "New": 0,
@@ -180,7 +201,7 @@ const LeadsPage = () => {
       quoteViewedAt: null
     });
 
-    toast.success("Enquiry created successfully!");
+    toast.success("Leads created successfully!");
     setFormData({
       name: "",
       phone: "",
@@ -231,11 +252,13 @@ const LeadsPage = () => {
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-lg sm:text-xl font-bold text-card-foreground">Enquiries</h2>
+          <h2 className="text-lg sm:text-xl font-bold text-card-foreground">Leads</h2>
           <p className="text-sm text-muted-foreground">Manage your sales pipeline</p>
         </div>
+
+        
         <button onClick={() => navigate("/leads/new")} className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 transition-all text-white shadow-[0px_5px_12px_rgba(39,47,158,0.2)]" style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}>
-          <Plus className="w-4 h-4" /> Add New Enquiry
+          <Plus className="w-4 h-4" /> Add New Leads
         </button>
       </div>
 
@@ -247,7 +270,7 @@ const LeadsPage = () => {
               <Users className="w-5 h-5 text-primary" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-medium text-muted-foreground mb-1">Total Enquiries</p>
+              <p className="text-xs font-medium text-muted-foreground mb-1">Total Leads</p>
               <p className="text-2xl font-bold text-card-foreground">{leads.length}</p>
             </div>
           </div>
@@ -289,7 +312,7 @@ const LeadsPage = () => {
 
       {showForm && (
         <div className="bg-card rounded-xl p-6 card-shadow space-y-4">
-          <h3 className="text-sm font-semibold text-card-foreground">Quick Add Enquiry</h3>
+          <h3 className="text-sm font-semibold text-card-foreground">Quick Add Leads</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-1 block">Customer Info</label>
@@ -375,7 +398,7 @@ const LeadsPage = () => {
             onClick={() => setShowMoreFields((v) => !v)}
             className="w-full px-4 py-2 rounded-lg border border-border bg-secondary/30 hover:bg-secondary/50 transition-colors text-sm font-semibold text-card-foreground"
           >
-            {showMoreFields ? "Hide additional enquiry fields" : "Show additional enquiry fields"}
+            {showMoreFields ? "Hide additional fields" : "Show additional Leads fields"}
           </button>
 
           {showMoreFields && (
@@ -391,13 +414,13 @@ const LeadsPage = () => {
                 />
               </div>
               <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1 block">Enquiry Source</label>
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">Leads Source</label>
                 <select
                   value={formData.leadSource}
                   onChange={(e) => setFormData(prev => ({ ...prev, leadSource: e.target.value }))}
                   className="w-full px-3 py-2 rounded-lg bg-secondary text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 border border-border"
                 >
-                  <option value="">Select enquiry source</option>
+                  <option value="">Select Leads source</option>
                   {leadSources.map((s) => (
                     <option key={s} value={s}>{s}</option>
                   ))}
@@ -443,7 +466,7 @@ const LeadsPage = () => {
               className="h-10 px-6 text-sm font-semibold hover:opacity-90 text-white shadow-[0px_5px_12px_rgba(39,47,158,0.2)] transition-all rounded-lg" 
               style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}
             >
-              Save Enquiry
+              Save Leads
             </button>
             <button 
               onClick={() => {
@@ -460,23 +483,64 @@ const LeadsPage = () => {
         </div>
       )}
 
-      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+      {/* Filters Section */}
+      <div className="space-y-3">
+        {/* First Row: Dropdowns and Date Filters */}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+          <select
+            value={branchFilter}
+            onChange={(e) => setBranchFilter(e.target.value)}
+            className="px-3 py-2 rounded-lg bg-card border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+          >
+            <option value="All">All Branches</option>
+            {branchList.filter(b => b.status === "Active").map(b => (
+              <option key={b.id} value={b.name}>{b.name}</option>
+            ))}
+          </select>
 
-         <select
-          value={branchFilter}
-          onChange={(e) => setBranchFilter(e.target.value)}
-          className="px-3 py-2 rounded-lg bg-card border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
-        >
-          <option value="All">All Branches</option>
-          {branchList.filter(b => b.status === "Active").map(b => (
-            <option key={b.id} value={b.name}>{b.name}</option>
-          ))}
-        </select>
-        <div className="relative w-full sm:flex-1 sm:max-w-xs">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search enquiries..." className="w-full pl-9 pr-4 py-2 rounded-lg bg-card text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20" />
+          <select
+            value={employeeFilter}
+            onChange={(e) => setEmployeeFilter(e.target.value)}
+            className="px-3 py-2 rounded-lg bg-card border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+          >
+            <option value="All">All Employees</option>
+            {activeEmployees.map(emp => (
+              <option key={emp.id} value={emp.name}>{emp.name} — {emp.role}</option>
+            ))}
+          </select>
+
+          <input
+            type="date"
+            value={dateFilter.startDate}
+            onChange={(e) => setDateFilter(prev => ({ ...prev, startDate: e.target.value }))}
+            placeholder="Start Date"
+            className="px-3 py-2 rounded-lg bg-card border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+          />
+
+          <input
+            type="date"
+            value={dateFilter.endDate}
+            onChange={(e) => setDateFilter(prev => ({ ...prev, endDate: e.target.value }))}
+            placeholder="End Date"
+            className="px-3 py-2 rounded-lg bg-card border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+          />
+
+          {(dateFilter.startDate || dateFilter.endDate) && (
+            <button
+              onClick={() => setDateFilter({ startDate: "", endDate: "" })}
+              className="px-3 py-2 rounded-lg bg-secondary/30 border border-border text-sm text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
+            >
+              Clear Dates
+            </button>
+          )}
+
+          <div className="relative w-full sm:flex-1 sm:max-w-xs">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search Leads..." className="w-full pl-9 pr-4 py-2 rounded-lg bg-card text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20" />
+          </div>
         </div>
-       
+
+        {/* Second Row: Status Filter Buttons */}
         <div className="flex flex-wrap gap-2">
           <button onClick={() => setFilter("All")} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap ${filter === "All" ? "text-white shadow-[0px_5px_12px_rgba(39,47,158,0.2)]" : "bg-card text-muted-foreground border border-border hover:bg-secondary"}`} style={filter === "All" ? { background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" } : {}}>All</button>
           {statuses.map((s) => (
@@ -519,7 +583,7 @@ const LeadsPage = () => {
                   className="w-4 h-4 rounded border-border accent-primary cursor-pointer"
                 />
               </th>
-              {["Enquiry ID", "Customer Name", "Services", "Urgency", "sales executive", "Next Follow-Up-date", "Status", "Actions"].map((h) => (
+              {["Leads ID", "Customer Name", "Services", "Urgency", "sales executive", "Next Follow-Up-date", "Status", "Actions"].map((h) => (
                 <th key={h} className="text-left px-3 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">{h}</th>
               ))}
             </tr></thead>
@@ -564,7 +628,7 @@ const LeadsPage = () => {
                       <button
                         onClick={(e) => { e.stopPropagation(); setEditingLead(l); setShowDetailsModal(true); }}
                         className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-border bg-card hover:bg-secondary transition-colors"
-                        title="Edit enquiry"
+                        title="Edit Leads"
                       >
                         <Edit2 className="w-4 h-4 text-muted-foreground" />
                       </button>
@@ -617,10 +681,9 @@ const LeadsPage = () => {
               </div>
               <div>
                 <label className="text-xs font-medium text-muted-foreground mb-2 block">Time (Optional)</label>
-                <input 
-                  type="time" 
+                <TimeInput12Hour 
                   value={reminderTime} 
-                  onChange={(e) => setReminderTime(e.target.value)} 
+                  onChange={(e) => setReminderTime(e)} 
                   className="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20" 
                 />
               </div>
@@ -685,10 +748,10 @@ const LeadsPage = () => {
 
               {/* Lead Information Card */}
               <div className="bg-secondary/30 rounded-xl p-5 border border-border">
-                <h4 className="text-sm font-semibold text-card-foreground mb-4">Enquiry Information</h4>
+                <h4 className="text-sm font-semibold text-card-foreground mb-4">Leads Information</h4>
                 <div className="space-y-3">
                   <div>
-                    <p className="text-xs text-muted-foreground mb-1">Enquiry ID ( Automated Generated )</p>
+                    <p className="text-xs text-muted-foreground mb-1">Leads ID ( Automated Generated )</p>
                     <p className="text-sm font-semibold text-primary">{formatLeadId(selectedLead.id)}</p>
                   </div>
                   <div>
@@ -713,7 +776,7 @@ const LeadsPage = () => {
                       <p className="text-sm font-semibold text-card-foreground">{selectedLead.expectedDateTime ? new Date(selectedLead.expectedDateTime).toLocaleString() : "—"}</p>
                     </div>
                     <div>
-                      <p className="text-xs text-muted-foreground mb-1">Enquiry Source</p>
+                      <p className="text-xs text-muted-foreground mb-1">Leads Source</p>
                       <p className="text-sm font-semibold text-card-foreground">{selectedLead.leadSource || "—"}</p>
                     </div>
                     <div>
@@ -887,7 +950,7 @@ const LeadsPage = () => {
                   <ArrowRightLeft className="w-5 h-5 text-primary" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-card-foreground">Bulk Enquiry Transfer</h3>
+                  <h3 className="text-base font-bold text-card-foreground">Bulk Leads Transfer</h3>
                   <p className="text-xs text-muted-foreground mt-0.5">{selectedLeadIds.size} enquir{selectedLeadIds.size === 1 ? "y" : "ies"} selected</p>
                 </div>
               </div>

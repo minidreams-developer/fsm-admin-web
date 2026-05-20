@@ -283,13 +283,13 @@ export function EmployeeFormModal({ open, mode, employee, onClose, onSaved }: Pr
             </div>
 
             <div className="md:col-span-2">
-              <label className="text-xs font-medium text-muted-foreground mb-2 block"> Document (PDF)</label>
+              <label className="text-xs font-medium text-muted-foreground mb-2 block">Documents</label>
               <label className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg bg-secondary border border-border cursor-pointer hover:bg-secondary/80 transition-colors">
                 <Upload className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                <span className="text-sm text-muted-foreground">Click to upload PDF(s)</span>
+                <span className="text-sm text-muted-foreground">Click to upload files</span>
                 <input
                   type="file"
-                  accept="application/pdf"
+                  accept="*/*"
                   multiple
                   className="hidden"
                   onChange={(e) => {

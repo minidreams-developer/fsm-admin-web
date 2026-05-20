@@ -1,15 +1,16 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Plus, X, Edit2, FolderKanban, Bell, ChevronDown, FileText, CheckCircle } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import { useLeadsStore } from "@/store/leadsStore";
 import { StatusBadge } from "@/components/StatusBadge";
 import { LeadDetailsModal } from "@/components/LeadDetailsModal";
 import { CommentsCard } from "@/components/CommentsCard";
+import { TimeInput12Hour } from "@/components/TimeInput12Hour";
 
 function formatLeadId(id: number) {
-  return `ENQ-${String(id).padStart(4, "0")}`;
+  return `LEAD-${String(id).padStart(4, "0")}`;
 }
 
 const statusBadge: Record<string, "info" | "warning" | "success" | "error" | "neutral"> = {
@@ -31,6 +32,13 @@ export const LeadDetailPage = () => {
   const [reminderText, setReminderText] = useState("");
   const [commentText, setCommentText] = useState("");
 
+  const handleAcknowledge = () => {
+    if (lead) {
+      updateLead(lead.id, { isViewed: true });
+      toast.success("Lead acknowledged");
+    }
+  };
+
   if (!lead) {
     return (
       <div className="space-y-6 animate-fade-in">
@@ -38,7 +46,7 @@ export const LeadDetailPage = () => {
           <button type="button" onClick={() => navigate("/leads")} className="inline-flex items-center gap-2 h-10 px-4 rounded-lg border border-border bg-card hover:bg-secondary transition-colors text-sm font-semibold text-card-foreground">
             <ArrowLeft className="w-4 h-4" /> Back
           </button>
-          <h2 className="text-lg font-bold text-card-foreground">Enquiry not found</h2>
+          <h2 className="text-lg font-bold text-card-foreground">Leads not found</h2>
         </div>
       </div>
     );
@@ -73,15 +81,15 @@ export const LeadDetailPage = () => {
   };
 
   const fields: [string, string][] = [
-    ["Enquiry ID", formatLeadId(lead.id)],
+    ["Leads ID", formatLeadId(lead.id)],
     ["Customer Name", lead.name],
     ["Phone", lead.phone],
     ["Address", lead.address],
     ["Urgency Level", lead.urgencyLevel],
     ["Amount", typeof lead.amount === "number" ? `₹ ${lead.amount.toLocaleString()}` : "—"],
-    ["Enquiry Source", lead.leadSource || "—"],
+    ["Leads Source", lead.leadSource || "—"],
     ["Branch", lead.branch || "—"],
-    ["Enquiry Incharge", lead.leadIncharge || "—"],
+    ["Leads Incharge", lead.leadIncharge || "—"],
     ["Next Follow Up Date", lead.nextFollowUpDate || "—"],
     ["Date", lead.date],
     ["Quote Amount", typeof lead.quoteAmount === "number" ? `₹ ${lead.quoteAmount.toLocaleString()}` : "—"],
@@ -101,6 +109,23 @@ export const LeadDetailPage = () => {
           <p className="text-sm text-muted-foreground">{formatLeadId(lead.id)}</p>
         </div>
         <div className="flex items-center gap-2">
+          {/* Sales Executive Info */}
+          {!lead.isViewed && (lead.salesExecutive || lead.assignedOwner) && (
+            <div className="">
+              <span className="text-sm font-bold text-primary">Sales Executive : </span>
+              <span className="text-sm font-bold text-primary">{lead.salesExecutive || lead.assignedOwner}</span>
+            </div>
+          )}
+          {/* Acknowledge Button */}
+          {!lead.isViewed && (
+            <button
+              onClick={handleAcknowledge}
+              className="h-10 px-4 inline-flex items-center gap-2 rounded-lg text-white text-sm font-semibold hover:opacity-90 transition-all shadow-[0px_5px_12px_rgba(39,47,158,0.2)]"
+              style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}
+            >
+              accept
+            </button>
+          )}
           {/* Actions dropdown */}
           <div className="relative">
             <button
@@ -138,7 +163,7 @@ export const LeadDetailPage = () => {
                     className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-card-foreground hover:bg-secondary transition-colors"
                   >
                     <Edit2 className="w-4 h-4 text-muted-foreground" />
-                    Edit Enquiry
+                    Edit Leads
                   </button>
                   {lead.status !== "Converted" && lead.status !== "Lost" && (
                     <>
@@ -186,7 +211,7 @@ export const LeadDetailPage = () => {
                   </div>
                   <div>
                     <label className="text-xs font-medium text-muted-foreground mb-2 block">Time (Optional)</label>
-                    <input type="time" value={reminderTime} onChange={(e) => setReminderTime(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                    <TimeInput12Hour value={reminderTime} onChange={(e) => setReminderTime(e)} className="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20" />
                   </div>
                   <div>
                     <label className="text-xs font-medium text-muted-foreground mb-2 block">Reminder Text *</label>

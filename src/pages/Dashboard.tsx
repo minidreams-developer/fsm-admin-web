@@ -21,8 +21,8 @@ function WorkOrderReports({ workOrders }: { workOrders: WorkOrder[] }) {
   const [showAllCustomers, setShowAllCustomers] = useState(false);
 
   const total = workOrders.length;
-  const open = workOrders.filter(w => w.status === "Open").length;
-  const scheduled = workOrders.filter(w => w.status === "Scheduled").length;
+  const open = workOrders.filter(w => w.status === "Ongoing").length;
+  const scheduled = workOrders.filter(w => w.status === "Upcoming").length;
   const completed = workOrders.filter(w => w.status === "Completed").length;
 
   const totalRevenue = workOrders.reduce((sum, w) => sum + (parseInt(w.totalValue.replace(/[₹,\s]/g, "")) || 0), 0);
@@ -215,13 +215,13 @@ const recentServices = [
 ];
 
 const quickActions = [
-  { label: "Add New Enquiry", icon: Plus, path: "/leads/new", color: "text-white hover:opacity-90 shadow-[0px_5px_12px_rgba(39,47,158,0.2)]", style: { background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" } },
+  { label: "Add New Leads", icon: Plus, path: "/leads/new", color: "text-white hover:opacity-90 shadow-[0px_5px_12px_rgba(39,47,158,0.2)]", style: { background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" } },
   { label: "Pending Payments", icon: Eye, path: "/payments", color: "text-white hover:opacity-90 shadow-[0px_5px_12px_rgba(39,47,158,0.2)]", style: { background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" } },
   { label: "Quick Stock Update", icon: Package, path: "/inventory", color: "text-white hover:opacity-90 shadow-[0px_5px_12px_rgba(39,47,158,0.2)]", style: { background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" } },
 ];
 
 const statusBadgeMap: Record<LeadStatus, "info" | "warning" | "success" | "error" | "neutral"> = {
-  New: "info", Contacted: "warning", "Quote Sent": "warning", "Follow Up": "info", Converted: "success", Lost: "error",
+  New: "info", Contacted: "warning", "Follow Up": "info", Converted: "success", Lost: "error",
 };
 const leadStatuses: (LeadStatus | "All")[] = ["All", "New", "Contacted", "Follow Up", "Converted", "Lost"];
 
@@ -260,7 +260,7 @@ function DashboardLeadsSection() {
     <div className="bg-card rounded-xl card-shadow overflow-hidden">
       <div className="p-5 border-b border-border">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <h3 className="text-sm font-semibold text-card-foreground">Enquiries</h3>
+          <h3 className="text-sm font-semibold text-card-foreground">Leads</h3>
           <div className="flex flex-wrap items-center gap-2">
             <select
               value={branchFilter}
@@ -277,7 +277,7 @@ function DashboardLeadsSection() {
               <input
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                placeholder="Search enquiries..."
+                placeholder="Search Leads..."
                 className="pl-8 pr-3 py-1.5 rounded-lg bg-secondary border border-border text-xs text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 w-44"
               />
             </div>
@@ -300,14 +300,14 @@ function DashboardLeadsSection() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border">
-              {["Enquiry ID", "Customer Name", "Services", "Urgency", "Enquiry Incharge", "Next Follow-Up Date", "Status", "Actions"].map(h => (
+              {["Leads ID", "Customer Name", "Services", "Urgency", "Leads Incharge", "Next Follow-Up Date", "Status", "Actions"].map(h => (
                 <th key={h} className="text-left px-3 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 ? (
-              <tr><td colSpan={8} className="px-3 py-6 text-center text-xs text-muted-foreground">No enquiries found.</td></tr>
+              <tr><td colSpan={8} className="px-3 py-6 text-center text-xs text-muted-foreground">No Leads found.</td></tr>
             ) : filtered.map(l => (
               <tr
                 key={l.id}
@@ -331,7 +331,7 @@ function DashboardLeadsSection() {
                     <button
                       onClick={(e) => { e.stopPropagation(); navigate(`/leads/${l.id}`); }}
                       className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-border bg-card hover:bg-secondary transition-colors"
-                      title="Edit enquiry"
+                      title="Edit Leads"
                     >
                       <Edit2 className="w-4 h-4 text-muted-foreground" />
                     </button>
@@ -716,7 +716,7 @@ const Dashboard = () => {
             <div className="p-6 space-y-5 flex-shrink-0 bg-card border-b border-border">
               {/* Header */}
               <div className="flex items-center justify-between">
-                <h3 className="text-lg font-bold text-card-foreground">Add New Enquiry</h3>
+                <h3 className="text-lg font-bold text-card-foreground">Add New Leads</h3>
                 <button
                   onClick={() => {
                     setShowAddLeadModal(false);
@@ -862,13 +862,13 @@ const Dashboard = () => {
                     />
                   </div>
                   <div>
-                    <label className="text-xs font-medium text-muted-foreground mb-1 block">Enquiry Source</label>
+                    <label className="text-xs font-medium text-muted-foreground mb-1 block">Leads Source</label>
                     <select
                       value={leadFormData.leadSource}
                       onChange={(e) => setLeadFormData({ ...leadFormData, leadSource: e.target.value })}
                       className="w-full px-3 py-2 rounded-lg bg-secondary text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 border border-border"
                     >
-                      <option value="">Select enquiry source</option>
+                      <option value="">Select Leads source</option>
                       {leadSources.map((s) => (
                         <option key={s} value={s}>{s}</option>
                       ))}
@@ -949,7 +949,7 @@ const Dashboard = () => {
                 className={`flex-1 h-10 text-white rounded-lg transition-all font-semibold text-sm shadow-[0px_5px_12px_rgba(39,47,158,0.2)] ${canSaveLead ? "hover:opacity-90" : "opacity-60 cursor-not-allowed"}`}
                 style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}
               >
-                Save & Go to Enquiries
+                Save & Go to Leads
               </button>
             </div>
           </div>

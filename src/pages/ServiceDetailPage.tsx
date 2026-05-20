@@ -255,7 +255,7 @@ export const ServiceDetailPage = () => {
           {appointment?.unitPrice && (
             <div className="space-y-2">
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Unit Price</p>
-              <p className="text-lg font-bold text-card-foreground">₹ {appointment.unitPrice}</p>
+              <p className="text-lg font-bold text-card-foreground">{appointment.unitPrice}</p>
             </div>
           )}
           {appointment?.unitType && (
