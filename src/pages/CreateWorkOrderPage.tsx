@@ -471,11 +471,11 @@ const CreateWorkOrderPage = () => {
             <input type="email" placeholder="customer@email.com" {...register("email")} className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground" />
           </div>
 
-          <div>
+          {/* <div>
             <label className="text-xs font-medium text-muted-foreground mb-2 block">Address *</label>
             <input type="text" placeholder=" address" {...register("address")} className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground" />
             {errors.address && <p className="text-xs text-red-500 mt-1">{errors.address.message}</p>}
-          </div>
+          </div> */}
 
           {/* <div>
             <label className="text-xs font-medium text-muted-foreground mb-2 block">Location</label>
@@ -631,11 +631,11 @@ const CreateWorkOrderPage = () => {
             <label className="text-xs font-medium text-muted-foreground mb-2 block">Total Value (₹)</label>
             <input type="number" placeholder="0" {...register("totalValue")} className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground" />
           </div> */}
-
+{/* 
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-2 block">Advance (₹)</label>
             <input type="number" placeholder="0" {...register("paidAmount")} className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground" />
-          </div>
+          </div> */}
 
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-2 block">Status</label>

@@ -490,7 +490,7 @@ const CreateLeadPage = () => {
           </div>
 
           <div>
-            <label className="text-xs font-medium text-muted-foreground mb-2 block">sales executive</label>
+            <label className="text-xs font-medium text-muted-foreground mb-2 block">Sales executive</label>
             <select value={form.leadIncharge} onChange={(e) => setField("leadIncharge", e.target.value)} className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20">
               <option value="">Unassigned</option>
               {employees.map((emp) => <option key={emp.id} value={emp.name}>{emp.name} — {emp.role}</option>)}

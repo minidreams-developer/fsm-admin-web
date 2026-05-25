@@ -1,9 +1,11 @@
 import { StatusBadge } from "@/components/StatusBadge";
-import { Search, Plus, Clipboard, Calendar, User, CreditCard, Eye, Download } from "lucide-react";
+import { Search, Plus, Clipboard, Calendar, User, CreditCard, Download } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { useProjectsStore, type WorkOrder } from "@/store/projectsStore";
 import { useLeadsStore } from "@/store/leadsStore";
+import { useEmployeesStore } from "@/store/employeesStore";
+import { useBranchesStore } from "@/store/branchesStore";
 import * as XLSX from 'xlsx';
 import { toast } from "sonner";
 
@@ -23,9 +25,15 @@ const ProjectsPage = () => {
   const navigate = useNavigate();
   const { workOrders } = useProjectsStore();
   const { getLead, updateLead } = useLeadsStore();
+  const { employees } = useEmployeesStore();
+  const { branches: branchList } = useBranchesStore();
+  const activeEmployees = employees.filter(e => e.isActive !== false);
+  
   const [search, setSearch] = useState("");
   const [dateFilter, setDateFilter] = useState<"All" | "Due Today">("All");
   const [statusFilter, setStatusFilter] = useState<"All" | "Authorization Pending" | "Ongoing" | "Upcoming" | "Overdue" | "Missed" | "Cancelled" | "Completed" | "Converted">("All");
+  const [employeeFilter, setEmployeeFilter] = useState("All");
+  const [branchFilter, setBranchFilter] = useState("All");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [showDateFilter, setShowDateFilter] = useState(false);
@@ -77,8 +85,11 @@ const ProjectsPage = () => {
 
     const matchStart = !appliedStart || (wo.start && wo.start >= appliedStart);
     const matchEnd = !appliedEnd || (wo.end && wo.end <= appliedEnd);
+    
+    const matchEmployee = employeeFilter === "All" || wo.assignedTech === employeeFilter || wo.salesExecutive === employeeFilter;
+    const matchBranch = branchFilter === "All" || wo.location === branchFilter;
 
-    return matchSearch && matchDate && matchStatus && matchStart && matchEnd;
+    return matchSearch && matchDate && matchStatus && matchStart && matchEnd && matchEmployee && matchBranch;
   });
 
   const getPaymentProgress = (project: WorkOrder) => {
@@ -324,6 +335,28 @@ const ProjectsPage = () => {
 
       <div className="flex flex-col gap-3">
         <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
+          <select
+            value={branchFilter}
+            onChange={(e) => setBranchFilter(e.target.value)}
+            className="px-3 py-2 rounded-lg bg-card border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+          >
+            <option value="All">All Branches</option>
+            {branchList.filter(b => b.status === "Active").map(b => (
+              <option key={b.id} value={b.name}>{b.name}</option>
+            ))}
+          </select>
+
+          <select
+            value={employeeFilter}
+            onChange={(e) => setEmployeeFilter(e.target.value)}
+            className="px-3 py-2 rounded-lg bg-card border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+          >
+            <option value="All">All Employees</option>
+            {activeEmployees.map(emp => (
+              <option key={emp.id} value={emp.name}>{emp.name} — {emp.role}</option>
+            ))}
+          </select>
+
           <div className="relative w-full sm:max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <input
@@ -333,24 +366,25 @@ const ProjectsPage = () => {
               className="w-full pl-10 pr-4 py-2 border border-border rounded-lg bg-background text-card-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
             />
           </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="px-3 py-2 rounded-lg border border-border bg-card text-xs text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20" />
-            <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="px-3 py-2 rounded-lg border border-border bg-card text-xs text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20" />
-            <button
-              onClick={() => { setAppliedStart(startDate); setAppliedEnd(endDate); }}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold text-white transition-all hover:opacity-90 shadow-[0px_5px_12px_rgba(39,47,158,0.2)]"
-              style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}
-            >
-              <Calendar className="w-3.5 h-3.5" />
-              Filter
-            </button>
-            <button
-              onClick={() => { setStartDate(""); setEndDate(""); setAppliedStart(""); setAppliedEnd(""); }}
-              className="px-4 py-2 rounded-lg text-xs font-semibold border border-border bg-card text-muted-foreground hover:text-destructive hover:border-destructive/30 transition-colors"
-            >
-              Reset
-            </button>
-          </div>
+        </div>
+
+        <div className="flex items-center gap-2 flex-wrap">
+          <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="px-3 py-2 rounded-lg border border-border bg-card text-xs text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20" />
+          <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="px-3 py-2 rounded-lg border border-border bg-card text-xs text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20" />
+          <button
+            onClick={() => { setAppliedStart(startDate); setAppliedEnd(endDate); }}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold text-white transition-all hover:opacity-90 shadow-[0px_5px_12px_rgba(39,47,158,0.2)]"
+            style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}
+          >
+            <Calendar className="w-3.5 h-3.5" />
+            Filter
+          </button>
+          <button
+            onClick={() => { setStartDate(""); setEndDate(""); setAppliedStart(""); setAppliedEnd(""); }}
+            className="px-4 py-2 rounded-lg text-xs font-semibold border border-border bg-card text-muted-foreground hover:text-destructive hover:border-destructive/30 transition-colors"
+          >
+            Reset
+          </button>
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
