@@ -1,8 +1,10 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Calendar, User, CheckCircle, Clock, AlertCircle, FileText, Edit2, Download, Gauge, Image as ImageIcon } from "lucide-react";
+import { ArrowLeft, Calendar, User, CheckCircle, Clock, AlertCircle, FileText, Edit2, Download, Gauge, Image as ImageIcon, Phone, MapPin, LogIn, LogOut, Beaker, ClipboardList, Wallet } from "lucide-react";
 import { useState, useRef } from "react";
-import { useServicesStore } from "@/store/servicesStore";
-import { useTasksStore } from "@/store/tasksStore";
+import { useServicesStore, type ServiceAppointment } from "@/store/servicesStore";
+import { useTasksStore, type Task } from "@/store/tasksStore";
+import { useProjectsStore } from "@/store/projectsStore";
+import type { WorkOrder } from "@/store/projectsStore";
 import { StatusBadge } from "@/components/StatusBadge";
 import { ServiceFormModal } from "@/components/ServiceFormModal";
 import jsPDF from 'jspdf';
@@ -29,11 +31,65 @@ const workplaceImages = {
   after: "/placeholder.svg"
 };
 
+const defaultTaskFieldData = {
+  customerName: "Lakshmi Stores",
+  phone: "9876543240",
+  address: "Market Road, Ernakulam, Kerala 682011",
+  checkInTime: "08:45 AM",
+  checkOutTime: "11:30 AM",
+  chemicals: [
+    { name: "Rin", quantity: "100ml" },
+    { name: "Cypermethrin 10% EC", quantity: "250ml" },
+    { name: "Gel Bait (Maxforce)", quantity: "2 tubes" },
+  ],
+  observation:
+    "Heavy cockroach activity observed near kitchen storage and drain areas. Bait stations placed at four corners. Customer advised to keep food items sealed. Follow-up recommended in 15 days.",
+  payment: {
+    totalServiceCharge: 850,
+    receivedAmount: 700,
+    pendingBalance: 150,
+    paymentMode: "Scan & Pay",
+  },
+};
+
+const getTaskFieldData = (
+  task: Task,
+  workOrder: WorkOrder | null | undefined,
+  linkedAppointment: ServiceAppointment | undefined
+) => ({
+  customerName: workOrder?.customer ?? defaultTaskFieldData.customerName,
+  phone: workOrder?.phone ?? defaultTaskFieldData.phone,
+  address:
+    workOrder?.siteAddress || workOrder?.address || defaultTaskFieldData.address,
+  checkInTime: linkedAppointment?.inTime || defaultTaskFieldData.checkInTime,
+  checkOutTime: linkedAppointment?.outTime || defaultTaskFieldData.checkOutTime,
+  chemicals: defaultTaskFieldData.chemicals,
+  observation: linkedAppointment?.serviceDescription
+    ? `${linkedAppointment.serviceDescription}\n\n${defaultTaskFieldData.observation}`
+    : task.description
+      ? `${task.description}\n\n${defaultTaskFieldData.observation}`
+      : defaultTaskFieldData.observation,
+  payment: (() => {
+    const aptAmount = linkedAppointment?.payment?.amount;
+    if (aptAmount != null) {
+      const received = Math.min(aptAmount, Math.round(aptAmount * 0.82)) || defaultTaskFieldData.payment.receivedAmount;
+      return {
+        totalServiceCharge: aptAmount,
+        receivedAmount: received,
+        pendingBalance: aptAmount - received,
+        paymentMode: linkedAppointment.payment?.mode ?? defaultTaskFieldData.payment.paymentMode,
+      };
+    }
+    return defaultTaskFieldData.payment;
+  })(),
+});
+
 export const ServiceDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { appointments } = useServicesStore();
   const { getTask } = useTasksStore();
+  const { getWorkOrder } = useProjectsStore();
   const [isEditing, setIsEditing] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
 
@@ -41,6 +97,11 @@ export const ServiceDetailPage = () => {
   const isTask = id?.startsWith("TASK-");
   const task = isTask && id ? getTask(id) : null;
   const appointment = !isTask ? appointments.find(apt => apt.id === id) : null;
+  const workOrder = task?.workOrderId ? getWorkOrder(task.workOrderId) : null;
+  const linkedAppointment = task
+    ? appointments.find(a => a.workOrderId === task.workOrderId)
+    : undefined;
+  const taskFieldData = task ? getTaskFieldData(task, workOrder, linkedAppointment) : null;
 
   // Create a unified service object from either task or appointment
   const service = task ? {
@@ -365,6 +426,102 @@ export const ServiceDetailPage = () => {
           </div>
         )} */}
 
+        {/* Task-only field visit details (from work orders) */}
+        {isTask && taskFieldData && (
+          <>
+            {/* Customer Information */}
+            <div className="mb-8 pb-8 border-b border-border">
+              <h3 className="text-lg font-bold text-card-foreground mb-4 flex items-center gap-2">
+                <User className="w-5 h-5" />
+                Customer Information
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-secondary/30 rounded-lg p-4 border border-border">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Customer Name</p>
+                  <p className="text-sm font-bold text-card-foreground">{taskFieldData.customerName}</p>
+                </div>
+                <div className="bg-secondary/30 rounded-lg p-4 border border-border">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1 flex items-center gap-1">
+                    <Phone className="w-3.5 h-3.5" /> Phone Number
+                  </p>
+                  <p className="text-sm font-bold text-card-foreground">{taskFieldData.phone}</p>
+                </div>
+                <div className="bg-secondary/30 rounded-lg p-4 border border-border md:col-span-3">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1 flex items-center gap-1">
+                    <MapPin className="w-3.5 h-3.5" /> Address
+                  </p>
+                  <p className="text-sm font-bold text-card-foreground">{taskFieldData.address}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Check-in / Check-out */}
+            <div className="mb-8 pb-8 border-b border-border">
+              <h3 className="text-lg font-bold text-card-foreground mb-4 flex items-center gap-2">
+                <Clock className="w-5 h-5" />
+                Visit Times
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="bg-secondary/30 rounded-lg p-4 border border-border flex items-start gap-3">
+                  <div className="p-2 bg-success/10 rounded-lg">
+                    <LogIn className="w-5 h-5 text-success" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Check-in Time</p>
+                    <p className="text-lg font-bold text-card-foreground mt-1">{taskFieldData.checkInTime}</p>
+                  </div>
+                </div>
+                <div className="bg-secondary/30 rounded-lg p-4 border border-border flex items-start gap-3">
+                  <div className="p-2 bg-destructive/10 rounded-lg">
+                    <LogOut className="w-5 h-5 text-destructive" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Check-out Time</p>
+                    <p className="text-lg font-bold text-card-foreground mt-1">{taskFieldData.checkOutTime}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Chemicals Used */}
+            <div className="mb-8 pb-8 border-b border-border">
+              <h3 className="text-lg font-bold text-card-foreground mb-4 flex items-center gap-2">
+                <Beaker className="w-5 h-5" />
+                Chemicals Used
+              </h3>
+              <div className="bg-secondary/30 rounded-lg border border-border overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border bg-secondary/50">
+                      <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Name</th>
+                      <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Quantity</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {taskFieldData.chemicals.map((chemical, index) => (
+                      <tr key={index} className="border-b border-border last:border-0 hover:bg-secondary/20">
+                        <td className="px-4 py-3 font-medium text-card-foreground">{chemical.name}</td>
+                        <td className="px-4 py-3 text-right text-card-foreground font-semibold">{chemical.quantity}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Observation */}
+            <div className="mb-8 pb-8 border-b border-border">
+              <h3 className="text-lg font-bold text-card-foreground mb-4 flex items-center gap-2">
+                <ClipboardList className="w-5 h-5" />
+                Observation
+              </h3>
+              <div className="bg-secondary/30 rounded-lg p-4 border border-border">
+                <p className="text-sm text-card-foreground leading-relaxed whitespace-pre-wrap">{taskFieldData.observation}</p>
+              </div>
+            </div>
+          </>
+        )}
+
         {/* Show Odometer, Before/After, and Signature ONLY for tasks (from work orders) */}
         {isTask && (
           <>
@@ -498,6 +655,48 @@ export const ServiceDetailPage = () => {
                 </div>
               </div>
             </div>
+
+            {/* Payment Paid Details */}
+            {taskFieldData && (
+              <div className="mb-8 pb-8 border-b border-border">
+                <h3 className="text-lg font-bold text-card-foreground mb-4 flex items-center gap-2">
+                  <Wallet className="w-5 h-5" />
+                  Payment Paid Details
+                </h3>
+                <div className="bg-secondary/30 rounded-lg p-5 border border-border space-y-5">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="text-sm font-semibold text-card-foreground">Total Service Charge</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        ( Includes all applied treatments and taxes )
+                      </p>
+                    </div>
+                    <p className="text-lg font-bold text-primary whitespace-nowrap">
+                      ₹ {taskFieldData.payment.totalServiceCharge.toLocaleString()}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-sm font-semibold text-card-foreground">Received Amount</p>
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-md border border-primary/40 text-primary text-xs font-semibold">
+                        {taskFieldData.payment.paymentMode}
+                      </span>
+                    </div>
+                    <p className="text-lg font-bold text-card-foreground whitespace-nowrap">
+                      ₹ {taskFieldData.payment.receivedAmount.toLocaleString()}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-4 rounded-lg bg-destructive/10 border border-destructive/20 px-4 py-3">
+                    <p className="text-sm font-semibold text-destructive">Pending Balance</p>
+                    <p className="text-lg font-bold text-destructive whitespace-nowrap">
+                      ₹ {taskFieldData.payment.pendingBalance.toLocaleString()}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Customer Signature Section */}
             <div className="mb-8 pb-8 border-b border-border">

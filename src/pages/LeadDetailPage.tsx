@@ -123,7 +123,7 @@ export const LeadDetailPage = () => {
               className="h-10 px-4 inline-flex items-center gap-2 rounded-lg text-white text-sm font-semibold hover:opacity-90 transition-all shadow-[0px_5px_12px_rgba(39,47,158,0.2)]"
               style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}
             >
-              accept
+              Accept
             </button>
           )}
           {/* Actions dropdown */}

@@ -28,6 +28,7 @@ export const EmployeeDetailPage = () => {
   const [appliedTo, setAppliedTo] = useState("");
   const [collectAmount, setCollectAmount] = useState("");
   const [collectNote, setCollectNote] = useState("");
+  const [collectEmployee, setCollectEmployee] = useState("");
   const [editingCollectionId, setEditingCollectionId] = useState<string | null>(null);
 
   const applyDateFilter = () => {
@@ -96,6 +97,7 @@ export const EmployeeDetailPage = () => {
 
   const assignedTasks = tasks.filter(t => t.assignedTo === employee?.name && t.status !== "Completed");
   const otherEmployees = employees.filter(e => e.id !== employee?.id && e.isActive !== false);
+  const activeEmployees = employees.filter(e => e.isActive !== false);
 
   const handleToggleActive = () => {
     if (!employee) return;
@@ -595,7 +597,20 @@ export const EmployeeDetailPage = () => {
                   <Plus className="w-4 h-4 text-primary" />
                   Record Cash Collection
                 </h4>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Employee *</label>
+                    <select
+                      value={collectEmployee}
+                      onChange={e => setCollectEmployee(e.target.value)}
+                      className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    >
+                      <option value="">Select employee</option>
+                      {activeEmployees.map(emp => (
+                        <option key={emp.id} value={emp.name}>{emp.name}</option>
+                      ))}
+                    </select>
+                  </div>
                   <div>
                     <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Amount (₹) *</label>
                     <input
@@ -621,6 +636,10 @@ export const EmployeeDetailPage = () => {
                 <button
                   type="button"
                   onClick={() => {
+                    if (!collectEmployee.trim()) {
+                      toast.error("Please select an employee");
+                      return;
+                    }
                     const amt = parseFloat(collectAmount);
                     if (!collectAmount || isNaN(amt) || amt <= 0) {
                       toast.error("Enter a valid amount");
@@ -635,7 +654,7 @@ export const EmployeeDetailPage = () => {
                       
                       const updated = existing.map(c => 
                         c.id === editingCollectionId 
-                          ? { ...c, amount: amt, note: collectNote.trim() || undefined }
+                          ? { ...c, amount: amt, note: collectNote.trim() || undefined, collectedBy: collectEmployee }
                           : c
                       );
                       
@@ -657,6 +676,7 @@ export const EmployeeDetailPage = () => {
                         id: `COL-${Date.now()}`,
                         amount: amt,
                         collectedAt: new Date().toISOString(),
+                        collectedBy: collectEmployee,
                         note: collectNote.trim() || undefined,
                       };
                       const existing = employee.cashCollections || [];
@@ -667,11 +687,12 @@ export const EmployeeDetailPage = () => {
                         cashCollections: [...existing, newCollection],
                         cashBalance: `₹ ${newBalance.toLocaleString()}`,
                       });
-                      toast.success(`₹ ${amt.toLocaleString()} collected from ${employee.name}`);
+                      toast.success(`₹ ${amt.toLocaleString()} collected by ${collectEmployee}`);
                     }
                     
                     setCollectAmount("");
                     setCollectNote("");
+                    setCollectEmployee("");
                   }}
                   className="mt-3 inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-white text-sm font-semibold hover:opacity-90 transition-all shadow-[0px_5px_12px_rgba(39,47,158,0.2)]"
                   style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}
@@ -686,6 +707,7 @@ export const EmployeeDetailPage = () => {
                       setEditingCollectionId(null);
                       setCollectAmount("");
                       setCollectNote("");
+                      setCollectEmployee("");
                     }}
                     className="mt-3 inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-card-foreground text-sm font-semibold border border-border hover:bg-secondary transition-all"
                   >
@@ -712,7 +734,11 @@ export const EmployeeDetailPage = () => {
                           </div>
                           <div className="min-w-0">
                             <p className="text-sm font-semibold text-success">₹ {col.amount.toLocaleString()}</p>
-                            {col.note && <p className="text-xs text-muted-foreground truncate">{col.note}</p>}
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                              {col.collectedBy && <span>Collected by: {col.collectedBy}</span>}
+                              {col.note && <span>•</span>}
+                              {col.note && <span className="truncate">{col.note}</span>}
+                            </div>
                           </div>
                         </div>
                         <div className="flex items-center gap-2 flex-shrink-0">
@@ -724,6 +750,7 @@ export const EmployeeDetailPage = () => {
                               setEditingCollectionId(col.id);
                               setCollectAmount(col.amount.toString());
                               setCollectNote(col.note || "");
+                              setCollectEmployee(col.collectedBy || "");
                             }}
                             className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-secondary transition-colors"
                             title="Edit collection"

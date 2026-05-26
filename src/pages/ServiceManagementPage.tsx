@@ -1,10 +1,12 @@
 import { useState } from "react";
-import { Plus, Search, Eye, Pencil, Trash2, Download } from "lucide-react";
+import { Plus, Search, Pencil, Trash2, Download, X } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { useServicesStore } from "@/store/servicesStore";
 import { StatusBadge } from "@/components/StatusBadge";
 import { ServiceFormModal } from "@/components/ServiceFormModal";
+import { useEmployeesStore } from "@/store/employeesStore";
+import { useBranchesStore } from "@/store/branchesStore";
 import type { ServiceAppointment } from "@/store/servicesStore";
 import * as XLSX from 'xlsx';
 
@@ -13,8 +15,15 @@ const statusMap = { Scheduled: "info", Unscheduled: "neutral", Completed: "succe
 const ServiceManagementPage = () => {
   const navigate = useNavigate();
   const { appointments, updateAppointment } = useServicesStore();
+  const { employees } = useEmployeesStore();
+  const { branches: branchList } = useBranchesStore();
+  const activeEmployees = employees.filter(e => e.isActive !== false);
+  
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"All" | "Active" | "Inactive">("All");
+  const [employeeFilter, setEmployeeFilter] = useState("All");
+  const [branchFilter, setBranchFilter] = useState("All");
+  const [dateFilter, setDateFilter] = useState({ startDate: "", endDate: "" });
   const [showForm, setShowForm] = useState(false);
   const [editingService, setEditingService] = useState<ServiceAppointment | null>(null);
 
@@ -24,7 +33,25 @@ const ServiceManagementPage = () => {
       apt.subject?.toLowerCase().includes(search.toLowerCase()) ||
       apt.employeeName.toLowerCase().includes(search.toLowerCase()) ||
       apt.refNo?.toLowerCase().includes(search.toLowerCase());
-    return matchStatus && matchSearch;
+    const matchEmployee = employeeFilter === "All" || apt.employeeName === employeeFilter;
+    const matchBranch = branchFilter === "All" || apt.state === branchFilter;
+    
+    // Date filter logic
+    let matchDate = true;
+    if (dateFilter.startDate || dateFilter.endDate) {
+      const aptDate = new Date(apt.date);
+      if (dateFilter.startDate) {
+        const startDate = new Date(dateFilter.startDate);
+        matchDate = matchDate && aptDate >= startDate;
+      }
+      if (dateFilter.endDate) {
+        const endDate = new Date(dateFilter.endDate);
+        endDate.setHours(23, 59, 59, 999);
+        matchDate = matchDate && aptDate <= endDate;
+      }
+    }
+    
+    return matchStatus && matchSearch && matchEmployee && matchBranch && matchDate;
   });
 
   const stats = {
@@ -118,13 +145,13 @@ const ServiceManagementPage = () => {
           <p className="text-sm text-muted-foreground">Manage service appointments and tasks</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-2">
-          <button 
+          {/* <button 
             onClick={handleExportToExcel}
             className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 border border-primary text-primary bg-primary/5 hover:bg-primary/10 transition-all"
           >
             <Download className="w-4 h-4" />
             Export Data
-          </button>
+          </button> */}
           <button 
             onClick={() => setShowForm(true)} 
             className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 transition-all text-white shadow-[0px_5px_12px_rgba(39,47,158,0.2)]" 
@@ -157,16 +184,66 @@ const ServiceManagementPage = () => {
       </div>
 
       {/* Search and Filter */}
-      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-        <div className="relative w-full sm:flex-1 sm:max-w-xs">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <input 
-            value={search} 
-            onChange={(e) => setSearch(e.target.value)} 
-            placeholder="Search services..." 
-            className="w-full pl-9 pr-4 py-2 rounded-lg bg-card text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20" 
+      <div className="space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+          <select
+            value={branchFilter}
+            onChange={(e) => setBranchFilter(e.target.value)}
+            className="px-3 py-2 rounded-lg bg-card border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+          >
+            <option value="All">All Branches</option>
+            {branchList.filter(b => b.status === "Active").map(b => (
+              <option key={b.id} value={b.name}>{b.name}</option>
+            ))}
+          </select>
+
+          <select
+            value={employeeFilter}
+            onChange={(e) => setEmployeeFilter(e.target.value)}
+            className="px-3 py-2 rounded-lg bg-card border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+          >
+            <option value="All">All Employees</option>
+            {activeEmployees.map(emp => (
+              <option key={emp.id} value={emp.name}>{emp.name} — {emp.role}</option>
+            ))}
+          </select>
+
+          <input
+            type="date"
+            value={dateFilter.startDate}
+            onChange={(e) => setDateFilter(prev => ({ ...prev, startDate: e.target.value }))}
+            placeholder="Start Date"
+            className="px-3 py-2 rounded-lg bg-card border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
           />
+
+          <input
+            type="date"
+            value={dateFilter.endDate}
+            onChange={(e) => setDateFilter(prev => ({ ...prev, endDate: e.target.value }))}
+            placeholder="End Date"
+            className="px-3 py-2 rounded-lg bg-card border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+          />
+
+          {(dateFilter.startDate || dateFilter.endDate) && (
+            <button
+              onClick={() => setDateFilter({ startDate: "", endDate: "" })}
+              className="px-3 py-2 rounded-lg bg-secondary/30 border border-border text-sm text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
+            >
+              Clear Dates
+            </button>
+          )}
+
+          <div className="relative w-full sm:flex-1 sm:max-w-xs">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <input 
+              value={search} 
+              onChange={(e) => setSearch(e.target.value)} 
+              placeholder="Search services..." 
+              className="w-full pl-9 pr-4 py-2 rounded-lg bg-card text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20" 
+            />
+          </div>
         </div>
+
         <div className="flex flex-wrap gap-2">
           {(["All", "Active", "Inactive"] as const).map((status) => {
             const count = status === "All" ? appointments.length : status === "Active" ? appointments.filter(a => a.status === "Completed").length : appointments.filter(a => a.status !== "Completed").length;

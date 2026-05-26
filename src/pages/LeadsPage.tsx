@@ -57,6 +57,10 @@ const LeadsPage = () => {
   const [selectedLeadIds, setSelectedLeadIds] = useState<Set<number>>(new Set());
   const [showBulkTransfer, setShowBulkTransfer] = useState(false);
   const [transferTo, setTransferTo] = useState("");
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   
   // Form state for new lead
   const [formData, setFormData] = useState({
@@ -246,6 +250,23 @@ const LeadsPage = () => {
     } else {
       setSelectedLeadIds(new Set(filtered.map(l => l.id)));
     }
+  };
+
+  // Pagination calculations
+  const totalPages = Math.ceil(filtered.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedLeads = filtered.slice(startIndex, endIndex);
+
+  // Reset to first page when filters change
+  const handleFilterChange = (newFilter: LeadStatus | "All") => {
+    setFilter(newFilter);
+    setCurrentPage(1);
+  };
+
+  const handleItemsPerPageChange = (newItemsPerPage: number) => {
+    setItemsPerPage(newItemsPerPage);
+    setCurrentPage(1);
   };
 
   return (
@@ -542,9 +563,9 @@ const LeadsPage = () => {
 
         {/* Second Row: Status Filter Buttons */}
         <div className="flex flex-wrap gap-2">
-          <button onClick={() => setFilter("All")} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap ${filter === "All" ? "text-white shadow-[0px_5px_12px_rgba(39,47,158,0.2)]" : "bg-card text-muted-foreground border border-border hover:bg-secondary"}`} style={filter === "All" ? { background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" } : {}}>All</button>
+          <button onClick={() => handleFilterChange("All")} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap ${filter === "All" ? "text-white shadow-[0px_5px_12px_rgba(39,47,158,0.2)]" : "bg-card text-muted-foreground border border-border hover:bg-secondary"}`} style={filter === "All" ? { background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" } : {}}>All</button>
           {statuses.map((s) => (
-            <button key={s} onClick={() => setFilter(s)} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap ${filter === s ? "text-white shadow-[0px_5px_12px_rgba(39,47,158,0.2)]" : "bg-card text-muted-foreground border border-border hover:bg-secondary"}`} style={filter === s ? { background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" } : {}}>{s}</button>
+            <button key={s} onClick={() => handleFilterChange(s)} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap ${filter === s ? "text-white shadow-[0px_5px_12px_rgba(39,47,158,0.2)]" : "bg-card text-muted-foreground border border-border hover:bg-secondary"}`} style={filter === s ? { background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" } : {}}>{s}</button>
           ))}
         </div>
       </div>
@@ -588,7 +609,7 @@ const LeadsPage = () => {
               ))}
             </tr></thead>
             <tbody>
-              {filtered.map((l) => {
+              {paginatedLeads.map((l) => {
                 const serviceCount = getServiceCount(l);
                 return (
                   <tr key={l.id} onClick={() => navigate(`/leads/${l.id}`)} className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors cursor-pointer">
@@ -604,13 +625,12 @@ const LeadsPage = () => {
                   <td className="px-3 py-2.5">
                     <div className="flex items-center gap-1.5">
                       <span className="font-medium text-card-foreground text-xs">{l.name}</span>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); updateLead(l.id, { isViewed: true }); setSelectedLeadForDetails(l); setShowDetailsModal(true); }}
-                        className="inline-flex items-center justify-center w-5 h-5 rounded hover:bg-secondary transition-colors flex-shrink-0"
-                        title={l.isViewed ? "Viewed" : "View details"}
+                      <div
+                        className="inline-flex items-center justify-center w-5 h-5 rounded flex-shrink-0"
+                        title={l.isViewed ? "Viewed" : "Not viewed"}
                       >
-                        <Eye className={`w-3.5 h-3.5 ${l.isViewed ? "text-success" : "text-muted-foreground hover:text-primary"}`} />
-                      </button>
+                        <Eye className={`w-3.5 h-3.5 ${l.isViewed ? "text-success" : "text-muted-foreground"}`} />
+                      </div>
                     </div>
                   </td>
                   <td className="px-3 py-2.5">
@@ -651,6 +671,63 @@ const LeadsPage = () => {
             })}
             </tbody>
           </table>
+        </div>
+      </div>
+
+      {/* Pagination Controls */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-4 py-4 bg-card rounded-xl border border-border">
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-muted-foreground">Show</span>
+          <select
+            value={itemsPerPage}
+            onChange={(e) => handleItemsPerPageChange(Number(e.target.value))}
+            className="px-3 py-2 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+          >
+            <option value={10}>10</option>
+            <option value={30}>30</option>
+            <option value={50}>50</option>
+            <option value={100}>100</option>
+          </select>
+          <span className="text-sm text-muted-foreground">entries</span>
+        </div>
+
+        <div className="flex items-center justify-center gap-2">
+          <button
+            onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+            disabled={currentPage === 1}
+            className="px-3 py-2 rounded-lg border border-border text-sm font-medium text-card-foreground hover:bg-secondary disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            Previous
+          </button>
+
+          <div className="flex items-center gap-1">
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+              <button
+                key={page}
+                onClick={() => setCurrentPage(page)}
+                className={`w-8 h-8 rounded-lg text-xs font-semibold transition-colors ${
+                  currentPage === page
+                    ? "text-white shadow-[0px_5px_12px_rgba(39,47,158,0.2)]"
+                    : "border border-border text-card-foreground hover:bg-secondary"
+                }`}
+                style={currentPage === page ? { background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" } : {}}
+              >
+                {page}
+              </button>
+            ))}
+          </div>
+
+          <button
+            onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+            disabled={currentPage === totalPages}
+            className="px-3 py-2 rounded-lg border border-border text-sm font-medium text-card-foreground hover:bg-secondary disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            Next
+          </button>
+        </div>
+
+        <div className="text-sm text-muted-foreground text-center sm:text-right">
+          Showing {startIndex + 1} to {Math.min(endIndex, filtered.length)} of {filtered.length} entries
         </div>
       </div>
 

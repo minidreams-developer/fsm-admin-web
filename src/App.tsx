@@ -32,6 +32,7 @@ import ProductsPage from "./pages/ProductsPage";
 import RolesPage from "./pages/RolesPage";
 import QuantCalendarPage from "./pages/QuantCalendarPage";
 import TaskManagementPage from "./pages/TaskManagementPage";
+import TaskDetailsPage from "./pages/TaskDetailsPage";
 import WorkOrderSignaturePage from "./pages/WorkOrderSignaturePage";
 import BulkAssignPage from "./pages/BulkAssignPage";
 import { SettingsPage } from "./pages/SettingsPage";
@@ -77,6 +78,7 @@ const App = () => (
               <Route path="/roles" element={<RolesPage />} />
               <Route path="/quant-calendar" element={<QuantCalendarPage />} />
               <Route path="/task-management" element={<TaskManagementPage />} />
+              <Route path="/task-management/:taskId" element={<TaskDetailsPage />} />
               <Route path="/settings" element={<SettingsPage />} />
             </Route>
           </Route>

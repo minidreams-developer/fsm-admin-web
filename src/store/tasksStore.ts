@@ -19,6 +19,8 @@ export type Task = {
   igst?: string;
   fromTime?: string;
   toTime?: string;
+  attachments?: Array<{ name: string; size: number; data: string }>;
+  branch?: string;
 };
 
 interface TasksStore {
@@ -54,7 +56,7 @@ const initialTasks: Task[] = [
   { id: "TASK-111", workOrderId: "WO-1001", title: "Follow-up Inspection", description: "Check treatment effectiveness", startDate: "2026-04-10", endDate: "2026-04-10", assignedTo: "Mani", assignedEmployees: ["Mani"], status: "Pending" },
 
   // WO-1002 - Praveen Kumar - Termite Control (One-Time)
-  { id: "TASK-112", workOrderId: "WO-1002", title: "Termite Control (One-Time)", description: "Wood treatment for furniture and flooring", startDate: "2026-02-05", endDate: "2026-02-05", assignedTo: "Safeeq", assignedEmployees: ["Safeeq"], status: "Completed" },
+  { id: "TASK-112", workOrderId: "WO-1002", title: "Termite Control (One-Time)", description: "Wood treatment for furniture and flooring", startDate: "2026-02-05", endDate: "2026-02-05", assignedTo: "Safeeq", assignedEmployees: ["Safeeq"], status: "Completed", unitPrice: 6500, quantity: 1, amount: 6500 },
 
   // WO-1003 - Praveen Kumar - Mosquito Fogging
   { id: "TASK-113", workOrderId: "WO-1003", title: "Mosquito Fogging (One-Time)", description: "Garden and terrace fogging treatment", startDate: "2026-03-01", endDate: "2026-03-01", assignedTo: "Unassigned", assignedEmployees: [], status: "Pending" },
