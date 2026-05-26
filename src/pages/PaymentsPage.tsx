@@ -320,10 +320,11 @@ const PaymentsPage = () => {
               <div className="p-6">
                 <h4 className="text-sm font-semibold text-card-foreground mb-4">Payment History</h4>
                 {getPaymentHistory(selectedWorkOrder).length > 0 ? (
-                  <div className="overflow-hidden rounded-lg border border-border">
+                  <div className="overflow-x-auto rounded-lg border border-border">
                     <table className="w-full text-xs">
                       <thead>
                         <tr className="border-b border-border">
+                          <th className="text-left px-3 py-2 font-semibold text-muted-foreground">Service</th>
                           <th className="text-left px-3 py-2 font-semibold text-muted-foreground">Payment Method</th>
                           <th className="text-left px-3 py-2 font-semibold text-muted-foreground">Payment ID</th>
                           <th className="text-left px-3 py-2 font-semibold text-muted-foreground">Total Amount (₹)</th>
@@ -334,6 +335,21 @@ const PaymentsPage = () => {
                       <tbody>
                         {getPaymentHistory(selectedWorkOrder).map((payment, idx) => (
                           <tr key={idx} className="border-b border-border hover:bg-secondary/30">
+                            <td className="px-3 py-2 text-card-foreground max-w-xs">
+                              <div className="flex flex-wrap gap-1">
+                                {selectedWorkOrder.serviceTypes && selectedWorkOrder.serviceTypes.length > 0 ? (
+                                  selectedWorkOrder.serviceTypes.map((service, sidx) => (
+                                    <span key={sidx} className="inline-flex items-center px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-semibold whitespace-nowrap">
+                                      {service}
+                                    </span>
+                                  ))
+                                ) : (
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-semibold whitespace-nowrap">
+                                    {selectedWorkOrder.serviceType}
+                                  </span>
+                                )}
+                              </div>
+                            </td>
                             <td className="px-3 py-2 text-card-foreground">{payment.method}</td>
                             <td className="px-3 py-2 text-muted-foreground text-xs truncate">{payment.paymentId}</td>
                             <td className="px-3 py-2 text-primary font-semibold">{payment.amount.toLocaleString()}.00</td>

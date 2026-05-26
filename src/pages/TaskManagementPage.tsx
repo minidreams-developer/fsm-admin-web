@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Plus, Search, Edit2, Trash2, ChevronLeft, ChevronRight, ChevronDown, X, Upload, File } from "lucide-react";
+import { Plus, Search, Edit2, Trash2, ChevronLeft, ChevronRight, ChevronDown, X, Upload, File, Users } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import { useTasksStore, type Task } from "@/store/tasksStore";
@@ -70,6 +71,7 @@ function EmployeeMultiSelect({ options, selected, onChange }: { options: string[
 const emptyForm = { title: "", description: "", workOrderId: "", startDate: "", endDate: "", branch: "", assignedEmployees: [] as string[], status: "Pending" as TaskStatus, attachments: [] as File[] };
 
 const TaskManagementPage = () => {
+  const navigate = useNavigate();
   const { tasks, addTask, updateTask, deleteTask, getNextTaskId } = useTasksStore();
   const { employees } = useEmployeesStore();
 
@@ -78,8 +80,15 @@ const TaskManagementPage = () => {
   const [page, setPage] = useState(1);
   const [showModal, setShowModal] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
-  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [form, setForm] = useState({ ...emptyForm });
+
+  // Bulk assign state
+  const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set());
+  const [showBulkAssign, setShowBulkAssign] = useState(false);
+  const [bulkAssignData, setBulkAssignData] = useState({
+    assignedEmployees: [] as string[],
+    branch: "",
+  });
 
   const employeeNames = employees.map(e => e.name);
 
@@ -88,10 +97,60 @@ const TaskManagementPage = () => {
     new Set(employees.flatMap(e => e.branch))
   ).sort();
 
-  // Employees filtered by selected branch
+  // Employees filtered by selected branch (create/edit form)
   const filteredEmployeeNames = form.branch
     ? employees.filter(e => e.branch.includes(form.branch)).map(e => e.name)
     : employeeNames;
+
+  // Employees filtered by bulk-assign branch
+  const bulkFilteredEmployeeNames = bulkAssignData.branch
+    ? employees.filter(e => e.branch.includes(bulkAssignData.branch)).map(e => e.name)
+    : employeeNames;
+
+  // Toggle individual task selection
+  const toggleSelectTask = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedTaskIds(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  // Toggle select all on current page
+  const toggleSelectAll = () => {
+    if (selectedTaskIds.size === paginated.length) {
+      setSelectedTaskIds(new Set());
+    } else {
+      setSelectedTaskIds(new Set(paginated.map(t => t.id)));
+    }
+  };
+
+  // Get selected tasks
+  const getSelectedTasks = () => {
+    return paginated.filter(t => selectedTaskIds.has(t.id));
+  };
+
+  // Bulk assign handler
+  const handleBulkAssign = () => {
+    if (bulkAssignData.assignedEmployees.length === 0) {
+      toast.error("Select at least one employee");
+      return;
+    }
+
+    selectedTaskIds.forEach(id => {
+      updateTask(id, {
+        assignedEmployees: bulkAssignData.assignedEmployees,
+        assignedTo: bulkAssignData.assignedEmployees[0],
+        branch: bulkAssignData.branch || undefined,
+      });
+    });
+
+    toast.success(`${selectedTaskIds.size} task${selectedTaskIds.size === 1 ? "" : "s"} assigned`);
+    setSelectedTaskIds(new Set());
+    setShowBulkAssign(false);
+    setBulkAssignData({ assignedEmployees: [], branch: "" });
+  };
 
   const filtered = tasks.filter(t => {
     const matchSearch = t.title.toLowerCase().includes(search.toLowerCase()) || t.assignedEmployees?.join(", ").toLowerCase().includes(search.toLowerCase());
@@ -133,14 +192,36 @@ const TaskManagementPage = () => {
     if (!form.endDate) { toast.error("End date is required"); return; }
     if (form.assignedEmployees.length === 0) { toast.error("Assign at least one employee"); return; }
 
-    if (editingTask) {
-      updateTask(editingTask.id, { ...form, assignedTo: form.assignedEmployees[0] });
-      toast.success("Task updated");
-    } else {
-      addTask({ id: getNextTaskId(), ...form, assignedTo: form.assignedEmployees[0] });
-      toast.success("Task created");
-    }
-    setShowModal(false);
+    // Convert File objects to base64 for storage
+    const convertFilesToBase64 = async () => {
+      const attachments = await Promise.all(
+        form.attachments.map(file => 
+          new Promise<{ name: string; size: number; data: string }>((resolve) => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+              resolve({
+                name: file.name,
+                size: file.size,
+                data: e.target?.result as string
+              });
+            };
+            reader.readAsDataURL(file);
+          })
+        )
+      );
+      return attachments;
+    };
+
+    convertFilesToBase64().then(attachments => {
+      if (editingTask) {
+        updateTask(editingTask.id, { ...form, assignedTo: form.assignedEmployees[0], attachments });
+        toast.success("Task updated");
+      } else {
+        addTask({ id: getNextTaskId(), ...form, assignedTo: form.assignedEmployees[0], attachments });
+        toast.success("Task created");
+      }
+      setShowModal(false);
+    });
   };
 
   const handleDelete = (id: string) => {
@@ -176,12 +257,46 @@ const TaskManagementPage = () => {
         </div>
       </div>
 
+      {/* Selection Bar */}
+      {selectedTaskIds.size > 0 && (
+        <div className="flex items-center justify-between gap-3 px-4 py-3 bg-primary/5 border border-primary/20 rounded-lg">
+          <span className="text-sm font-semibold text-primary">
+            {selectedTaskIds.size} task{selectedTaskIds.size === 1 ? "" : "s"} selected
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowBulkAssign(true)}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-white text-sm font-semibold hover:opacity-90 transition-all shadow-[0px_5px_12px_rgba(39,47,158,0.2)]"
+              style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}
+            >
+              <Users className="w-4 h-4" />
+              Bulk Assign
+            </button>
+
+            <button
+              onClick={() => setSelectedTaskIds(new Set())}
+              className="px-3 py-2 rounded-lg border border-border text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Clear
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Table */}
       <div className="bg-card rounded-xl card-shadow overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border">
+                <th className="px-3 py-2.5 w-10">
+                  <input
+                    type="checkbox"
+                    checked={paginated.length > 0 && selectedTaskIds.size === paginated.length}
+                    onChange={toggleSelectAll}
+                    className="w-4 h-4 rounded border-border accent-primary cursor-pointer"
+                  />
+                </th>
                 {["Task ID", "Title", "Assigned Employees", "Start Date", "End Date", "Status", "Actions"].map(h => (
                   <th key={h} className="text-left px-3 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">{h}</th>
                 ))}
@@ -189,11 +304,19 @@ const TaskManagementPage = () => {
             </thead>
             <tbody>
               {paginated.length === 0 ? (
-                <tr><td colSpan={7} className="px-3 py-8 text-center text-xs text-muted-foreground">No tasks found.</td></tr>
+                <tr><td colSpan={8} className="px-3 py-8 text-center text-xs text-muted-foreground">No tasks found.</td></tr>
               ) : paginated.map(t => {
                 const taskStatus = getTaskStatus(t);
                 return (
-                <tr key={t.id} onClick={() => setSelectedTask(t)} className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors cursor-pointer">
+                <tr key={t.id} onClick={() => navigate(`/task-management/${t.id}`)} className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors cursor-pointer">
+                  <td className="px-3 py-2.5" onClick={e => toggleSelectTask(t.id, e)}>
+                    <input
+                      type="checkbox"
+                      checked={selectedTaskIds.has(t.id)}
+                      onChange={() => {}}
+                      className="w-4 h-4 rounded border-border accent-primary cursor-pointer"
+                    />
+                  </td>
                   <td className="px-3 py-2.5 font-semibold text-primary text-xs">{t.id}</td>
                   <td className="px-3 py-2.5">
                     <p className="font-medium text-card-foreground text-xs">{t.title}</p>
@@ -253,60 +376,7 @@ const TaskManagementPage = () => {
       )}
 
       {/* Task Details Popup */}
-      {selectedTask && createPortal(
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75" onClick={() => setSelectedTask(null)}>
-          <div className="bg-card rounded-[20px] shadow-2xl w-full max-w-md" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between p-6 border-b border-border">
-              <div>
-                <h3 className="text-base font-bold text-card-foreground">{selectedTask.title}</h3>
-                <p className="text-xs text-muted-foreground mt-0.5">{selectedTask.id}</p>
-              </div>
-              <button onClick={() => setSelectedTask(null)} className="p-1.5 hover:bg-secondary rounded-lg transition-colors">
-                <X className="w-5 h-5 text-muted-foreground" />
-              </button>
-            </div>
-            <div className="p-6 space-y-4">
-              {selectedTask.description && (
-                <div>
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Description</p>
-                  <p className="text-sm text-card-foreground">{selectedTask.description}</p>
-                </div>
-              )}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Start Date</p>
-                  <p className="text-sm font-medium text-card-foreground">{selectedTask.startDate || "—"}</p>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">End Date</p>
-                  <p className="text-sm font-medium text-card-foreground">{selectedTask.endDate || "—"}</p>
-                </div>
-              </div>
-              <div>
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Assigned Employees</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {(selectedTask.assignedEmployees || [selectedTask.assignedTo]).map(emp => (
-                    <span key={emp} className="inline-flex items-center px-2.5 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold">{emp}</span>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Status</p>
-                <StatusBadge label={getTaskStatus(selectedTask)} variant={statusVariant[getTaskStatus(selectedTask)]} />
-              </div>
-            </div>
-            <div className="flex gap-3 p-6 border-t border-border">
-              <button onClick={() => { setSelectedTask(null); openEdit(selectedTask); }} className="flex-1 h-10 inline-flex items-center justify-center gap-2 border border-border text-card-foreground text-sm font-medium hover:text-primary transition-colors rounded-lg">
-                <Edit2 className="w-4 h-4" /> Edit
-              </button>
-              <button onClick={() => { setSelectedTask(null); handleDelete(selectedTask.id); }} className="flex-1 h-10 inline-flex items-center justify-center gap-2 border border-destructive/30 text-destructive text-sm font-medium hover:bg-destructive/10 transition-colors rounded-lg">
-                <Trash2 className="w-4 h-4" /> Delete
-              </button>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
+      {/* Removed - now opens in a new page */}
 
       {/* Create/Edit Modal */}
       {showModal && createPortal(
@@ -409,6 +479,89 @@ const TaskManagementPage = () => {
               <button onClick={() => setShowModal(false)} className="flex-1 h-10 border border-border text-card-foreground text-sm font-medium hover:text-primary transition-colors rounded-lg">Cancel</button>
               <button onClick={handleSave} className="flex-1 h-10 text-sm font-semibold hover:opacity-90 text-white rounded-lg transition-all" style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}>
                 {editingTask ? "Update Task" : "Create Task"}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Bulk Assign Modal */}
+      {showBulkAssign && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 animate-in fade-in duration-200">
+          <div className="bg-card rounded-[20px] shadow-2xl w-full max-w-md border border-border animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between p-6 border-b border-border">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-primary/10 rounded-lg">
+                  <Users className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-card-foreground">Bulk Assign Tasks</h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">{selectedTaskIds.size} task{selectedTaskIds.size === 1 ? "" : "s"} selected</p>
+                </div>
+              </div>
+              <button onClick={() => setShowBulkAssign(false)} className="p-1.5 hover:bg-secondary rounded-lg transition-colors">
+                <X className="w-5 h-5 text-muted-foreground" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              {/* Selected Tasks Preview */}
+              <div className="bg-secondary/30 rounded-lg border border-border p-3 max-h-36 overflow-y-auto space-y-1">
+                {getSelectedTasks().map(t => (
+                  <div key={t.id} className="flex items-center justify-between text-xs">
+                    <span className="font-medium text-card-foreground">{t.title}</span>
+                    <span className="text-muted-foreground">{t.id}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Branch Selection */}
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-2 block">Branch</label>
+                <select
+                  value={bulkAssignData.branch}
+                  onChange={e => setBulkAssignData(prev => ({ ...prev, branch: e.target.value }))}
+                  className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+                >
+                  <option value="">All Branches</option>
+                  {allBranches.map(b => (
+                    <option key={b} value={b}>{b}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Employee Selection */}
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-2 block">Assign Employees *</label>
+                <EmployeeMultiSelect
+                  options={bulkFilteredEmployeeNames}
+                  selected={bulkAssignData.assignedEmployees}
+                  onChange={v => setBulkAssignData(prev => ({ ...prev, assignedEmployees: v }))}
+                />
+              </div>
+
+              {/* Info Message */}
+              <div className="bg-warning/5 border border-warning/20 rounded-lg p-3">
+                <p className="text-xs text-warning font-medium">
+                  This will assign {selectedTaskIds.size} task{selectedTaskIds.size === 1 ? "" : "s"} to the selected employees.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-3 p-6 border-t border-border">
+              <button
+                onClick={() => setShowBulkAssign(false)}
+                className="flex-1 h-10 border border-border text-card-foreground text-sm font-medium hover:text-primary transition-colors rounded-lg"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleBulkAssign}
+                className="flex-1 h-10 text-white text-sm font-semibold hover:opacity-90 transition-all rounded-lg shadow-[0px_5px_12px_rgba(39,47,158,0.2)]"
+                style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}
+              >
+                Assign
               </button>
             </div>
           </div>

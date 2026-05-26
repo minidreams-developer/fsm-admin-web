@@ -8,12 +8,14 @@ import { toast } from "sonner";
 import type { WorkOrder } from "@/store/projectsStore";
 import { useProjectsStore } from "@/store/projectsStore";
 import { useEmployeesStore } from "@/store/employeesStore";
+import { useTasksStore } from "@/store/tasksStore";
 
 const paymentSchema = z.object({
   paymentMethod: z.enum(["Cash", "UPI", "Check", "Bank Transfer"]),
   amount: z.string().min(1, "Amount is required"),
   date: z.string().min(1, "Date is required"),
   paidBy: z.string().min(1, "Paid by is required"),
+  serviceId: z.string().optional(),
 });
 
 type PaymentFormData = z.infer<typeof paymentSchema>;
@@ -27,6 +29,7 @@ type Props = {
 export function PaymentUpdateModal({ open, workOrder, onClose }: Props) {
   const { updateWorkOrder } = useProjectsStore();
   const { employees } = useEmployeesStore();
+  const { getTasksByWorkOrder } = useTasksStore();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const {
@@ -41,8 +44,11 @@ export function PaymentUpdateModal({ open, workOrder, onClose }: Props) {
       amount: "",
       date: new Date().toISOString().split("T")[0],
       paidBy: "",
+      serviceId: "",
     },
   });
+
+  const services = workOrder ? getTasksByWorkOrder(workOrder.id) : [];
 
   const onSubmit = async (data: PaymentFormData) => {
     if (!workOrder) return;
@@ -85,6 +91,24 @@ export function PaymentUpdateModal({ open, workOrder, onClose }: Props) {
 
         {/* Content */}
         <div className="overflow-y-auto flex-1 p-6 space-y-4 min-h-0">
+          <div>
+            <label className="text-xs font-medium text-muted-foreground mb-2 block">Service</label>
+            <select
+              {...register("serviceId")}
+              className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
+            >
+              <option value="">Select a service (optional)</option>
+              {services.map((service) => (
+                <option key={service.id} value={service.id}>
+                  {service.title} — {service.status}
+                </option>
+              ))}
+            </select>
+            {errors.serviceId && (
+              <p className="text-xs text-red-500 mt-1">{errors.serviceId.message}</p>
+            )}
+          </div>
+
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-2 block">Payment Method</label>
             <select

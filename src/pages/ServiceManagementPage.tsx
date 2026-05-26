@@ -145,13 +145,13 @@ const ServiceManagementPage = () => {
           <p className="text-sm text-muted-foreground">Manage service appointments and tasks</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-2">
-          <button 
+          {/* <button 
             onClick={handleExportToExcel}
             className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 border border-primary text-primary bg-primary/5 hover:bg-primary/10 transition-all"
           >
             <Download className="w-4 h-4" />
             Export Data
-          </button>
+          </button> */}
           <button 
             onClick={() => setShowForm(true)} 
             className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 transition-all text-white shadow-[0px_5px_12px_rgba(39,47,158,0.2)]" 

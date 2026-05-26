@@ -1,19 +1,19 @@
 import { useNavigate, useLocation } from "react-router-dom";
-import { X, Edit2, Plus } from "lucide-react";
-import { useState, useEffect } from "react";
+import { X, Edit2, Plus, User } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
 import Select from "react-select";
+import SignatureCanvas from "react-signature-canvas";
 import { useProjectsStore } from "@/store/projectsStore";
 import { useTasksStore } from "@/store/tasksStore";
 import { useProductsStore } from "@/store/productsStore";
 import { useEmployeesStore } from "@/store/employeesStore";
 import { useCustomersStore } from "@/store/customersStore";
 import { useServicesStore } from "@/store/servicesStore";
-import { TimeInput12Hour } from "@/components/TimeInput12Hour";
 
 const workOrderSchema = z.object({
   customer: z.string().min(1, "Customer name is required"),
@@ -80,6 +80,9 @@ const CreateWorkOrderPage = () => {
   const [customerState, setCustomerState] = useState<string>("");
   const [extraSiteAddresses, setExtraSiteAddresses] = useState<string[]>([]);
   const [isCustomFrequency, setIsCustomFrequency] = useState(false);
+  const [showSignatureModal, setShowSignatureModal] = useState(false);
+  const [executiveSignatureImage, setExecutiveSignatureImage] = useState<string | null>(null);
+  const execSignatureRef = useRef<SignatureCanvas>(null);
   
   // Address options for site address selection
   type AddressOption = {
@@ -339,6 +342,17 @@ const CreateWorkOrderPage = () => {
     setTasks((prev) => prev.filter((t) => t.id !== id));
   };
 
+  const handleSaveExecSignature = () => {
+    if (execSignatureRef.current?.isEmpty()) {
+      toast.error("Please provide a signature before saving");
+      return;
+    }
+    const signatureData = execSignatureRef.current?.toDataURL();
+    setExecutiveSignatureImage(signatureData || null);
+    setShowSignatureModal(false);
+    toast.success("Sales Executive signature saved!");
+  };
+
   const onSubmit = async (data: WorkOrderFormData) => {
     setIsSubmitting(true);
     try {
@@ -387,6 +401,8 @@ const CreateWorkOrderPage = () => {
         billingAddress: data.billingAddress || data.address,
         nextService: "Unassigned",
         termsAndConditions: termsList.filter(t => t.trim()).join("\n"),
+        salesExecutive: selectedEmployees.length > 0 ? selectedEmployees[0] : undefined,
+        executiveSignatureImage: executiveSignatureImage || undefined,
       });
       tasks.forEach((t, i) => {
         addTask({
@@ -432,29 +448,44 @@ const CreateWorkOrderPage = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-2 block">Customer Name *</label>
-            <Select
-              options={customerOptions}
-              value={customerOptions.find(opt => opt.value === selectedCustomerId) || null}
-              onChange={(option) => {
-                if (option) {
-                  handleCustomerSelect(option.value);
-                } else {
-                  setSelectedCustomerId("");
-                  setCustomerState("");
-                  setValue("customer", "");
-                  setValue("phone", "");
-                  setValue("email", "");
-                  setValue("address", "");
-                  setValue("siteAddress", "");
-                  setValue("billingAddress", "");
-                }
-              }}
-              styles={customSelectStyles}
-              placeholder="Search or select customer..."
-              isClearable
-              isSearchable
-              noOptionsMessage={() => "No customers found"}
-            />
+            <div className="flex gap-2">
+              <div className="flex-1">
+                <Select
+                  options={customerOptions}
+                  value={customerOptions.find(opt => opt.value === selectedCustomerId) || null}
+                  onChange={(option) => {
+                    if (option) {
+                      handleCustomerSelect(option.value);
+                    } else {
+                      setSelectedCustomerId("");
+                      setCustomerState("");
+                      setValue("customer", "");
+                      setValue("phone", "");
+                      setValue("email", "");
+                      setValue("address", "");
+                      setValue("siteAddress", "");
+                      setValue("billingAddress", "");
+                    }
+                  }}
+                  styles={customSelectStyles}
+                  placeholder="Search or select customer..."
+                  isClearable
+                  isSearchable
+                  noOptionsMessage={() => "No customers found"}
+                />
+              </div>
+              {selectedCustomerId && (
+                <button
+                  type="button"
+                  onClick={() => navigate(`/customers/${selectedCustomerId}?edit=true`)}
+                  className="h-[38px] px-3 inline-flex items-center gap-1.5 rounded-lg border border-border bg-card hover:bg-secondary transition-colors text-xs font-semibold text-card-foreground flex-shrink-0"
+                  title="Edit customer"
+                >
+                  <Edit2 className="w-3.5 h-3.5" />
+                  Edit
+                </button>
+              )}
+            </div>
             {/* Hidden input for form validation */}
             <input type="hidden" {...register("customer")} />
             {errors.customer && <p className="text-xs text-red-500 mt-1">{errors.customer.message}</p>}
@@ -814,6 +845,16 @@ const CreateWorkOrderPage = () => {
                               const newQuantity = Math.max(1, task.quantity - 1);
                               const newAmount = task.unitPrice * newQuantity;
                               setTasks(prev => prev.map(t => t.id === task.id ? { ...t, quantity: newQuantity, amount: newAmount } : t));
+                              
+                              // Update service schedules - remove extra schedules if quantity decreased
+                              const currentScheduleCount = serviceSchedules.filter(s => s.service === task.title).length;
+                              if (currentScheduleCount > newQuantity) {
+                                setServiceSchedules(prev => {
+                                  const schedules = prev.filter(s => s.service === task.title);
+                                  const toRemove = schedules.slice(newQuantity);
+                                  return prev.filter(s => !toRemove.includes(s));
+                                });
+                              }
                             }}
                             className="w-6 h-6 flex items-center justify-center rounded border border-border hover:bg-secondary transition-colors"
                           >
@@ -826,6 +867,20 @@ const CreateWorkOrderPage = () => {
                               const newQuantity = task.quantity + 1;
                               const newAmount = task.unitPrice * newQuantity;
                               setTasks(prev => prev.map(t => t.id === task.id ? { ...t, quantity: newQuantity, amount: newAmount } : t));
+                              
+                              // Add new service schedule when quantity increases
+                              const currentScheduleCount = serviceSchedules.filter(s => s.service === task.title).length;
+                              if (currentScheduleCount < newQuantity) {
+                                const newScheduleId = `${task.id}-${currentScheduleCount + 1}`;
+                                setServiceSchedules(prev => [...prev, {
+                                  id: newScheduleId,
+                                  service: task.title,
+                                  scheduleDate: "",
+                                  fromTime: "",
+                                  toTime: "",
+                                  requiredEmployees: 1
+                                }]);
+                              }
                             }}
                             className="w-6 h-6 flex items-center justify-center rounded border border-border hover:bg-secondary transition-colors"
                           >
@@ -925,29 +980,43 @@ const CreateWorkOrderPage = () => {
                 </tr>
               </thead>
               <tbody>
-                {tasks.map((task, index) => {
-                  const schedule = serviceSchedules.find(s => s.service === task.title && s.id === task.id) || {
-                    id: task.id,
-                    service: task.title,
-                    scheduleDate: "",
-                    fromTime: "",
-                    toTime: "",
-                    requiredEmployees: 1
-                  };
-                  
-                  return (
-                    <tr key={task.id} className="border-b border-border last:border-0 hover:bg-secondary/10 transition-colors">
-                      <td className="px-4 py-3 text-xs text-muted-foreground">{index + 1}</td>
-                      <td className="px-4 py-3 font-medium text-card-foreground text-sm">{task.title}</td>
+                {tasks.flatMap((task, taskIndex) => {
+                  // Create an array of appointments based on quantity
+                  const appointments = Array.from({ length: task.quantity || 1 }, (_, appointmentIndex) => {
+                    const scheduleId = `${task.id}-${appointmentIndex + 1}`;
+                    const schedule = serviceSchedules.find(s => s.id === scheduleId) || {
+                      id: scheduleId,
+                      service: task.title,
+                      scheduleDate: "",
+                      fromTime: "",
+                      toTime: "",
+                      requiredEmployees: 1
+                    };
+                    return { schedule, taskIndex, appointmentIndex };
+                  });
+
+                  return appointments.map(({ schedule, taskIndex, appointmentIndex }, rowIndex) => (
+                    <tr key={schedule.id} className="border-b border-border last:border-0 hover:bg-secondary/10 transition-colors">
+                      <td className="px-4 py-3 text-xs text-muted-foreground">
+                        {taskIndex + 1}.{appointmentIndex + 1}
+                      </td>
+                      <td className="px-4 py-3 font-medium text-card-foreground text-sm">
+                        {task.title}
+                        {task.quantity > 1 && (
+                          <span className="text-xs text-muted-foreground ml-2">
+                            (Appointment {appointmentIndex + 1} of {task.quantity})
+                          </span>
+                        )}
+                      </td>
                       <td className="px-4 py-3">
                         <input
                           type="date"
                           value={schedule.scheduleDate}
                           onChange={(e) => {
                             setServiceSchedules(prev => {
-                              const existing = prev.find(s => s.id === task.id);
+                              const existing = prev.find(s => s.id === schedule.id);
                               if (existing) {
-                                return prev.map(s => s.id === task.id ? { ...s, scheduleDate: e.target.value } : s);
+                                return prev.map(s => s.id === schedule.id ? { ...s, scheduleDate: e.target.value } : s);
                               }
                               return [...prev, { ...schedule, scheduleDate: e.target.value }];
                             });
@@ -956,30 +1025,32 @@ const CreateWorkOrderPage = () => {
                         />
                       </td>
                       <td className="px-4 py-3">
-                        <TimeInput12Hour
+                        <input
+                          type="time"
                           value={schedule.fromTime}
                           onChange={(e) => {
                             setServiceSchedules(prev => {
-                              const existing = prev.find(s => s.id === task.id);
+                              const existing = prev.find(s => s.id === schedule.id);
                               if (existing) {
-                                return prev.map(s => s.id === task.id ? { ...s, fromTime: e } : s);
+                                return prev.map(s => s.id === schedule.id ? { ...s, fromTime: e.target.value } : s);
                               }
-                              return [...prev, { ...schedule, fromTime: e }];
+                              return [...prev, { ...schedule, fromTime: e.target.value }];
                             });
                           }}
                           className="w-full px-3 py-1.5 rounded-lg bg-secondary text-xs border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
                         />
                       </td>
                       <td className="px-4 py-3">
-                        <TimeInput12Hour
+                        <input
+                          type="time"
                           value={schedule.toTime}
                           onChange={(e) => {
                             setServiceSchedules(prev => {
-                              const existing = prev.find(s => s.id === task.id);
+                              const existing = prev.find(s => s.id === schedule.id);
                               if (existing) {
-                                return prev.map(s => s.id === task.id ? { ...s, toTime: e } : s);
+                                return prev.map(s => s.id === schedule.id ? { ...s, toTime: e.target.value } : s);
                               }
-                              return [...prev, { ...schedule, toTime: e }];
+                              return [...prev, { ...schedule, toTime: e.target.value }];
                             });
                           }}
                           className="w-full px-3 py-1.5 rounded-lg bg-secondary text-xs border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
@@ -991,10 +1062,10 @@ const CreateWorkOrderPage = () => {
                             type="button"
                             onClick={() => {
                               setServiceSchedules(prev => {
-                                const existing = prev.find(s => s.id === task.id);
+                                const existing = prev.find(s => s.id === schedule.id);
                                 const newQuantity = Math.max(0, (existing?.requiredEmployees || 1) - 1);
                                 if (existing) {
-                                  return prev.map(s => s.id === task.id ? { ...s, requiredEmployees: newQuantity } : s);
+                                  return prev.map(s => s.id === schedule.id ? { ...s, requiredEmployees: newQuantity } : s);
                                 }
                                 return [...prev, { ...schedule, requiredEmployees: newQuantity }];
                               });
@@ -1010,10 +1081,10 @@ const CreateWorkOrderPage = () => {
                             type="button"
                             onClick={() => {
                               setServiceSchedules(prev => {
-                                const existing = prev.find(s => s.id === task.id);
+                                const existing = prev.find(s => s.id === schedule.id);
                                 const newQuantity = (existing?.requiredEmployees || 1) + 1;
                                 if (existing) {
-                                  return prev.map(s => s.id === task.id ? { ...s, requiredEmployees: newQuantity } : s);
+                                  return prev.map(s => s.id === schedule.id ? { ...s, requiredEmployees: newQuantity } : s);
                                 }
                                 return [...prev, { ...schedule, requiredEmployees: newQuantity }];
                               });
@@ -1025,13 +1096,78 @@ const CreateWorkOrderPage = () => {
                         </div>
                       </td>
                     </tr>
-                  );
+                  ));
                 })}
               </tbody>
             </table>
           </div>
         </div>
       )}
+
+      {/* Sales Executive Signature */}
+      <div className="bg-card rounded-xl card-shadow border border-border overflow-hidden">
+        <div className="px-6 py-4 border-b border-border flex items-center justify-between">
+          <h2 className="text-base font-bold text-card-foreground flex items-center gap-2">
+            <User className="w-5 h-5" />
+            Sales Executive Signature
+          </h2>
+          {!executiveSignatureImage && (
+            <button
+              type="button"
+              onClick={() => setShowSignatureModal(true)}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-white text-sm font-semibold hover:opacity-90 transition-all"
+              style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}
+            >
+              <Edit2 className="w-4 h-4" />
+              Add Signature
+            </button>
+          )}
+          {executiveSignatureImage && (
+            <button
+              type="button"
+              onClick={() => setShowSignatureModal(true)}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-border text-card-foreground text-sm font-semibold hover:bg-secondary transition-colors"
+            >
+              <Edit2 className="w-4 h-4" />
+              Re-sign
+            </button>
+          )}
+        </div>
+        <div className="px-6 py-5">
+          {executiveSignatureImage ? (
+            <div className="bg-secondary/30 rounded-lg p-5 border border-border">
+              <div className="flex items-start gap-4">
+                <div className="bg-white rounded-lg border border-border p-3 flex-shrink-0">
+                  <img
+                    src={executiveSignatureImage}
+                    alt="Executive Signature"
+                    className="h-20 max-w-[200px] object-contain"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm font-semibold text-card-foreground">
+                    {selectedEmployees.length > 0 ? selectedEmployees[0] : "Sales Executive"}
+                  </p>
+                  <p className="text-xs text-muted-foreground">Signed at: {new Date().toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}</p>
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-success/10 text-success text-xs font-semibold border border-success/20">
+                    ✓ Signed
+                  </span>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-secondary/30 rounded-lg border-2 border-dashed border-border p-8 flex items-center justify-center">
+              <div className="text-center">
+                <div className="w-14 h-14 rounded-full bg-secondary flex items-center justify-center mx-auto mb-3">
+                  <Edit2 className="w-6 h-6 text-muted-foreground" />
+                </div>
+                <p className="text-sm font-medium text-muted-foreground">No signature yet</p>
+                <p className="text-xs text-muted-foreground mt-1">Click "Add Signature" to sign this work order</p>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* Terms & Conditions */}
       <div className="bg-card rounded-xl card-shadow border border-border overflow-hidden">
@@ -1176,17 +1312,19 @@ const CreateWorkOrderPage = () => {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs font-medium text-muted-foreground mb-2 block">From Time</label>
-                  <TimeInput12Hour 
+                  <input 
+                    type="time"
                     value={editingTask.fromTime || ""} 
-                    onChange={(e) => setEditingTask({ ...editingTask, fromTime: e })} 
+                    onChange={(e) => setEditingTask({ ...editingTask, fromTime: e.target.value })} 
                     className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground" 
                   />
                 </div>
                 <div>
                   <label className="text-xs font-medium text-muted-foreground mb-2 block">To Time</label>
-                  <TimeInput12Hour 
+                  <input 
+                    type="time"
                     value={editingTask.toTime || ""} 
-                    onChange={(e) => setEditingTask({ ...editingTask, toTime: e })} 
+                    onChange={(e) => setEditingTask({ ...editingTask, toTime: e.target.value })} 
                     className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground" 
                   />
                 </div>
@@ -1249,6 +1387,62 @@ const CreateWorkOrderPage = () => {
               <div className="flex gap-3 pt-4 border-t border-border">
                 <button onClick={() => setEditingTask(null)} className="flex-1 h-10 border border-border text-card-foreground text-sm font-medium hover:text-primary transition-colors rounded-lg">Cancel</button>
                 <button onClick={() => updateTask(editingTask)} className="flex-1 h-10 text-white text-sm font-medium rounded-lg hover:opacity-90 transition-all" style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}>Update Service</button>
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Sales Executive Signature Modal */}
+      {showSignatureModal && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/75">
+          <div className="bg-card rounded-[20px] shadow-2xl w-full max-w-md animate-in fade-in slide-in-from-bottom-4 duration-300">
+            <div className="flex items-center justify-between p-6 border-b border-border">
+              <div>
+                <h2 className="text-lg font-bold text-card-foreground">Sales Executive Signature</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Signing as: <span className="font-semibold text-primary">{selectedEmployees.length > 0 ? selectedEmployees[0] : "Sales Executive"}</span>
+                </p>
+              </div>
+              <button
+                onClick={() => setShowSignatureModal(false)}
+                className="p-2 hover:bg-secondary rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5 text-muted-foreground" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Please sign below to confirm your authorization of this work order.
+              </p>
+
+              {/* Signature Canvas */}
+              <div className="border-2 border-border rounded-lg bg-white overflow-hidden">
+                <SignatureCanvas
+                  ref={execSignatureRef}
+                  canvasProps={{ className: "w-full h-44" }}
+                  backgroundColor="white"
+                />
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => execSignatureRef.current?.clear()}
+                  className="flex-1 h-10 border border-border text-card-foreground text-sm font-medium hover:bg-secondary transition-colors rounded-lg"
+                >
+                  Clear
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveExecSignature}
+                  className="flex-1 h-10 text-white text-sm font-semibold rounded-lg hover:opacity-90 transition-all"
+                  style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}
+                >
+                  Save Signature
+                </button>
               </div>
             </div>
           </div>

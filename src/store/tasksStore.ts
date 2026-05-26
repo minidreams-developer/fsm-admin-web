@@ -19,6 +19,8 @@ export type Task = {
   igst?: string;
   fromTime?: string;
   toTime?: string;
+  attachments?: Array<{ name: string; size: number; data: string }>;
+  branch?: string;
 };
 
 interface TasksStore {

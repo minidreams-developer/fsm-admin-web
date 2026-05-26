@@ -291,9 +291,18 @@ const DraggableServiceCard = ({ service, workOrder }: any) => {
       {...attributes}
       className={`p-2 rounded-lg border border-border bg-secondary/50 cursor-move hover:shadow-md transition-all ${isDragging ? 'opacity-50' : ''}`}
     >
+      {/* Top Row - Work Order ID and Service ID */}
+      <div className="flex items-center justify-between mb-1.5">
+        <div className="flex items-center gap-1.5">
+          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-primary/10 text-primary">{workOrder.id}</span>
+          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-blue-100 text-blue-700">SA-{service.id?.slice(-1) || '1'}</span>
+        </div>
+      </div>
+
+      {/* Service Title and Status */}
       <div className="flex items-center justify-between mb-1">
-        <p className="text-xs font-semibold text-card-foreground">{service.title}</p>
-        <span className={`text-[9px] px-1.5 py-0.5 rounded ${
+        <p className="text-xs font-semibold text-card-foreground truncate">{service.title}</p>
+        <span className={`text-[9px] px-1.5 py-0.5 rounded flex-shrink-0 ${
           service.status === "Completed" 
             ? "bg-green-100 text-green-800" 
             : service.status === "In Progress"
@@ -1211,9 +1220,9 @@ const QuantCalendarPage = () => {
             <button onClick={handleNextDay} className="p-2 hover:bg-secondary rounded-lg border border-border transition-colors">
               <ChevronRight className="w-4 h-4" />
             </button>
-            <button onClick={handleToday} className="px-3 py-2 text-sm font-medium hover:bg-secondary rounded-lg border border-border transition-colors">
+            {/* <button onClick={handleToday} className="px-3 py-2 text-sm font-medium hover:bg-secondary rounded-lg border border-border transition-colors">
               Today
-            </button>
+            </button> */}
           </div>
           
           {/* View Mode Filter */}
@@ -1309,18 +1318,17 @@ const QuantCalendarPage = () => {
 
       {/* Main Content */}
       <div className="grid grid-cols-12 gap-4">
-        {/* Left Panel - Work Orders */}
-        <div className={`${selectedWorkOrder ? 'col-span-2' : 'col-span-3'} bg-card rounded-xl border border-border transition-all`}>
+        {/* Left Panel - Services Only */}
+        <div className="col-span-3 bg-card rounded-xl border border-border transition-all">
           <div className="p-4 border-b border-border">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-bold">Work Orders</h3>
-              <span className="text-xs font-semibold text-primary">{filteredWorkOrders.length} Unassigned</span>
+              <h3 className="text-sm font-bold">All Services</h3>
             </div>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <input
                 type="text"
-                placeholder="Search work orders..."
+                placeholder="Search services..."
                 value={searchText}
                 onChange={(e) => setSearchText(e.target.value)}
                 className="w-full pl-9 pr-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20"
@@ -1328,132 +1336,28 @@ const QuantCalendarPage = () => {
             </div>
           </div>
           <div className="p-3 space-y-2 max-h-[600px] overflow-y-auto">
-            {workOrders.length === 0 && (
+            {filteredWorkOrders.length === 0 ? (
               <div className="text-center py-8">
-                <p className="text-sm text-muted-foreground">No work orders available</p>
+                <p className="text-sm text-muted-foreground">No services found</p>
               </div>
-            )}
-            {filteredWorkOrders.length === 0 && workOrders.length > 0 && (
-              <div className="text-center py-8">
-                <p className="text-sm text-muted-foreground mb-2">No work orders match your search</p>
-                <button 
-                  onClick={() => setSearchText("")}
-                  className="text-xs text-primary hover:underline"
-                >
-                  Clear search
-                </button>
-              </div>
-            )}
-            {filteredWorkOrders.map(wo => {
-              const priority = getPriority(wo);
-              const services = getTasksByWorkOrder(wo.id);
-              const hasServices = services.length > 0;
-              const isSelected = selectedWorkOrder?.id === wo.id;
-              const woStatus = getWorkOrderStatus(wo);
-              
-              // Status badge colors
-              const statusColors: Record<string, string> = {
-                "Ongoing": "bg-blue-100 text-blue-800",
-                "Upcoming": "bg-purple-100 text-purple-800",
-                "Missed": "bg-red-100 text-red-800",
-                "Cancelled": "bg-gray-100 text-gray-800",
-                "Completed": "bg-green-100 text-green-800",
-              };
-              
-              // Count how many unique services have been scheduled at least once
-              const scheduledServiceIds = new Set(
-                filteredSchedule
-                  .filter(s => s.workOrderId === wo.id)
-                  .map(s => s.serviceId)
-              );
-              const scheduledCount = scheduledServiceIds.size;
-              const unscheduledCount = services.length - scheduledCount;
-              
-              return (
-                <div key={wo.id}>
-                  <div
-                    className={`p-3 rounded-lg border hover:shadow-md transition-all ${priorityBgColors[priority]} ${hasServices ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'} ${isSelected ? 'ring-2 ring-primary' : ''}`}
-                    onClick={() => hasServices && handleWorkOrderClick(wo)}
-                  >
-                    <div className="flex items-start justify-between mb-1">
-                      <div className="flex items-center gap-2 flex-1 flex-wrap">
-                        <p className="text-xs font-bold">{wo.id}</p>
-                        {/* Status Badge */}
-                        <span className={`text-[9px] px-1.5 py-0.5 rounded font-semibold ${statusColors[woStatus] || 'bg-gray-100 text-gray-800'}`}>
-                          {woStatus}
-                        </span>
-                        {!hasServices && (
-                          <span className="text-[9px] px-1.5 py-0.5 rounded bg-gray-200 text-gray-600">No Services</span>
-                        )}
-                        {hasServices && scheduledCount > 0 && (
-                          <span className="text-[9px] px-1.5 py-0.5 rounded bg-green-100 text-green-700">
-                            {scheduledCount}/{services.length} scheduled
-                          </span>
-                        )}
-                        {hasServices && scheduledCount === 0 && (
-                          <span className="text-[9px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-700">Click to expand</span>
-                        )}
-                      </div>
-                      <span className="text-[10px]">
-                        {wo.workOrderDateTime ? new Date(wo.workOrderDateTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : "9:00 AM"}
-                      </span>
-                    </div>
-                    <p className="text-sm font-semibold mb-1">{wo.customer}</p>
-                    <div className="flex items-start gap-1 text-[11px] text-muted-foreground mb-1">
-                      <MapPin className="w-3 h-3 flex-shrink-0 mt-0.5" />
-                      <span className="line-clamp-1">{wo.address}</span>
-                    </div>
-                    <div className="flex items-center justify-between text-[10px]">
-                      <span className="truncate">{wo.serviceType.split('(')[0].trim()}</span>
-                      {hasServices && (
-                        <span className="text-[10px] font-semibold text-primary">
-                          {unscheduledCount} remaining →
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Middle Panel - Services (shown when work order is selected) */}
-        {selectedWorkOrder && (
-          <div className="col-span-2 bg-card rounded-xl border border-border animate-fade-in">
-            <div className="p-4 border-b border-border">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm font-bold">Services</h3>
-                <button
-                  onClick={() => setSelectedWorkOrder(null)}
-                  className="text-xs text-muted-foreground hover:text-foreground"
-                >
-                  ✕
-                </button>
-              </div>
-              <p className="text-xs text-muted-foreground">{selectedWorkOrder.id}</p>
-              <p className="text-xs font-semibold">{selectedWorkOrder.customer}</p>
-            </div>
-            <div className="p-3 space-y-2 max-h-[600px] overflow-y-auto">
-              {getTasksByWorkOrder(selectedWorkOrder.id)
-                .map(service => (
+            ) : (
+              filteredWorkOrders.map(wo => {
+                const services = getTasksByWorkOrder(wo.id);
+                
+                return services.map(service => (
                   <DraggableServiceCard
                     key={service.id}
                     service={service}
-                    workOrder={selectedWorkOrder}
+                    workOrder={wo}
                   />
-                ))}
-              {getTasksByWorkOrder(selectedWorkOrder.id).length === 0 && (
-                <div className="text-center py-8">
-                  <p className="text-sm text-muted-foreground">No services available</p>
-                </div>
-              )}
-            </div>
+                ));
+              })
+            )}
           </div>
-        )}
+        </div>
 
         {/* Right Panel - Calendar */}
-        <div className={`${selectedWorkOrder ? 'col-span-8' : 'col-span-9'} bg-card rounded-xl border border-border transition-all`}>
+        <div className="col-span-9 bg-card rounded-xl border border-border transition-all">
           {/* View Tabs */}
           <div className="border-b border-border">
             <div className="flex items-center gap-4 px-4">
