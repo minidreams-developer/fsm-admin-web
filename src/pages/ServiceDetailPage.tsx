@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Calendar, User, CheckCircle, Clock, AlertCircle, FileText, Edit2, Download, Gauge, Image as ImageIcon, Phone, MapPin, LogIn, LogOut, Beaker, ClipboardList, Wallet } from "lucide-react";
+import { ArrowLeft, Calendar, User, CheckCircle, Clock, AlertCircle, FileText, Edit2, Download, Gauge, Image as ImageIcon, Phone, MapPin, Mail, LogIn, LogOut, Beaker, ClipboardList, Wallet } from "lucide-react";
 import { useState, useRef } from "react";
 import { useServicesStore, type ServiceAppointment } from "@/store/servicesStore";
 import { useTasksStore, type Task } from "@/store/tasksStore";
@@ -34,7 +34,9 @@ const workplaceImages = {
 const defaultTaskFieldData = {
   customerName: "Lakshmi Stores",
   phone: "9876543240",
-  address: "Market Road, Ernakulam, Kerala 682011",
+  email: "lakshmi.stores@email.com",
+  siteAddress: "Market Road, Ernakulam, Kerala 682011",
+  billingAddress: "Market Road, Ernakulam, Kerala 682011",
   checkInTime: "08:45 AM",
   checkOutTime: "11:30 AM",
   chemicals: [
@@ -59,8 +61,11 @@ const getTaskFieldData = (
 ) => ({
   customerName: workOrder?.customer ?? defaultTaskFieldData.customerName,
   phone: workOrder?.phone ?? defaultTaskFieldData.phone,
-  address:
-    workOrder?.siteAddress || workOrder?.address || defaultTaskFieldData.address,
+  email: workOrder?.email || defaultTaskFieldData.email,
+  siteAddress:
+    workOrder?.siteAddress || workOrder?.address || defaultTaskFieldData.siteAddress,
+  billingAddress:
+    workOrder?.billingAddress || workOrder?.address || defaultTaskFieldData.billingAddress,
   checkInTime: linkedAppointment?.inTime || defaultTaskFieldData.checkInTime,
   checkOutTime: linkedAppointment?.outTime || defaultTaskFieldData.checkOutTime,
   chemicals: defaultTaskFieldData.chemicals,
@@ -435,7 +440,7 @@ export const ServiceDetailPage = () => {
                 <User className="w-5 h-5" />
                 Customer Information
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="bg-secondary/30 rounded-lg p-4 border border-border">
                   <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Customer Name</p>
                   <p className="text-sm font-bold text-card-foreground">{taskFieldData.customerName}</p>
@@ -446,11 +451,23 @@ export const ServiceDetailPage = () => {
                   </p>
                   <p className="text-sm font-bold text-card-foreground">{taskFieldData.phone}</p>
                 </div>
-                <div className="bg-secondary/30 rounded-lg p-4 border border-border md:col-span-3">
+                <div className="bg-secondary/30 rounded-lg p-4 border border-border md:col-span-2">
                   <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1 flex items-center gap-1">
-                    <MapPin className="w-3.5 h-3.5" /> Address
+                    <Mail className="w-3.5 h-3.5" /> Email
                   </p>
-                  <p className="text-sm font-bold text-card-foreground">{taskFieldData.address}</p>
+                  <p className="text-sm font-bold text-card-foreground">{taskFieldData.email || "—"}</p>
+                </div>
+                <div className="bg-secondary/30 rounded-lg p-4 border border-border">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1 flex items-center gap-1">
+                    <MapPin className="w-3.5 h-3.5" /> Site Address
+                  </p>
+                  <p className="text-sm font-bold text-card-foreground">{taskFieldData.siteAddress}</p>
+                </div>
+                <div className="bg-secondary/30 rounded-lg p-4 border border-border">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1 flex items-center gap-1">
+                    <MapPin className="w-3.5 h-3.5" /> Billing Address
+                  </p>
+                  <p className="text-sm font-bold text-card-foreground">{taskFieldData.billingAddress}</p>
                 </div>
               </div>
             </div>
