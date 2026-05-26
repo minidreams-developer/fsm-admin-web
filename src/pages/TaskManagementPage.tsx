@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import { useTasksStore, type Task } from "@/store/tasksStore";
 import { useEmployeesStore } from "@/store/employeesStore";
+import { useBranchesStore } from "@/store/branchesStore";
 import { StatusBadge } from "@/components/StatusBadge";
 
 const PAGE_SIZE = 10;
@@ -44,6 +45,13 @@ const getTaskStatus = (task: Task): TaskStatus => {
   return task.status as TaskStatus;
 };
 
+const getTaskAssignees = (task: Task) => {
+  const fromList = task.assignedEmployees?.filter(n => n && n !== "Unassigned") ?? [];
+  if (fromList.length > 0) return fromList;
+  if (task.assignedTo && task.assignedTo !== "Unassigned") return [task.assignedTo];
+  return [];
+};
+
 function EmployeeMultiSelect({ options, selected, onChange }: { options: string[]; selected: string[]; onChange: (v: string[]) => void }) {
   const [open, setOpen] = useState(false);
   const toggle = (name: string) => onChange(selected.includes(name) ? selected.filter(x => x !== name) : [...selected, name]);
@@ -74,8 +82,11 @@ const TaskManagementPage = () => {
   const navigate = useNavigate();
   const { tasks, addTask, updateTask, deleteTask, getNextTaskId } = useTasksStore();
   const { employees } = useEmployeesStore();
+  const { branches: branchList } = useBranchesStore();
 
   const [search, setSearch] = useState("");
+  const [branchFilter, setBranchFilter] = useState("All");
+  const [employeeFilter, setEmployeeFilter] = useState("All");
   const [statusFilter, setStatusFilter] = useState<TaskStatus | "All">("All");
   const [page, setPage] = useState(1);
   const [showModal, setShowModal] = useState(false);
@@ -91,11 +102,26 @@ const TaskManagementPage = () => {
   });
 
   const employeeNames = employees.map(e => e.name);
+  const activeEmployees = employees.filter(e => e.isActive !== false);
+  const activeBranches = branchList.filter(b => b.status === "Active");
 
-  // All unique branches from employees
+  // All unique branches from employees (create/edit modals)
   const allBranches = Array.from(
     new Set(employees.flatMap(e => e.branch))
   ).sort();
+
+  const filterEmployeeOptions =
+    branchFilter === "All"
+      ? activeEmployees
+      : activeEmployees.filter(e => e.branch.includes(branchFilter));
+
+  const taskMatchesBranch = (task: Task, branch: string) => {
+    if (task.branch === branch) return true;
+    return getTaskAssignees(task).some(name => {
+      const emp = employees.find(e => e.name === name);
+      return emp?.branch.includes(branch);
+    });
+  };
 
   // Employees filtered by selected branch (create/edit form)
   const filteredEmployeeNames = form.branch
@@ -156,7 +182,10 @@ const TaskManagementPage = () => {
     const matchSearch = t.title.toLowerCase().includes(search.toLowerCase()) || t.assignedEmployees?.join(", ").toLowerCase().includes(search.toLowerCase());
     const taskStatus = getTaskStatus(t);
     const matchStatus = statusFilter === "All" || taskStatus === statusFilter;
-    return matchSearch && matchStatus;
+    const matchBranch = branchFilter === "All" || taskMatchesBranch(t, branchFilter);
+    const assignees = getTaskAssignees(t);
+    const matchEmployee = employeeFilter === "All" || assignees.includes(employeeFilter);
+    return matchSearch && matchStatus && matchBranch && matchEmployee;
   });
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
@@ -242,10 +271,42 @@ const TaskManagementPage = () => {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-        <div className="relative w-full sm:max-w-xs">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} placeholder="Search tasks..." className="w-full pl-9 pr-4 py-2 rounded-lg bg-card text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20" />
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+          <select
+            value={branchFilter}
+            onChange={e => {
+              const next = e.target.value;
+              setBranchFilter(next);
+              setPage(1);
+              if (employeeFilter !== "All" && next !== "All") {
+                const emp = employees.find(x => x.name === employeeFilter);
+                if (!emp?.branch.includes(next)) setEmployeeFilter("All");
+              }
+            }}
+            className="px-3 py-2 rounded-lg bg-card border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+          >
+            <option value="All">All Branches</option>
+            {activeBranches.map(b => (
+              <option key={b.id} value={b.name}>{b.name}</option>
+            ))}
+          </select>
+
+          <select
+            value={employeeFilter}
+            onChange={e => { setEmployeeFilter(e.target.value); setPage(1); }}
+            className="px-3 py-2 rounded-lg bg-card border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+          >
+            <option value="All">All Employees</option>
+            {filterEmployeeOptions.map(emp => (
+              <option key={emp.id} value={emp.name}>{emp.name} — {emp.role}</option>
+            ))}
+          </select>
+
+          <div className="relative w-full sm:max-w-xs">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} placeholder="Search tasks..." className="w-full pl-9 pr-4 py-2 rounded-lg bg-card text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20" />
+          </div>
         </div>
         <div className="flex flex-wrap gap-2">
           {(["All", ...STATUSES] as const).map(s => (

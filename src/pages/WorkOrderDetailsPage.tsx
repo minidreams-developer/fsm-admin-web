@@ -3,7 +3,8 @@ import { ArrowLeft, Briefcase, CheckCircle, Clock, AlertCircle, MapPin, Phone, M
 import { useState, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useProjectsStore } from "@/store/projectsStore";
-import { useTasksStore } from "@/store/tasksStore";
+import { useTasksStore, type Task } from "@/store/tasksStore";
+import { useServicesStore } from "@/store/servicesStore";
 import { StatusBadge } from "@/components/StatusBadge";
 import { WorkOrderEditModal } from "@/components/WorkOrderEditModal";
 import { TaskEditModal } from "@/components/TaskEditModal";
@@ -16,6 +17,42 @@ export const WorkOrderDetailsPage = () => {
   const navigate = useNavigate();
   const { getWorkOrder, updateWorkOrder } = useProjectsStore();
   const { getTasksByWorkOrder, deleteTask } = useTasksStore();
+  const { appointments } = useServicesStore();
+
+  const getAppointmentForTask = (task: Task) =>
+    appointments.find(a => a.workOrderId === task.workOrderId);
+
+  const parsePriceString = (value: string) => {
+    const parsed = parseInt(value.replace(/[^\d]/g, ""), 10);
+    return Number.isNaN(parsed) ? undefined : parsed;
+  };
+
+  const getDummyAmount = (task: Task) => {
+    const seed = task.id.split("").reduce((sum, c) => sum + c.charCodeAt(0), 0);
+    return 4500 + (seed % 6) * 500;
+  };
+
+  const getDisplayUnitPrice = (task: Task): string => {
+    if (task.unitPrice != null) return `₹ ${task.unitPrice.toLocaleString()}`;
+    const apt = getAppointmentForTask(task);
+    if (apt?.unitPrice) return apt.unitPrice.startsWith("₹") ? apt.unitPrice : `₹ ${apt.unitPrice}`;
+    return `₹ ${getDummyAmount(task).toLocaleString()}`;
+  };
+
+  const getDisplayAmount = (task: Task): string => {
+    if (task.amount != null) return `₹ ${task.amount.toLocaleString()}`;
+    if (task.unitPrice != null) {
+      const qty = task.quantity || 1;
+      return `₹ ${(task.unitPrice * qty).toLocaleString()}`;
+    }
+    const apt = getAppointmentForTask(task);
+    if (apt?.payment?.amount != null) return `₹ ${apt.payment.amount.toLocaleString()}`;
+    if (apt?.unitPrice) {
+      const parsed = parsePriceString(apt.unitPrice);
+      if (parsed != null) return `₹ ${parsed.toLocaleString()}`;
+    }
+    return `₹ ${getDummyAmount(task).toLocaleString()}`;
+  };
   const [isEditingWorkOrder, setIsEditingWorkOrder] = useState(false);
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -611,6 +648,14 @@ export const WorkOrderDetailsPage = () => {
                         }
                       />
                     </div>
+                  </div>
+                  {/* <div>
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Unit Price (₹)</p>
+                    <p className="text-sm font-semibold text-card-foreground mt-1">{getDisplayUnitPrice(task)}</p>
+                  </div> */}
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Amount (₹)</p>
+                    <p className="text-sm font-semibold text-primary mt-1">{getDisplayAmount(task)}</p>
                   </div>
                 </div>
 
