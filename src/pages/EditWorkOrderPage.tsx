@@ -1,12 +1,13 @@
 import { useNavigate, useParams } from "react-router-dom";
-import { X, Edit2, Plus } from "lucide-react";
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { X, Edit2, Plus, User, Check } from "lucide-react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
 import Select from "react-select";
+import SignatureCanvas from "react-signature-canvas";
 import { useProjectsStore } from "@/store/projectsStore";
 import { useTasksStore } from "@/store/tasksStore";
 import { useProductsStore } from "@/store/productsStore";
@@ -90,6 +91,19 @@ const EditWorkOrderPage = () => {
   const [customerState, setCustomerState] = useState<string>("");
   const [extraSiteAddresses, setExtraSiteAddresses] = useState<string[]>([]);
   const [isCustomFrequency, setIsCustomFrequency] = useState(false);
+  const [showSignatureModal, setShowSignatureModal] = useState(false);
+  const [executiveSignatureImage, setExecutiveSignatureImage] = useState<string | null>(
+    workOrder?.executiveSignatureImage || null
+  );
+  const execSignatureRef = useRef<SignatureCanvas>(null);
+  const [showCustomerSignatureModal, setShowCustomerSignatureModal] = useState(false);
+  const [customerSignatureImage, setCustomerSignatureImage] = useState<string | null>(
+    workOrder?.customerSignature || null
+  );
+  const customerSignatureRef = useRef<SignatureCanvas>(null);
+  const [cashCollectionMap, setCashCollectionMap] = useState<Record<string, boolean>>(
+    workOrder?.cashCollection || {}
+  );
   
   // Address options for site address selection
   type AddressOption = {
@@ -100,15 +114,19 @@ const EditWorkOrderPage = () => {
   
   // Service Appointments Schedule state
   const [serviceSchedules, setServiceSchedules] = useState<ServiceSchedule[]>([]);
-  const [termsAccepted, setTermsAccepted] = useState(false);
   const [isEditingTerms, setIsEditingTerms] = useState(false);
-  const [termsList, setTermsList] = useState([
-    "Services will be performed as per the scheduled appointments",
-    "Customer must provide access to all areas requiring treatment",
-    "Payment is due within 30 days of invoice date",
-    "24-hour advance notice required for rescheduling",
-    "Service warranty valid for 30 days after each treatment",
-  ]);
+  const [termsList, setTermsList] = useState(() => {
+    if (workOrder?.termsAndConditions) {
+      return workOrder.termsAndConditions.split("\n").filter(Boolean);
+    }
+    return [
+      "Services will be performed as per the scheduled appointments",
+      "Customer must provide access to all areas requiring treatment",
+      "Payment is due within 30 days of invoice date",
+      "24-hour advance notice required for rescheduling",
+      "Service warranty valid for 30 days after each treatment",
+    ];
+  });
   const [isInitialized, setIsInitialized] = useState(false);
 
   // Get services from both Products and Service Appointments - memoized to prevent recalculation
@@ -437,6 +455,13 @@ const EditWorkOrderPage = () => {
     );
   }, []);
 
+  const toggleCashCollection = useCallback((employeeName: string) => {
+    setCashCollectionMap((prev) => ({
+      ...prev,
+      [employeeName]: !(prev[employeeName] ?? true),
+    }));
+  }, []);
+
   const removeService = useCallback((index: number) => {
     setSelectedServices((prev) => prev.filter((_, i) => i !== index));
     setTasks((prev) => prev.filter((_, i) => i !== index));
@@ -452,6 +477,28 @@ const EditWorkOrderPage = () => {
     setTasks((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
+  const handleSaveExecSignature = () => {
+    if (execSignatureRef.current?.isEmpty()) {
+      toast.error("Please provide a signature before saving");
+      return;
+    }
+    const signatureData = execSignatureRef.current?.toDataURL();
+    setExecutiveSignatureImage(signatureData || null);
+    setShowSignatureModal(false);
+    toast.success("Sales Executive signature saved!");
+  };
+
+  const handleSaveCustomerSignature = () => {
+    if (customerSignatureRef.current?.isEmpty()) {
+      toast.error("Please provide a signature before saving");
+      return;
+    }
+    const signatureData = customerSignatureRef.current?.toDataURL();
+    setCustomerSignatureImage(signatureData || null);
+    setShowCustomerSignatureModal(false);
+    toast.success("Customer signature saved!");
+  };
+
   const onSubmit = useCallback(async (data: WorkOrderFormData) => {
     setIsSubmitting(true);
     try {
@@ -460,6 +507,19 @@ const EditWorkOrderPage = () => {
         data.siteAddress || data.address,
         ...extraSiteAddresses.filter(addr => addr.trim())
       ].filter(Boolean).join(" | ");
+
+      // Compute grand total from services table (subtotal + all taxes)
+      const subtotal = tasks.reduce((sum, t) => sum + (t.amount || 0), 0);
+      const totalTax = tasks.reduce((sum, t) => {
+        const gst = (t.amount || 0) * (parseFloat(t.gst || "0") / 100);
+        const cgst = (t.amount || 0) * (parseFloat(t.cgst || "0") / 100);
+        const igst = (t.amount || 0) * (parseFloat(t.igst || "0") / 100);
+        return sum + gst + cgst + igst;
+      }, 0);
+      const grandTotal = Math.round(subtotal + totalTax);
+      const computedTotalValue = grandTotal > 0
+        ? `₹ ${grandTotal.toLocaleString()}`
+        : data.totalValue ? `₹ ${parseInt(data.totalValue).toLocaleString()}` : "₹ 0";
 
       updateWorkOrder(workOrder.id, {
         customer: data.customer,
@@ -472,7 +532,7 @@ const EditWorkOrderPage = () => {
         serviceType: data.serviceType || "",
         serviceTypes: selectedServices,
         frequency: data.frequency || "",
-        totalValue: data.totalValue ? `₹ ${parseInt(data.totalValue).toLocaleString()}` : "₹ 0",
+        totalValue: computedTotalValue,
         paidAmount: data.paidAmount ? `₹ ${parseInt(data.paidAmount).toLocaleString()}` : "₹ 0",
         start: data.start,
         end: data.end || data.start,
@@ -482,6 +542,11 @@ const EditWorkOrderPage = () => {
         notes: data.notes || "",
         siteAddress: allSiteAddresses,
         billingAddress: data.billingAddress || data.address,
+        termsAndConditions: termsList.filter(t => t.trim()).join("\n"),
+        salesExecutive: selectedEmployees.length > 0 ? selectedEmployees[0] : undefined,
+        executiveSignatureImage: executiveSignatureImage || undefined,
+        customerSignature: customerSignatureImage || undefined,
+        cashCollection: cashCollectionMap,
       });
       
       // Update tasks
@@ -504,7 +569,7 @@ const EditWorkOrderPage = () => {
     } finally {
       setIsSubmitting(false);
     }
-  }, [workOrder.id, selectedServices, selectedEmployees, extraSiteAddresses, tasks, updateWorkOrder, updateTask, navigate]);
+  }, [workOrder.id, selectedServices, selectedEmployees, extraSiteAddresses, tasks, termsList, executiveSignatureImage, customerSignatureImage, updateWorkOrder, updateTask, navigate]);
 
   const statusColors: Record<TaskStatus, string> = {
     Pending: "bg-warning/10 text-warning border-warning/20",
@@ -528,28 +593,43 @@ const EditWorkOrderPage = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-2 block">Customer Name *</label>
-            <Select
-              options={customerOptions}
-              value={customerOptions.find(opt => opt.value === selectedCustomerId) || null}
-              onChange={(option) => {
-                if (option) {
-                  handleCustomerSelect(option.value);
-                } else {
-                  setSelectedCustomerId("");
-                  setValue("customer", "");
-                  setValue("phone", "");
-                  setValue("email", "");
-                  setValue("address", "");
-                  setValue("siteAddress", "");
-                  setValue("billingAddress", "");
-                }
-              }}
-              styles={customSelectStyles}
-              placeholder="Search or select customer..."
-              isClearable
-              isSearchable
-              noOptionsMessage={() => "No customers found"}
-            />
+            <div className="flex gap-2">
+              <div className="flex-1">
+                <Select
+                  options={customerOptions}
+                  value={customerOptions.find(opt => opt.value === selectedCustomerId) || null}
+                  onChange={(option) => {
+                    if (option) {
+                      handleCustomerSelect(option.value);
+                    } else {
+                      setSelectedCustomerId("");
+                      setValue("customer", "");
+                      setValue("phone", "");
+                      setValue("email", "");
+                      setValue("address", "");
+                      setValue("siteAddress", "");
+                      setValue("billingAddress", "");
+                    }
+                  }}
+                  styles={customSelectStyles}
+                  placeholder="Search or select customer..."
+                  isClearable
+                  isSearchable
+                  noOptionsMessage={() => "No customers found"}
+                />
+              </div>
+              {selectedCustomerId && (
+                <button
+                  type="button"
+                  onClick={() => navigate(`/customers/${selectedCustomerId}?edit=true`)}
+                  className="h-[38px] px-3 inline-flex items-center gap-1.5 rounded-lg border border-border bg-card hover:bg-secondary transition-colors text-xs font-semibold text-card-foreground flex-shrink-0"
+                  title="Edit customer"
+                >
+                  <Edit2 className="w-3.5 h-3.5" />
+                  Edit
+                </button>
+              )}
+            </div>
             {/* Hidden input for form validation */}
             <input type="hidden" {...register("customer")} />
             {errors.customer && <p className="text-xs text-red-500 mt-1">{errors.customer.message}</p>}
@@ -753,20 +833,40 @@ const EditWorkOrderPage = () => {
             
             {/* Display selected employees */}
             {selectedEmployees.length > 0 && (
-              <div className="flex flex-wrap gap-2">
+              <div className="space-y-2 mt-3">
                 {selectedEmployees.map((empName) => {
                   const emp = employees.find(e => e.name === empName);
+                  const willCollectCash = cashCollectionMap[empName] ?? true;
                   return (
-                    <div key={empName} className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 border border-primary/20 rounded-lg">
-                      <span className="text-xs font-medium text-primary">{empName}</span>
-                      {emp && <span className="text-xs text-primary/70">• {emp.role}</span>}
-                      <button 
-                        type="button" 
-                        onClick={() => toggleEmployee(empName)} 
-                        className="text-primary hover:text-primary/70"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
+                    <div key={empName} className="flex items-center justify-between gap-3 px-3 py-2 bg-primary/10 border border-primary/20 rounded-lg">
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-medium text-primary">{empName}</p>
+                          {emp && <p className="text-[10px] text-primary/70">{emp.role}</p>}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => toggleCashCollection(empName)}
+                          className={`flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium transition-colors ${
+                            willCollectCash
+                              ? 'bg-success/10 text-success border border-success/20'
+                              : 'bg-warning/10 text-warning border border-warning/20'
+                          }`}
+                          title={willCollectCash ? "Click to disable cash collection" : "Click to enable cash collection"}
+                        >
+                          <Check className="w-3 h-3" />
+                          {willCollectCash ? 'Collect Cash' : 'No Cash'}
+                        </button>
+                        <button 
+                          type="button" 
+                          onClick={() => toggleEmployee(empName)} 
+                          className="text-primary hover:text-primary/70 p-1"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
                   );
                 })}
@@ -820,28 +920,54 @@ const EditWorkOrderPage = () => {
         </div>
 
         {/* Services Section */}
-        {tasks.length > 0 && (
+        {tasks.length > 0 && (() => {
+          const subtotal = tasks.reduce((sum, t) => sum + (t.amount || 0), 0);
+          const totalGst = tasks.reduce((sum, t) => {
+            const rate = parseFloat(t.gst || "0") / 100;
+            return sum + (t.amount || 0) * rate;
+          }, 0);
+          const totalCgst = tasks.reduce((sum, t) => {
+            const rate = parseFloat(t.cgst || "0") / 100;
+            return sum + (t.amount || 0) * rate;
+          }, 0);
+          const totalIgst = tasks.reduce((sum, t) => {
+            const rate = parseFloat(t.igst || "0") / 100;
+            return sum + (t.amount || 0) * rate;
+          }, 0);
+          const totalTax = totalGst + totalCgst + totalIgst;
+          const grandTotal = subtotal + totalTax;
+          const hasTax = tasks.some(t => t.gst || t.cgst || t.igst);
+
+          return (
           <div className="bg-card rounded-xl card-shadow border border-border overflow-hidden">
             <div className="px-6 py-4 border-b border-border">
               <h2 className="text-base font-bold text-card-foreground">Services</h2>
               <p className="text-xs text-muted-foreground mt-0.5">Services added</p>
             </div>
-            <div className="flex flex-row">
-              <div className="flex-1 min-w-0">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-border bg-secondary/30">
-                      <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">#</th>
-                      <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Service</th>
-                      <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Description</th>
-                      <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Unit Price</th>
-                      <th className="text-center px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Quantity</th>
-                      <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Amount</th>
-                      <th className="text-center px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {tasks.map((task, index) => (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border bg-secondary/30">
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">#</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Service</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Description</th>
+                    <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Unit Price</th>
+                    <th className="text-center px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Qty</th>
+                    <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Amount</th>
+                    {hasTax && <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">GST</th>}
+                    {hasTax && tasks.some(t => t.cgst) && <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">CGST</th>}
+                    {hasTax && tasks.some(t => t.igst) && <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">IGST</th>}
+                    {hasTax && <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Total</th>}
+                    <th className="text-center px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {tasks.map((task, index) => {
+                    const gstAmt = (task.amount || 0) * (parseFloat(task.gst || "0") / 100);
+                    const cgstAmt = (task.amount || 0) * (parseFloat(task.cgst || "0") / 100);
+                    const igstAmt = (task.amount || 0) * (parseFloat(task.igst || "0") / 100);
+                    const rowTotal = (task.amount || 0) + gstAmt + cgstAmt + igstAmt;
+                    return (
                       <tr key={task.id} className="border-b border-border last:border-0 hover:bg-secondary/10 transition-colors">
                         <td className="px-4 py-3 text-xs text-muted-foreground">{index + 1}</td>
                         <td className="px-4 py-3 font-medium text-card-foreground text-xs">{task.title}</td>
@@ -849,24 +975,44 @@ const EditWorkOrderPage = () => {
                         <td className="px-4 py-3 text-right text-card-foreground text-xs font-semibold">₹ {task.unitPrice?.toLocaleString() || 0}</td>
                         <td className="px-4 py-3">
                           <div className="flex items-center justify-center gap-2">
-                            <button 
+                            <button
                               type="button"
                               onClick={() => {
                                 const newQuantity = Math.max(1, task.quantity - 1);
                                 const newAmount = task.unitPrice * newQuantity;
                                 setTasks(prev => prev.map(t => t.id === task.id ? { ...t, quantity: newQuantity, amount: newAmount } : t));
+                                const currentScheduleCount = serviceSchedules.filter(s => s.service === task.title).length;
+                                if (currentScheduleCount > newQuantity) {
+                                  setServiceSchedules(prev => {
+                                    const schedules = prev.filter(s => s.service === task.title);
+                                    const toRemove = schedules.slice(newQuantity);
+                                    return prev.filter(s => !toRemove.includes(s));
+                                  });
+                                }
                               }}
                               className="w-6 h-6 flex items-center justify-center rounded border border-border hover:bg-secondary transition-colors"
                             >
                               <span className="text-xs">−</span>
                             </button>
                             <span className="text-xs font-semibold text-card-foreground min-w-[2rem] text-center">{task.quantity || 1}</span>
-                            <button 
+                            <button
                               type="button"
                               onClick={() => {
                                 const newQuantity = task.quantity + 1;
                                 const newAmount = task.unitPrice * newQuantity;
                                 setTasks(prev => prev.map(t => t.id === task.id ? { ...t, quantity: newQuantity, amount: newAmount } : t));
+                                const currentScheduleCount = serviceSchedules.filter(s => s.service === task.title).length;
+                                if (currentScheduleCount < newQuantity) {
+                                  const newScheduleId = `${task.id}-${currentScheduleCount + 1}`;
+                                  setServiceSchedules(prev => [...prev, {
+                                    id: newScheduleId,
+                                    service: task.title,
+                                    scheduleDate: "",
+                                    fromTime: "",
+                                    toTime: "",
+                                    requiredEmployees: 1
+                                  }]);
+                                }
                               }}
                               className="w-6 h-6 flex items-center justify-center rounded border border-border hover:bg-secondary transition-colors"
                             >
@@ -875,20 +1021,24 @@ const EditWorkOrderPage = () => {
                           </div>
                         </td>
                         <td className="px-4 py-3 text-right text-card-foreground text-xs font-bold">₹ {task.amount?.toLocaleString() || 0}</td>
+                        {hasTax && <td className="px-4 py-3 text-right text-xs text-muted-foreground">{task.gst ? `${task.gst}% (₹ ${Math.round(gstAmt).toLocaleString()})` : "—"}</td>}
+                        {hasTax && tasks.some(t => t.cgst) && <td className="px-4 py-3 text-right text-xs text-muted-foreground">{task.cgst ? `${task.cgst}% (₹ ${Math.round(cgstAmt).toLocaleString()})` : "—"}</td>}
+                        {hasTax && tasks.some(t => t.igst) && <td className="px-4 py-3 text-right text-xs text-muted-foreground">{task.igst ? `${task.igst}% (₹ ${Math.round(igstAmt).toLocaleString()})` : "—"}</td>}
+                        {hasTax && <td className="px-4 py-3 text-right text-xs font-bold text-primary">₹ {Math.round(rowTotal).toLocaleString()}</td>}
                         <td className="px-4 py-3">
                           <div className="flex items-center justify-center gap-1">
-                            <button 
+                            <button
                               type="button"
-                              onClick={() => setEditingTask({ ...task })} 
-                              className="p-1.5 rounded-md border border-border hover:bg-secondary transition-colors" 
+                              onClick={() => setEditingTask({ ...task })}
+                              className="p-1.5 rounded-md border border-border hover:bg-secondary transition-colors"
                               title="Edit service"
                             >
                               <Edit2 className="w-3.5 h-3.5 text-muted-foreground" />
                             </button>
-                            <button 
+                            <button
                               type="button"
-                              onClick={() => removeTask(task.id)} 
-                              className="p-1.5 rounded-md border border-border hover:bg-destructive/10 transition-colors" 
+                              onClick={() => removeTask(task.id)}
+                              className="p-1.5 rounded-md border border-border hover:bg-destructive/10 transition-colors"
                               title="Remove service"
                             >
                               <X className="w-3.5 h-3.5 text-destructive" />
@@ -896,35 +1046,51 @@ const EditWorkOrderPage = () => {
                           </div>
                         </td>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-                <div className="w-64 flex-shrink-0  border-border bg-secondary/10 p-4 space-y-3 self-start ml-auto">
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            {/* Summary */}
+            <div className="border-t border-border bg-secondary/10 px-6 py-4">
+              <div className="ml-auto w-full max-w-xs space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs font-medium text-muted-foreground">Subtotal</span>
+                  <span className="text-sm font-semibold text-card-foreground">₹ {Math.round(subtotal).toLocaleString()}</span>
+                </div>
+                {totalGst > 0 && (
                   <div className="flex justify-between items-center">
-                    <span className="text-xs font-medium text-muted-foreground">Subtotal</span>
-                    <span className="text-sm font-semibold text-card-foreground">
-                      ₹ {tasks.reduce((sum, t) => sum + (t.amount || 0), 0).toLocaleString()}
-                    </span>
+                    <span className="text-xs font-medium text-muted-foreground">GST</span>
+                    <span className="text-sm font-semibold text-card-foreground">₹ {Math.round(totalGst).toLocaleString()}</span>
                   </div>
+                )}
+                {totalCgst > 0 && (
                   <div className="flex justify-between items-center">
-                    <span className="text-xs font-medium text-muted-foreground">GST (18%)</span>
-                    <span className="text-sm font-semibold text-card-foreground">
-                      ₹ {(tasks.reduce((sum, t) => sum + (t.amount || 0), 0) * 0.18).toLocaleString()}
-                    </span>
+                    <span className="text-xs font-medium text-muted-foreground">CGST</span>
+                    <span className="text-sm font-semibold text-card-foreground">₹ {Math.round(totalCgst).toLocaleString()}</span>
                   </div>
-                  <div className="pt-3 border-t border-border">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm font-bold text-card-foreground">Total Amount</span>
-                      <span className="text-lg font-bold text-primary">
-                        ₹ {(tasks.reduce((sum, t) => sum + (t.amount || 0), 0) * 1.18).toLocaleString()}
-                      </span>
-                    </div>
+                )}
+                {totalIgst > 0 && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs font-medium text-muted-foreground">IGST</span>
+                    <span className="text-sm font-semibold text-card-foreground">₹ {Math.round(totalIgst).toLocaleString()}</span>
                   </div>
+                )}
+                {!hasTax && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs font-medium text-muted-foreground">Tax</span>
+                    <span className="text-xs text-muted-foreground italic">Edit a service to set tax</span>
+                  </div>
+                )}
+                <div className="pt-2 border-t border-border flex justify-between items-center">
+                  <span className="text-sm font-bold text-card-foreground">Total Amount</span>
+                  <span className="text-lg font-bold text-primary">₹ {Math.round(grandTotal).toLocaleString()}</span>
                 </div>
               </div>
             </div>
           </div>
-        )}
+          );
+        })()}
 
         {/* Service Appointments Schedule */}
         {tasks.length > 0 && (
@@ -946,29 +1112,40 @@ const EditWorkOrderPage = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {tasks.map((task, index) => {
-                    const schedule = serviceSchedules.find(s => s.service === task.title && s.id === task.id) || {
-                      id: task.id,
-                      service: task.title,
-                      scheduleDate: "",
-                      fromTime: "",
-                      toTime: "",
-                      requiredEmployees: 1
-                    };
-                    
-                    return (
-                      <tr key={task.id} className="border-b border-border last:border-0 hover:bg-secondary/10 transition-colors">
-                        <td className="px-4 py-3 text-xs text-muted-foreground">{index + 1}</td>
-                        <td className="px-4 py-3 font-medium text-card-foreground text-sm">{task.title}</td>
+                  {tasks.flatMap((task, taskIndex) => {
+                    const appointments = Array.from({ length: task.quantity || 1 }, (_, appointmentIndex) => {
+                      const scheduleId = `${task.id}-${appointmentIndex + 1}`;
+                      const schedule = serviceSchedules.find(s => s.id === scheduleId) || {
+                        id: scheduleId,
+                        service: task.title,
+                        scheduleDate: "",
+                        fromTime: "",
+                        toTime: "",
+                        requiredEmployees: 1
+                      };
+                      return { schedule, taskIndex, appointmentIndex };
+                    });
+
+                    return appointments.map(({ schedule, taskIndex, appointmentIndex }) => (
+                      <tr key={schedule.id} className="border-b border-border last:border-0 hover:bg-secondary/10 transition-colors">
+                        <td className="px-4 py-3 text-xs text-muted-foreground">{taskIndex + 1}.{appointmentIndex + 1}</td>
+                        <td className="px-4 py-3 font-medium text-card-foreground text-sm">
+                          {task.title}
+                          {task.quantity > 1 && (
+                            <span className="text-xs text-muted-foreground ml-2">
+                              (Appointment {appointmentIndex + 1} of {task.quantity})
+                            </span>
+                          )}
+                        </td>
                         <td className="px-4 py-3">
                           <input
                             type="date"
                             value={schedule.scheduleDate}
                             onChange={(e) => {
                               setServiceSchedules(prev => {
-                                const existing = prev.find(s => s.id === task.id);
+                                const existing = prev.find(s => s.id === schedule.id);
                                 if (existing) {
-                                  return prev.map(s => s.id === task.id ? { ...s, scheduleDate: e.target.value } : s);
+                                  return prev.map(s => s.id === schedule.id ? { ...s, scheduleDate: e.target.value } : s);
                                 }
                                 return [...prev, { ...schedule, scheduleDate: e.target.value }];
                               });
@@ -976,48 +1153,48 @@ const EditWorkOrderPage = () => {
                             className="w-full px-3 py-1.5 rounded-lg bg-secondary text-xs border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
                           />
                         </td>
-                      <td className="px-4 py-3">
-                        <TimeInput12Hour
-                          value={schedule.fromTime}
-                          onChange={(e) => {
-                            setServiceSchedules(prev => {
-                              const existing = prev.find(s => s.id === task.id);
-                              if (existing) {
-                                return prev.map(s => s.id === task.id ? { ...s, fromTime: e } : s);
-                              }
-                              return [...prev, { ...schedule, fromTime: e }];
-                            });
-                          }}
-                          className="w-full px-3 py-1.5 rounded-lg bg-secondary text-xs border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
-                        />
-                      </td>
-                      <td className="px-4 py-3">
-                        <TimeInput12Hour
-                          value={schedule.toTime}
-                          onChange={(e) => {
-                            setServiceSchedules(prev => {
-                              const existing = prev.find(s => s.id === task.id);
-                              if (existing) {
-                                return prev.map(s => s.id === task.id ? { ...s, toTime: e } : s);
-                              }
-                              return [...prev, { ...schedule, toTime: e }];
-                            });
-                          }}
-                          className="w-full px-3 py-1.5 rounded-lg bg-secondary text-xs border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
-                        />
-                      </td>
+                        <td className="px-4 py-3">
+                          <TimeInput12Hour
+                            value={schedule.fromTime}
+                            onChange={(val) => {
+                              setServiceSchedules(prev => {
+                                const existing = prev.find(s => s.id === schedule.id);
+                                if (existing) {
+                                  return prev.map(s => s.id === schedule.id ? { ...s, fromTime: val } : s);
+                                }
+                                return [...prev, { ...schedule, fromTime: val }];
+                              });
+                            }}
+                            className="w-full px-3 py-1.5 rounded-lg bg-secondary text-xs border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
+                          />
+                        </td>
+                        <td className="px-4 py-3">
+                          <TimeInput12Hour
+                            value={schedule.toTime}
+                            onChange={(val) => {
+                              setServiceSchedules(prev => {
+                                const existing = prev.find(s => s.id === schedule.id);
+                                if (existing) {
+                                  return prev.map(s => s.id === schedule.id ? { ...s, toTime: val } : s);
+                                }
+                                return [...prev, { ...schedule, toTime: val }];
+                              });
+                            }}
+                            className="w-full px-3 py-1.5 rounded-lg bg-secondary text-xs border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
+                          />
+                        </td>
                         <td className="px-4 py-3">
                           <div className="flex items-center justify-center gap-2">
-                            <button 
+                            <button
                               type="button"
                               onClick={() => {
                                 setServiceSchedules(prev => {
-                                  const existing = prev.find(s => s.id === task.id);
-                                  const newQuantity = Math.max(0, (existing?.requiredEmployees || 1) - 1);
+                                  const existing = prev.find(s => s.id === schedule.id);
+                                  const newQty = Math.max(0, (existing?.requiredEmployees || 1) - 1);
                                   if (existing) {
-                                    return prev.map(s => s.id === task.id ? { ...s, requiredEmployees: newQuantity } : s);
+                                    return prev.map(s => s.id === schedule.id ? { ...s, requiredEmployees: newQty } : s);
                                   }
-                                  return [...prev, { ...schedule, requiredEmployees: newQuantity }];
+                                  return [...prev, { ...schedule, requiredEmployees: newQty }];
                                 });
                               }}
                               className="w-7 h-7 flex items-center justify-center rounded border border-border hover:bg-secondary transition-colors"
@@ -1027,16 +1204,16 @@ const EditWorkOrderPage = () => {
                             <span className="text-sm font-semibold text-card-foreground min-w-[2.5rem] text-center">
                               {schedule.requiredEmployees}
                             </span>
-                            <button 
+                            <button
                               type="button"
                               onClick={() => {
                                 setServiceSchedules(prev => {
-                                  const existing = prev.find(s => s.id === task.id);
-                                  const newQuantity = (existing?.requiredEmployees || 1) + 1;
+                                  const existing = prev.find(s => s.id === schedule.id);
+                                  const newQty = (existing?.requiredEmployees || 1) + 1;
                                   if (existing) {
-                                    return prev.map(s => s.id === task.id ? { ...s, requiredEmployees: newQuantity } : s);
+                                    return prev.map(s => s.id === schedule.id ? { ...s, requiredEmployees: newQty } : s);
                                   }
-                                  return [...prev, { ...schedule, requiredEmployees: newQuantity }];
+                                  return [...prev, { ...schedule, requiredEmployees: newQty }];
                                 });
                               }}
                               className="w-7 h-7 flex items-center justify-center rounded border border-border hover:bg-secondary transition-colors"
@@ -1046,7 +1223,7 @@ const EditWorkOrderPage = () => {
                           </div>
                         </td>
                       </tr>
-                    );
+                    ));
                   })}
                 </tbody>
               </table>
@@ -1054,47 +1231,169 @@ const EditWorkOrderPage = () => {
           </div>
         )}
 
+        {/* Sales Executive Signature */}
+        <div className="bg-card rounded-xl card-shadow border border-border overflow-hidden">
+          <div className="px-6 py-4 border-b border-border flex items-center justify-between">
+            <h2 className="text-base font-bold text-card-foreground flex items-center gap-2">
+              <User className="w-5 h-5" />
+              Sales Executive Signature
+            </h2>
+            {!executiveSignatureImage ? (
+              <button
+                type="button"
+                onClick={() => setShowSignatureModal(true)}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-white text-sm font-semibold hover:opacity-90 transition-all"
+                style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}
+              >
+                <Edit2 className="w-4 h-4" />
+                Add Signature
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setShowSignatureModal(true)}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-border text-card-foreground text-sm font-semibold hover:bg-secondary transition-colors"
+              >
+                <Edit2 className="w-4 h-4" />
+                Re-sign
+              </button>
+            )}
+          </div>
+          <div className="px-6 py-5">
+            {executiveSignatureImage ? (
+              <div className="bg-secondary/30 rounded-lg p-5 border border-border">
+                <div className="flex items-start gap-4">
+                  <div className="bg-white rounded-lg border border-border p-3 flex-shrink-0">
+                    <img src={executiveSignatureImage} alt="Executive Signature" className="h-20 max-w-[200px] object-contain" />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-sm font-semibold text-card-foreground">
+                      {selectedEmployees.length > 0 ? selectedEmployees[0] : "Sales Executive"}
+                    </p>
+                    <p className="text-xs text-muted-foreground">Signed at: {new Date().toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}</p>
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-success/10 text-success text-xs font-semibold border border-success/20">✓ Signed</span>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-secondary/30 rounded-lg border-2 border-dashed border-border p-8 flex items-center justify-center">
+                <div className="text-center">
+                  <div className="w-14 h-14 rounded-full bg-secondary flex items-center justify-center mx-auto mb-3">
+                    <Edit2 className="w-6 h-6 text-muted-foreground" />
+                  </div>
+                  <p className="text-sm font-medium text-muted-foreground">No signature yet</p>
+                  <p className="text-xs text-muted-foreground mt-1">Click "Add Signature" to sign this work order</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Customer Signature */}
+        <div className="bg-card rounded-xl card-shadow border border-border overflow-hidden">
+          <div className="px-6 py-4 border-b border-border flex items-center justify-between">
+            <h2 className="text-base font-bold text-card-foreground flex items-center gap-2">
+              <User className="w-5 h-5" />
+              Customer Signature
+            </h2>
+            {!customerSignatureImage ? (
+              <button
+                type="button"
+                onClick={() => setShowCustomerSignatureModal(true)}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-white text-sm font-semibold hover:opacity-90 transition-all"
+                style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}
+              >
+                <Edit2 className="w-4 h-4" />
+                Add Signature
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setShowCustomerSignatureModal(true)}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-border text-card-foreground text-sm font-semibold hover:bg-secondary transition-colors"
+              >
+                <Edit2 className="w-4 h-4" />
+                Re-sign
+              </button>
+            )}
+          </div>
+          <div className="px-6 py-5">
+            {customerSignatureImage ? (
+              <div className="bg-secondary/30 rounded-lg p-5 border border-border">
+                <div className="flex items-start gap-4">
+                  <div className="bg-white rounded-lg border border-border p-3 flex-shrink-0">
+                    <img src={customerSignatureImage} alt="Customer Signature" className="h-20 max-w-[200px] object-contain" />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-sm font-semibold text-card-foreground">{watch("customer") || "Customer"}</p>
+                    <p className="text-xs text-muted-foreground">Signed at: {new Date().toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}</p>
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-success/10 text-success text-xs font-semibold border border-success/20">✓ Signed</span>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-secondary/30 rounded-lg border-2 border-dashed border-border p-8 flex items-center justify-center">
+                <div className="text-center">
+                  <div className="w-14 h-14 rounded-full bg-secondary flex items-center justify-center mx-auto mb-3">
+                    <Edit2 className="w-6 h-6 text-muted-foreground" />
+                  </div>
+                  <p className="text-sm font-medium text-muted-foreground">No signature yet</p>
+                  <p className="text-xs text-muted-foreground mt-1">Click "Add Signature" to capture customer signature</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
         {/* Terms & Conditions */}
         <div className="bg-card rounded-xl card-shadow border border-border overflow-hidden">
-          <div className="px-6 py-4 border-b border-border">
+          <div className="px-6 py-4 border-b border-border flex items-center justify-between">
             <h2 className="text-base font-bold text-card-foreground">Terms & Conditions</h2>
+            <button
+              type="button"
+              onClick={() => setIsEditingTerms(e => !e)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-card hover:bg-secondary transition-colors text-xs font-semibold text-card-foreground"
+            >
+              <Edit2 className="w-3.5 h-3.5" />
+              {isEditingTerms ? "Done" : "Edit"}
+            </button>
           </div>
           <div className="px-6 py-5 space-y-3">
             <div className="space-y-2.5">
-              <div className="flex gap-3">
-                <span className="text-sm font-medium text-muted-foreground flex-shrink-0">1.</span>
-                <p className="text-sm text-muted-foreground">Services will be performed as per the scheduled appointments</p>
-              </div>
-              <div className="flex gap-3">
-                <span className="text-sm font-medium text-muted-foreground flex-shrink-0">2.</span>
-                <p className="text-sm text-muted-foreground">Customer must provide access to all areas requiring treatment</p>
-              </div>
-              <div className="flex gap-3">
-                <span className="text-sm font-medium text-muted-foreground flex-shrink-0">3.</span>
-                <p className="text-sm text-muted-foreground">Payment is due within 30 days of invoice date</p>
-              </div>
-              <div className="flex gap-3">
-                <span className="text-sm font-medium text-muted-foreground flex-shrink-0">4.</span>
-                <p className="text-sm text-muted-foreground">24-hour advance notice required for rescheduling</p>
-              </div>
-              <div className="flex gap-3">
-                <span className="text-sm font-medium text-muted-foreground flex-shrink-0">5.</span>
-                <p className="text-sm text-muted-foreground">Service warranty valid for 30 days after each treatment</p>
-              </div>
-            </div>
-            
-            <div className="pt-4 border-t border-border">
-              <label className="flex items-center gap-3 cursor-pointer group">
-                <input
-                  type="checkbox"
-                  checked={termsAccepted}
-                  onChange={(e) => setTermsAccepted(e.target.checked)}
-                  className="w-5 h-5 rounded border-2 border-border text-primary focus:ring-2 focus:ring-primary/20 cursor-pointer"
-                />
-                <span className="text-sm font-medium text-card-foreground group-hover:text-primary transition-colors">
-                  I agree to the terms and conditions
-                </span>
-              </label>
+              {termsList.map((term, idx) => (
+                <div key={idx} className="flex items-start gap-3">
+                  <span className="text-sm font-medium text-muted-foreground flex-shrink-0 mt-0.5">{idx + 1}.</span>
+                  {isEditingTerms ? (
+                    <div className="flex-1 flex items-center gap-2">
+                      <input
+                        value={term}
+                        onChange={(e) => setTermsList(prev => prev.map((t, i) => i === idx ? e.target.value : t))}
+                        className="flex-1 px-3 py-1.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setTermsList(prev => prev.filter((_, i) => i !== idx))}
+                        className="p-1 hover:bg-destructive/10 rounded transition-colors flex-shrink-0"
+                        title="Remove"
+                      >
+                        <X className="w-4 h-4 text-destructive" />
+                      </button>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">{term}</p>
+                  )}
+                </div>
+              ))}
+              {isEditingTerms && (
+                <button
+                  type="button"
+                  onClick={() => setTermsList(prev => [...prev, ""])}
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:opacity-80 transition-opacity mt-1"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  Add Term
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -1188,6 +1487,51 @@ const EditWorkOrderPage = () => {
                   />
                 </div>
               </div>
+              {customerState ? (
+                <div className="rounded-lg bg-secondary/40 border border-border px-4 py-3 space-y-3">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Tax — {customerState}</p>
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground mb-2 block">GST (%)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={editingTask.gst || ""}
+                      onChange={(e) => setEditingTask({ ...editingTask, gst: e.target.value })}
+                      placeholder="e.g. 18"
+                      className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
+                    />
+                  </div>
+                  {customerState === "Tamil Nadu" ? (
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground mb-2 block">CGST (%)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={editingTask.cgst || ""}
+                        onChange={(e) => setEditingTask({ ...editingTask, cgst: e.target.value })}
+                        placeholder="e.g. 9"
+                        className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
+                      />
+                    </div>
+                  ) : (
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground mb-2 block">IGST (%)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={editingTask.igst || ""}
+                        onChange={(e) => setEditingTask({ ...editingTask, igst: e.target.value })}
+                        placeholder="e.g. 18"
+                        className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
+                      />
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="rounded-lg bg-secondary/40 border border-dashed border-border px-4 py-3">
+                  <p className="text-xs text-muted-foreground">Select a customer to auto-detect state and show applicable tax fields.</p>
+                </div>
+              )}
               <div>
                 <label className="text-xs font-medium text-muted-foreground mb-2 block">Status</label>
                 <select value={editingTask.status} onChange={(e) => setEditingTask({ ...editingTask, status: e.target.value as TaskStatus })} className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground">
@@ -1199,6 +1543,100 @@ const EditWorkOrderPage = () => {
               <div className="flex gap-3 pt-4 border-t border-border">
                 <button onClick={() => setEditingTask(null)} className="flex-1 h-10 border border-border text-card-foreground text-sm font-medium hover:text-primary transition-colors rounded-lg">Cancel</button>
                 <button onClick={() => updateTaskData(editingTask)} className="flex-1 h-10 text-white text-sm font-medium rounded-lg hover:opacity-90 transition-all" style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}>Update Service</button>
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Sales Executive Signature Modal */}
+      {showSignatureModal && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/75">
+          <div className="bg-card rounded-[20px] shadow-2xl w-full max-w-md animate-in fade-in slide-in-from-bottom-4 duration-300">
+            <div className="flex items-center justify-between p-6 border-b border-border">
+              <div>
+                <h2 className="text-lg font-bold text-card-foreground">Sales Executive Signature</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Signing as: <span className="font-semibold text-primary">{selectedEmployees.length > 0 ? selectedEmployees[0] : "Sales Executive"}</span>
+                </p>
+              </div>
+              <button onClick={() => setShowSignatureModal(false)} className="p-2 hover:bg-secondary rounded-lg transition-colors">
+                <X className="w-5 h-5 text-muted-foreground" />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <p className="text-sm text-muted-foreground">Please sign below to confirm your authorization of this work order.</p>
+              <div className="border-2 border-border rounded-lg bg-white overflow-hidden">
+                <SignatureCanvas
+                  ref={execSignatureRef}
+                  canvasProps={{ className: "w-full h-44" }}
+                  backgroundColor="white"
+                />
+              </div>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => execSignatureRef.current?.clear()}
+                  className="flex-1 h-10 border border-border text-card-foreground text-sm font-medium hover:bg-secondary transition-colors rounded-lg"
+                >
+                  Clear
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveExecSignature}
+                  className="flex-1 h-10 text-white text-sm font-semibold rounded-lg hover:opacity-90 transition-all"
+                  style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}
+                >
+                  Save Signature
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Customer Signature Modal */}
+      {showCustomerSignatureModal && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/75">
+          <div className="bg-card rounded-[20px] shadow-2xl w-full max-w-md animate-in fade-in slide-in-from-bottom-4 duration-300">
+            <div className="flex items-center justify-between p-6 border-b border-border">
+              <div>
+                <h2 className="text-lg font-bold text-card-foreground">Customer Signature</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Signing as: <span className="font-semibold text-primary">{watch("customer") || "Customer"}</span>
+                </p>
+              </div>
+              <button onClick={() => setShowCustomerSignatureModal(false)} className="p-2 hover:bg-secondary rounded-lg transition-colors">
+                <X className="w-5 h-5 text-muted-foreground" />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <p className="text-sm text-muted-foreground">Customer signature to confirm agreement to this work order.</p>
+              <div className="border-2 border-border rounded-lg bg-white overflow-hidden">
+                <SignatureCanvas
+                  ref={customerSignatureRef}
+                  canvasProps={{ className: "w-full h-44" }}
+                  backgroundColor="white"
+                />
+              </div>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => customerSignatureRef.current?.clear()}
+                  className="flex-1 h-10 border border-border text-card-foreground text-sm font-medium hover:bg-secondary transition-colors rounded-lg"
+                >
+                  Clear
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveCustomerSignature}
+                  className="flex-1 h-10 text-white text-sm font-semibold rounded-lg hover:opacity-90 transition-all"
+                  style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}
+                >
+                  Save Signature
+                </button>
               </div>
             </div>
           </div>

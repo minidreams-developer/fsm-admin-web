@@ -1,5 +1,5 @@
 import { useNavigate, useLocation } from "react-router-dom";
-import { X, Edit2, Plus, User } from "lucide-react";
+import { X, Edit2, Plus, User, Check } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useForm } from "react-hook-form";
@@ -83,6 +83,10 @@ const CreateWorkOrderPage = () => {
   const [showSignatureModal, setShowSignatureModal] = useState(false);
   const [executiveSignatureImage, setExecutiveSignatureImage] = useState<string | null>(null);
   const execSignatureRef = useRef<SignatureCanvas>(null);
+  const [showCustomerSignatureModal, setShowCustomerSignatureModal] = useState(false);
+  const [customerSignatureImage, setCustomerSignatureImage] = useState<string | null>(null);
+  const customerSignatureRef = useRef<SignatureCanvas>(null);
+  const [cashCollectionMap, setCashCollectionMap] = useState<Record<string, boolean>>({});
   
   // Address options for site address selection
   type AddressOption = {
@@ -327,6 +331,13 @@ const CreateWorkOrderPage = () => {
     );
   };
 
+  const toggleCashCollection = (employeeName: string) => {
+    setCashCollectionMap((prev) => ({
+      ...prev,
+      [employeeName]: !(prev[employeeName] ?? true),
+    }));
+  };
+
   const removeService = (index: number) => {
     setSelectedServices((prev) => prev.filter((_, i) => i !== index));
     setTasks((prev) => prev.filter((_, i) => i !== index));
@@ -351,6 +362,17 @@ const CreateWorkOrderPage = () => {
     setExecutiveSignatureImage(signatureData || null);
     setShowSignatureModal(false);
     toast.success("Sales Executive signature saved!");
+  };
+
+  const handleSaveCustomerSignature = () => {
+    if (customerSignatureRef.current?.isEmpty()) {
+      toast.error("Please provide a signature before saving");
+      return;
+    }
+    const signatureData = customerSignatureRef.current?.toDataURL();
+    setCustomerSignatureImage(signatureData || null);
+    setShowCustomerSignatureModal(false);
+    toast.success("Customer signature saved!");
   };
 
   const onSubmit = async (data: WorkOrderFormData) => {
@@ -403,6 +425,8 @@ const CreateWorkOrderPage = () => {
         termsAndConditions: termsList.filter(t => t.trim()).join("\n"),
         salesExecutive: selectedEmployees.length > 0 ? selectedEmployees[0] : undefined,
         executiveSignatureImage: executiveSignatureImage || undefined,
+        customerSignature: customerSignatureImage || undefined,
+        cashCollection: cashCollectionMap,
       });
       tasks.forEach((t, i) => {
         addTask({
@@ -513,16 +537,7 @@ const CreateWorkOrderPage = () => {
             <input type="text" placeholder="e.g. Kochi, Kerala" {...register("location")} className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground" />
           </div> */}
 
-          <div>
-            <label className="text-xs font-medium text-muted-foreground mb-2 block"> Location URL</label>
-            <input type="text" placeholder="e.g. Google Maps link or coordinates" {...register("liveLocation")} className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground" />
-          </div>
-
-          <div>
-            <label className="text-xs font-medium text-muted-foreground mb-2 block">Subject *</label>
-            <input type="text" placeholder="Work order subject" {...register("subject")} className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground" />
-            {errors.subject && <p className="text-xs text-red-500 mt-1">{errors.subject.message}</p>}
-          </div>
+        
 
                <div className="text-xs font-medium text-muted-foreground mb-2 block">
             <div className="flex items-center justify-between gap-3 mb-2">
@@ -606,6 +621,16 @@ const CreateWorkOrderPage = () => {
                 </button>
               </div>
             ))}
+          </div>
+            <div>
+            <label className="text-xs font-medium text-muted-foreground mb-2 block"> Location URL</label>
+            <input type="text" placeholder="e.g. Google Maps link or coordinates" {...register("liveLocation")} className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground" />
+          </div>
+
+          <div>
+            <label className="text-xs font-medium text-muted-foreground mb-2 block">Subject *</label>
+            <input type="text" placeholder="Work order subject" {...register("subject")} className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground" />
+            {errors.subject && <p className="text-xs text-red-500 mt-1">{errors.subject.message}</p>}
           </div>
 
      
@@ -715,20 +740,40 @@ const CreateWorkOrderPage = () => {
             
             {/* Display selected employees */}
             {selectedEmployees.length > 0 && (
-              <div className="flex flex-wrap gap-2">
+              <div className="space-y-2 mt-3">
                 {selectedEmployees.map((empName) => {
                   const emp = employees.find(e => e.name === empName);
+                  const willCollectCash = cashCollectionMap[empName] ?? true;
                   return (
-                    <div key={empName} className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 border border-primary/20 rounded-lg">
-                      <span className="text-xs font-medium text-primary">{empName}</span>
-                      {emp && <span className="text-xs text-primary/70">• {emp.role}</span>}
-                      <button 
-                        type="button" 
-                        onClick={() => toggleEmployee(empName)} 
-                        className="text-primary hover:text-primary/70"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
+                    <div key={empName} className="flex items-center justify-between gap-3 px-3 py-2 bg-primary/10 border border-primary/20 rounded-lg">
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-medium text-primary">{empName}</p>
+                          {emp && <p className="text-[10px] text-primary/70">{emp.role}</p>}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => toggleCashCollection(empName)}
+                          className={`flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium transition-colors ${
+                            willCollectCash
+                              ? 'bg-success/10 text-success border border-success/20'
+                              : 'bg-warning/10 text-warning border border-warning/20'
+                          }`}
+                          title={willCollectCash ? "Click to disable cash collection" : "Click to enable cash collection"}
+                        >
+                          <Check className="w-3 h-3" />
+                          {willCollectCash ? 'Collect Cash' : 'No Cash'}
+                        </button>
+                        <button 
+                          type="button" 
+                          onClick={() => toggleEmployee(empName)} 
+                          className="text-primary hover:text-primary/70 p-1"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
                   );
                 })}
@@ -1169,6 +1214,71 @@ const CreateWorkOrderPage = () => {
         </div>
       </div>
 
+      {/* Customer Signature */}
+      <div className="bg-card rounded-xl card-shadow border border-border overflow-hidden">
+        <div className="px-6 py-4 border-b border-border flex items-center justify-between">
+          <h2 className="text-base font-bold text-card-foreground flex items-center gap-2">
+            <User className="w-5 h-5" />
+            Customer Signature
+          </h2>
+          {!customerSignatureImage && (
+            <button
+              type="button"
+              onClick={() => setShowCustomerSignatureModal(true)}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-white text-sm font-semibold hover:opacity-90 transition-all"
+              style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}
+            >
+              <Edit2 className="w-4 h-4" />
+              Add Signature
+            </button>
+          )}
+          {customerSignatureImage && (
+            <button
+              type="button"
+              onClick={() => setShowCustomerSignatureModal(true)}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-border text-card-foreground text-sm font-semibold hover:bg-secondary transition-colors"
+            >
+              <Edit2 className="w-4 h-4" />
+              Re-sign
+            </button>
+          )}
+        </div>
+        <div className="px-6 py-5">
+          {customerSignatureImage ? (
+            <div className="bg-secondary/30 rounded-lg p-5 border border-border">
+              <div className="flex items-start gap-4">
+                <div className="bg-white rounded-lg border border-border p-3 flex-shrink-0">
+                  <img
+                    src={customerSignatureImage}
+                    alt="Customer Signature"
+                    className="h-20 max-w-[200px] object-contain"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm font-semibold text-card-foreground">
+                    {watch("customer") || "Customer"}
+                  </p>
+                  <p className="text-xs text-muted-foreground">Signed at: {new Date().toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}</p>
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-success/10 text-success text-xs font-semibold border border-success/20">
+                    ✓ Signed
+                  </span>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-secondary/30 rounded-lg border-2 border-dashed border-border p-8 flex items-center justify-center">
+              <div className="text-center">
+                <div className="w-14 h-14 rounded-full bg-secondary flex items-center justify-center mx-auto mb-3">
+                  <Edit2 className="w-6 h-6 text-muted-foreground" />
+                </div>
+                <p className="text-sm font-medium text-muted-foreground">No signature yet</p>
+                <p className="text-xs text-muted-foreground mt-1">Click "Add Signature" to capture customer signature</p>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* Terms & Conditions */}
       <div className="bg-card rounded-xl card-shadow border border-border overflow-hidden">
         <div className="px-6 py-4 border-b border-border flex items-center justify-between">
@@ -1438,6 +1548,61 @@ const CreateWorkOrderPage = () => {
                 <button
                   type="button"
                   onClick={handleSaveExecSignature}
+                  className="flex-1 h-10 text-white text-sm font-semibold rounded-lg hover:opacity-90 transition-all"
+                  style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}
+                >
+                  Save Signature
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+      {/* Customer Signature Modal */}
+      {showCustomerSignatureModal && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/75">
+          <div className="bg-card rounded-[20px] shadow-2xl w-full max-w-md animate-in fade-in slide-in-from-bottom-4 duration-300">
+            <div className="flex items-center justify-between p-6 border-b border-border">
+              <div>
+                <h2 className="text-lg font-bold text-card-foreground">Customer Signature</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Signing as: <span className="font-semibold text-primary">{watch("customer") || "Customer"}</span>
+                </p>
+              </div>
+              <button
+                onClick={() => setShowCustomerSignatureModal(false)}
+                className="p-2 hover:bg-secondary rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5 text-muted-foreground" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Customer signature to confirm agreement to this work order.
+              </p>
+
+              {/* Signature Canvas */}
+              <div className="border-2 border-border rounded-lg bg-white overflow-hidden">
+                <SignatureCanvas
+                  ref={customerSignatureRef}
+                  canvasProps={{ className: "w-full h-44" }}
+                  backgroundColor="white"
+                />
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => customerSignatureRef.current?.clear()}
+                  className="flex-1 h-10 border border-border text-card-foreground text-sm font-medium hover:bg-secondary transition-colors rounded-lg"
+                >
+                  Clear
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveCustomerSignature}
                   className="flex-1 h-10 text-white text-sm font-semibold rounded-lg hover:opacity-90 transition-all"
                   style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}
                 >

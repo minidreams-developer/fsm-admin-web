@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { 
   Search, 
   ChevronLeft,
@@ -11,7 +12,8 @@ import {
   RefreshCw,
   Filter,
   Calendar as CalendarIcon,
-  X
+  X,
+  Edit2
 } from "lucide-react";
 import { useProjectsStore } from "@/store/projectsStore";
 import { useEmployeesStore } from "@/store/employeesStore";
@@ -230,7 +232,7 @@ const DraggableWorkOrderCard = ({ wo, service, priority, hasServices, isSelected
 };
 
 // Draggable Service Card Component
-const DraggableServiceCard = ({ service, workOrder }: any) => {
+const DraggableServiceCard = ({ service, workOrder, onEdit }: any) => {
   const dragData: DragData = {
     type: 'service',
     workOrder,
@@ -297,6 +299,16 @@ const DraggableServiceCard = ({ service, workOrder }: any) => {
           <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-primary/10 text-primary">{workOrder.id}</span>
           <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-blue-100 text-blue-700">SA-{service.id?.slice(-1) || '1'}</span>
         </div>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onEdit?.(workOrder.id);
+          }}
+          className="p-1 rounded hover:bg-primary/10 transition-colors flex-shrink-0"
+          title="Edit Work Order"
+        >
+          <Edit2 className="w-3 h-3 text-primary" />
+        </button>
       </div>
 
       {/* Service Title and Status */}
@@ -608,6 +620,7 @@ const priorityBgColors: Record<Priority, string> = {
 };
 
 const QuantCalendarPage = () => {
+  const navigate = useNavigate();
   const { workOrders } = useProjectsStore();
   const { employees } = useEmployeesStore();
   const { getTasksByWorkOrder } = useTasksStore();
@@ -1349,6 +1362,7 @@ const QuantCalendarPage = () => {
                     key={service.id}
                     service={service}
                     workOrder={wo}
+                    onEdit={(id: string) => navigate(`/edit-work-order/${id}`)}
                   />
                 ));
               })

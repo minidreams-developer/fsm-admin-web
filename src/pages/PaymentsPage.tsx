@@ -6,20 +6,35 @@ import { WorkOrderDetailsModal } from "@/components/WorkOrderDetailsModal";
 import { PaymentUpdateModal } from "@/components/PaymentUpdateModal";
 import { useLocation } from "react-router-dom";
 
-const statusMap = { "Open": "warning", "Scheduled": "info", "Completed": "success" } as const;
+const statusMap = { "Open": "warning", "Partial": "info", "Overdue": "error", "Completed": "success" } as const;
 
 // Map work order statuses to payment statuses
-const getPaymentStatus = (wo: WorkOrder): "Open" | "Scheduled" | "Completed" => {
+const getPaymentStatus = (wo: WorkOrder): "Open" | "Partial" | "Overdue" | "Completed" => {
   if (wo.status === "Completed" || wo.status === "Converted") return "Completed";
-  if (wo.status === "Ongoing" || wo.status === "Upcoming") return "Scheduled";
-  return "Open"; // Authorization Pending, Missed, Cancelled, Overdue
+  
+  const total = parseFloat(wo.totalValue?.replace(/[₹,\s]/g, '') || '0');
+  const paid = parseFloat(wo.paidAmount?.replace(/[₹,\s]/g, '') || '0');
+  
+  if (paid >= total) return "Completed";
+  if (paid > 0) return "Partial";
+  
+  const endDate = new Date(wo.end);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  endDate.setHours(0, 0, 0, 0);
+  
+  if (endDate < today && paid === 0) return "Overdue";
+  
+  return "Open";
 };
 
 const PaymentsPage = () => {
   const { workOrders } = useProjectsStore();
   const location = useLocation();
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"All" | "Open" | "Scheduled" | "Completed">("All");
+  const [statusFilter, setStatusFilter] = useState<"All" | "Open" | "Partial" | "Overdue" | "Completed">("All");
+  const [branchFilter, setBranchFilter] = useState<string>("All");
+  const [employeeFilter, setEmployeeFilter] = useState<string>("All");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [appliedFromDate, setAppliedFromDate] = useState("");
@@ -50,6 +65,10 @@ const PaymentsPage = () => {
     setAppliedToDate("");
   };
 
+  // Get unique branches and employees
+  const branches = Array.from(new Set(workOrders.map(wo => wo.address?.split(',')[0] || "").filter(Boolean))).sort();
+  const employees = Array.from(new Set(workOrders.map(wo => wo.assignedTech || "").filter(Boolean))).sort();
+
   const filtered = workOrders.filter((wo) => {
     const paymentStatus = getPaymentStatus(wo);
     const matchStatus = statusFilter === "All" || paymentStatus === statusFilter;
@@ -57,6 +76,9 @@ const PaymentsPage = () => {
       wo.subject?.toLowerCase().includes(search.toLowerCase()) ||
       wo.customer?.toLowerCase().includes(search.toLowerCase()) ||
       wo.id.toLowerCase().includes(search.toLowerCase());
+    
+    const matchBranch = branchFilter === "All" || wo.address?.split(',')[0] === branchFilter;
+    const matchEmployee = employeeFilter === "All" || wo.assignedTech === employeeFilter;
     
     // Date filter logic
     let matchDate = true;
@@ -72,17 +94,17 @@ const PaymentsPage = () => {
       }
     }
     
-    return matchStatus && matchSearch && matchDate;
+    return matchStatus && matchSearch && matchBranch && matchEmployee && matchDate;
   });
 
   const stats = {
-    totalRevenue: workOrders.reduce((sum, w) => sum + (parseFloat(w.totalValue?.replace(/[₹,\s]/g, '') || '0')), 0),
-    pendingPayment: workOrders.reduce((sum, w) => {
+    totalRevenue: filtered.reduce((sum, w) => sum + (parseFloat(w.totalValue?.replace(/[₹,\s]/g, '') || '0')), 0),
+    pendingPayment: filtered.reduce((sum, w) => {
       const total = parseFloat(w.totalValue?.replace(/[₹,\s]/g, '') || '0');
       const paid = parseFloat(w.paidAmount?.replace(/[₹,\s]/g, '') || '0');
       return sum + Math.max(0, total - paid);
     }, 0),
-    toCollect: workOrders.filter(w => getPaymentStatus(w) === "Open").length,
+    toCollect: filtered.filter(w => getPaymentStatus(w) === "Open").length,
   };
 
   const getBalancePayment = (workOrder: WorkOrder) => {
@@ -206,6 +228,36 @@ const PaymentsPage = () => {
         </div>
       </div>
 
+      {/* Branch and Employee Filters */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label className="text-xs font-medium text-muted-foreground mb-2 block">Branch</label>
+          <select
+            value={branchFilter}
+            onChange={(e) => setBranchFilter(e.target.value)}
+            className="w-full px-3 py-2.5 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
+          >
+            <option value="All">All Branches</option>
+            {branches.map((branch) => (
+              <option key={branch} value={branch}>{branch}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="text-xs font-medium text-muted-foreground mb-2 block">Assigned Tech</label>
+          <select
+            value={employeeFilter}
+            onChange={(e) => setEmployeeFilter(e.target.value)}
+            className="w-full px-3 py-2.5 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
+          >
+            <option value="All">All Employees</option>
+            {employees.map((emp) => (
+              <option key={emp} value={emp}>{emp}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
       {/* Main Content - Two Column Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Sidebar - Work Orders List */}
@@ -225,26 +277,29 @@ const PaymentsPage = () => {
                 />
               </div>
               {/* Status Filter Tabs */}
-              <div className="flex gap-1.5 flex-wrap">
-                {(["All", "Open", "Scheduled", "Completed"] as const).map((s) => (
-                  <button
-                    key={s}
-                    onClick={() => setStatusFilter(s)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap ${
-                      statusFilter === s
-                        ? "text-white shadow-[0px_5px_12px_rgba(39,47,158,0.2)]"
-                        : "bg-secondary border border-border text-muted-foreground hover:text-card-foreground"
-                    }`}
-                    style={statusFilter === s ? { background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" } : {}}
-                  >
-                    {s}
-                    {s !== "All" && (
-                      <span className="ml-1.5 text-[10px] opacity-80">
-                        ({workOrders.filter(w => getPaymentStatus(w) === s).length})
-                      </span>
-                    )}
-                  </button>
-                ))}
+              <div className="mb-3">
+                <p className="text-xs font-medium text-muted-foreground mb-2">Payment Status</p>
+                <div className="flex gap-1.5 flex-wrap">
+                  {(["All", "Open", "Partial", "Overdue", "Completed"] as const).map((s) => (
+                    <button
+                      key={s}
+                      onClick={() => setStatusFilter(s)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap ${
+                        statusFilter === s
+                          ? "text-white shadow-[0px_5px_12px_rgba(39,47,158,0.2)]"
+                          : "bg-secondary border border-border text-muted-foreground hover:text-card-foreground"
+                      }`}
+                      style={statusFilter === s ? { background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" } : {}}
+                    >
+                      {s}
+                      {s !== "All" && (
+                        <span className="ml-1.5 text-[10px] opacity-80">
+                          ({filtered.filter(w => getPaymentStatus(w) === s).length})
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
             <div className="space-y-2 p-3 max-h-[600px] overflow-y-auto">
@@ -312,6 +367,14 @@ const PaymentsPage = () => {
                   <div>
                     <p className="text-xs text-muted-foreground mb-1">Due Date</p>
                     <p className="font-semibold text-card-foreground">{selectedWorkOrder.end}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Paid Amount</p>
+                    <p className="font-semibold text-primary">{selectedWorkOrder.paidAmount || "₹0.00"}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Transaction ID</p>
+                    <p className="font-semibold text-card-foreground font-mono text-sm">{selectedWorkOrder.transactionId || "—"}</p>
                   </div>
                 </div>
               </div>

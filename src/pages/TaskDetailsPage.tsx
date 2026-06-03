@@ -1,11 +1,62 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Edit2, Trash2, X, Upload, File, Download, Eye } from "lucide-react";
-import { useState } from "react";
+import { ArrowLeft, Edit2, Trash2, X, Upload, File, Download, Eye, UserCheck } from "lucide-react";
+import { useState, useRef } from "react";
 import { toast } from "sonner";
 import { useTasksStore, type Task } from "@/store/tasksStore";
 import { useEmployeesStore } from "@/store/employeesStore";
 import { StatusBadge } from "@/components/StatusBadge";
 import { createPortal } from "react-dom";
+
+// IndexedDB utilities for storing large files
+const DB_NAME = "fsm-attachments";
+const STORE_NAME = "files";
+
+const openDB = (): Promise<IDBDatabase> => {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME, 1);
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => resolve(request.result);
+    request.onupgradeneeded = (e) => {
+      const db = (e.target as IDBOpenDBRequest).result;
+      if (!db.objectStoreNames.contains(STORE_NAME)) {
+        db.createObjectStore(STORE_NAME, { keyPath: "id", autoIncrement: true });
+      }
+    };
+  });
+};
+
+const saveToIndexedDB = async (data: string): Promise<string> => {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, "readwrite");
+    const store = tx.objectStore(STORE_NAME);
+    const request = store.add({ data, timestamp: Date.now() });
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => resolve(String(request.result));
+  });
+};
+
+const getFromIndexedDB = async (id: string): Promise<string | null> => {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, "readonly");
+    const store = tx.objectStore(STORE_NAME);
+    const request = store.get(Number(id));
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => resolve(request.result?.data || null);
+  });
+};
+
+const deleteFromIndexedDB = async (id: string): Promise<void> => {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, "readwrite");
+    const store = tx.objectStore(STORE_NAME);
+    const request = store.delete(Number(id));
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => resolve();
+  });
+};
 
 const STATUSES = ["Pending", "In Progress", "Completed", "Overdue", "Verified"] as const;
 const MANUAL_STATUSES = ["Pending", "In Progress", "Completed", "Overdue", "Verified"] as const;
@@ -73,6 +124,13 @@ const TaskDetailsPage = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [form, setForm] = useState<any>(null);
   const [viewingAttachment, setViewingAttachment] = useState<{ name: string; data: string } | null>(null);
+  const [loadingAttachment, setLoadingAttachment] = useState(false);
+
+  // Direct document upload by assigned person
+  const [uploadingAs, setUploadingAs] = useState<string>("");
+  const [uploadingFiles, setUploadingFiles] = useState<File[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const uploadInputRef = useRef<HTMLInputElement>(null);
 
   if (!task) {
     return (
@@ -183,6 +241,110 @@ const TaskDetailsPage = () => {
     navigate("/task-management");
   };
 
+  // Direct document upload handler
+  const handleUploadFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+    const maxSize = 10 * 1024 * 1024;
+    const invalid = files.filter(f => f.size > maxSize);
+    if (invalid.length > 0) {
+      toast.error(`File(s) exceed 10MB: ${invalid.map(f => f.name).join(", ")}`);
+      return;
+    }
+    setUploadingFiles(prev => [...prev, ...files]);
+    toast.success(`Added ${files.length} file${files.length !== 1 ? 's' : ''}`);
+    // Reset input so same file can be re-selected
+    if (uploadInputRef.current) uploadInputRef.current.value = "";
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLLabelElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLLabelElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const files = Array.from(e.dataTransfer.files || []);
+    if (files.length === 0) return;
+    const maxSize = 10 * 1024 * 1024;
+    const invalid = files.filter(f => f.size > maxSize);
+    if (invalid.length > 0) {
+      toast.error(`File(s) exceed 10MB: ${invalid.map(f => f.name).join(", ")}`);
+      return;
+    }
+    setUploadingFiles(prev => [...prev, ...files]);
+    toast.success(`Added ${files.length} file${files.length !== 1 ? 's' : ''}`);
+  };
+
+  const handleRemoveUploadingFile = (idx: number) => {
+    setUploadingFiles(prev => prev.filter((_, i) => i !== idx));
+  };
+
+  const handleSubmitUpload = async () => {
+    if (!uploadingAs) { toast.error("Select your name before uploading"); return; }
+    if (uploadingFiles.length === 0) { toast.error("Select at least one file"); return; }
+    setIsUploading(true);
+    try {
+      const now = new Date().toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" });
+      const newAttachments = await Promise.all(
+        uploadingFiles.map(async (file) => {
+          return new Promise<any>((resolve) => {
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+              const base64Data = e.target?.result as string;
+              const sizeInMB = file.size / (1024 * 1024);
+              
+              // If file is larger than 1MB, store in IndexedDB instead of localStorage
+              if (sizeInMB > 1) {
+                try {
+                  const dataId = await saveToIndexedDB(base64Data);
+                  resolve({
+                    name: file.name,
+                    size: file.size,
+                    dataId,
+                    uploadedBy: uploadingAs,
+                    uploadedAt: now
+                  });
+                } catch (error) {
+                  console.error("Failed to save to IndexedDB:", error);
+                  toast.error(`Failed to save ${file.name} to storage`);
+                  resolve(null);
+                }
+              } else {
+                // Small files stay in localStorage as base64
+                resolve({
+                  name: file.name,
+                  size: file.size,
+                  data: base64Data,
+                  uploadedBy: uploadingAs,
+                  uploadedAt: now
+                });
+              }
+            };
+            reader.readAsDataURL(file);
+          });
+        })
+      );
+      
+      const validAttachments = newAttachments.filter(a => a !== null);
+      if (validAttachments.length > 0) {
+        updateTask(task.id, { attachments: [...(task.attachments || []), ...validAttachments] });
+        setUploadingFiles([]);
+        setUploadingAs("");
+        toast.success(`${validAttachments.length} document${validAttachments.length !== 1 ? "s" : ""} uploaded successfully`);
+      }
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleDeleteAttachment = (idx: number) => {
+    const updated = (task.attachments || []).filter((_, i) => i !== idx);
+    updateTask(task.id, { attachments: updated });
+    toast.success("Document removed");
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between gap-3">
@@ -216,6 +378,7 @@ const TaskDetailsPage = () => {
       </div>
 
       {!isEditing ? (
+        <>
         <div className="bg-card rounded-xl card-shadow border border-border overflow-hidden">
           <div className="p-6 border-b border-border">
             <div>
@@ -270,50 +433,231 @@ const TaskDetailsPage = () => {
                 <p className="text-sm font-medium text-card-foreground">{(task as any).branch}</p>
               </div>
             )}
+          </div>
+        </div>
 
-            {task.attachments && task.attachments.length > 0 && (
-              <div>
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Attachments</p>
-                <div className="space-y-2">
-                  {task.attachments.map((attachment, index) => (
-                    <div key={index} className="flex items-center justify-between gap-2 px-3 py-2 bg-primary/5 border border-primary/20 rounded-lg">
-                      <div className="flex items-center gap-2 flex-1 min-w-0">
-                        <File className="w-4 h-4 text-primary flex-shrink-0" />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-medium text-card-foreground truncate">{attachment.name}</p>
-                          <p className="text-[10px] text-muted-foreground">{(attachment.size / 1024).toFixed(1)} KB</p>
-                        </div>
+        {/* Documents Section */}
+        <div className="bg-card rounded-xl card-shadow border border-border overflow-hidden">
+          <div className="px-6 py-4 border-b border-border">
+            <h2 className="text-base font-bold text-card-foreground">Documents</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {task.attachments && task.attachments.length > 0
+                ? `${task.attachments.length} document${task.attachments.length !== 1 ? "s" : ""} uploaded`
+                : "No documents yet"}
+            </p>
+          </div>
+
+          {/* Uploaded documents list */}
+          {task.attachments && task.attachments.length > 0 && (
+            <div className="px-6 pt-4 pb-2 space-y-2">
+              {task.attachments.map((attachment, index) => (
+                <div key={index} className="flex items-center justify-between gap-3 px-4 py-3 bg-secondary/40 border border-border rounded-xl hover:bg-secondary/60 transition-colors">
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                      <File className="w-4 h-4 text-primary" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-card-foreground truncate">{attachment.name}</p>
+                      <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                        <span className="text-[10px] text-muted-foreground">{(attachment.size / 1024).toFixed(1)} KB</span>
+                        {attachment.uploadedBy && (
+                          <>
+                            <span className="text-[10px] text-muted-foreground">•</span>
+                            <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-primary">
+                              <UserCheck className="w-3 h-3" />
+                              {attachment.uploadedBy}
+                            </span>
+                          </>
+                        )}
+                        {attachment.uploadedAt && (
+                          <>
+                            <span className="text-[10px] text-muted-foreground">•</span>
+                            <span className="text-[10px] text-muted-foreground">{attachment.uploadedAt}</span>
+                          </>
+                        )}
                       </div>
-                      <div className="flex items-center gap-1.5 flex-shrink-0">
-                        <button
-                          onClick={() => setViewingAttachment(attachment)}
-                          className="p-1.5 hover:bg-primary/10 rounded transition-colors"
-                          title="View"
-                        >
-                          <Eye className="w-4 h-4 text-primary" />
-                        </button>
-                        <button
-                          onClick={() => {
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    <button
+                      onClick={async () => {
+                        try {
+                          const data = attachment.data || (attachment.dataId ? await getFromIndexedDB(attachment.dataId) : null);
+                          if (data) {
+                            setViewingAttachment({ name: attachment.name, data });
+                          } else {
+                            toast.error("Could not load file");
+                          }
+                        } catch (error) {
+                          console.error("Failed to load attachment:", error);
+                          toast.error("Failed to load file");
+                        }
+                      }}
+                      className="p-1.5 hover:bg-primary/10 rounded-lg transition-colors"
+                      title="View"
+                    >
+                      <Eye className="w-4 h-4 text-primary" />
+                    </button>
+                    <button
+                      onClick={async () => {
+                        try {
+                          const data = attachment.data || (attachment.dataId ? await getFromIndexedDB(attachment.dataId) : null);
+                          if (data) {
                             const link = document.createElement('a');
-                            link.href = attachment.data;
+                            link.href = data;
                             link.download = attachment.name;
                             document.body.appendChild(link);
                             link.click();
                             document.body.removeChild(link);
-                          }}
-                          className="p-1.5 hover:bg-primary/10 rounded transition-colors"
-                          title="Download"
-                        >
-                          <Download className="w-4 h-4 text-primary" />
-                        </button>
+                          } else {
+                            toast.error("Could not download file");
+                          }
+                        } catch (error) {
+                          console.error("Failed to download attachment:", error);
+                          toast.error("Failed to download file");
+                        }
+                      }}
+                      className="p-1.5 hover:bg-primary/10 rounded-lg transition-colors"
+                      title="Download"
+                    >
+                      <Download className="w-4 h-4 text-primary" />
+                    </button>
+                    <button
+                      onClick={async () => {
+                        try {
+                          if (attachment.dataId) {
+                            await deleteFromIndexedDB(attachment.dataId);
+                          }
+                          handleDeleteAttachment(index);
+                        } catch (error) {
+                          console.error("Failed to delete attachment:", error);
+                          toast.error("Failed to delete file");
+                        }
+                      }}
+                      className="p-1.5 hover:bg-destructive/10 rounded-lg transition-colors"
+                      title="Remove"
+                    >
+                      <X className="w-4 h-4 text-destructive" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Upload by assigned person */}
+          <div className="px-6 py-5 border-t border-border">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">Upload Document</p>
+
+            {/* Who is uploading */}
+            <div className="mb-4">
+              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Uploading as *</label>
+              <select
+                value={uploadingAs}
+                onChange={e => setUploadingAs(e.target.value)}
+                className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+              >
+                <option value="">— Select your name —</option>
+                {(task.assignedEmployees?.length ? task.assignedEmployees : task.assignedTo ? [task.assignedTo] : [])
+                  .filter(n => n && n !== "Unassigned")
+                  .map(name => (
+                    <option key={name} value={name}>{name}</option>
+                  ))}
+              </select>
+              <p className="text-[10px] text-muted-foreground mt-1">Only assigned employees can upload documents</p>
+            </div>
+
+            {/* File drop zone */}
+            <label
+              onDragOver={handleDragOver}
+              onDrop={handleDrop}
+              className="flex flex-col items-center justify-center gap-2 w-full px-4 py-6 rounded-xl bg-secondary border-2 border-dashed border-border cursor-pointer hover:border-primary/50 hover:bg-secondary/80 transition-colors"
+            >
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                <Upload className="w-5 h-5 text-primary" />
+              </div>
+              <div className="text-center">
+                <p className="text-sm font-medium text-card-foreground">Drag files here or click to select</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">PDF, images, Word, Excel — max 10MB each</p>
+              </div>
+              <input ref={uploadInputRef} type="file" multiple onChange={handleUploadFileSelect} className="hidden" accept="*/*" />
+            </label>
+
+            {/* Selected files preview */}
+            {uploadingFiles.length > 0 && (
+              <div className="mt-3 space-y-2">
+                {uploadingFiles.map((file, idx) => (
+                  <div key={idx} className="flex items-center justify-between gap-2 px-3 py-2 bg-primary/5 border border-primary/20 rounded-lg">
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                      <File className="w-4 h-4 text-primary flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium text-card-foreground truncate">{file.name}</p>
+                        <p className="text-[10px] text-muted-foreground">{(file.size / 1024).toFixed(1)} KB</p>
                       </div>
                     </div>
-                  ))}
-                </div>
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      <button
+                        onClick={async () => {
+                          try {
+                            const reader = new FileReader();
+                            reader.onload = (e) => {
+                              const data = e.target?.result as string;
+                              setViewingAttachment({ name: file.name, data });
+                            };
+                            reader.readAsDataURL(file);
+                          } catch (error) {
+                            console.error("Failed to load file:", error);
+                            toast.error("Failed to view file");
+                          }
+                        }}
+                        className="p-1 hover:bg-primary/10 rounded transition-colors"
+                        title="View"
+                      >
+                        <Eye className="w-3.5 h-3.5 text-primary" />
+                      </button>
+                      <button
+                        onClick={() => {
+                          try {
+                            const reader = new FileReader();
+                            reader.onload = (e) => {
+                              const link = document.createElement('a');
+                              link.href = e.target?.result as string;
+                              link.download = file.name;
+                              document.body.appendChild(link);
+                              link.click();
+                              document.body.removeChild(link);
+                            };
+                            reader.readAsDataURL(file);
+                          } catch (error) {
+                            console.error("Failed to download file:", error);
+                            toast.error("Failed to download file");
+                          }
+                        }}
+                        className="p-1 hover:bg-primary/10 rounded transition-colors"
+                        title="Download"
+                      >
+                        <Download className="w-3.5 h-3.5 text-primary" />
+                      </button>
+                      <button onClick={() => handleRemoveUploadingFile(idx)} className="p-1 hover:bg-destructive/10 rounded transition-colors">
+                        <X className="w-3.5 h-3.5 text-destructive" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                <button
+                  onClick={handleSubmitUpload}
+                  disabled={isUploading || !uploadingAs}
+                  className="mt-2 w-full h-10 inline-flex items-center justify-center gap-2 rounded-lg text-sm font-semibold text-white hover:opacity-90 transition-all disabled:opacity-50"
+                  style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}
+                >
+                  <Upload className="w-4 h-4" />
+                  {isUploading ? "Uploading..." : `Upload ${uploadingFiles.length} file${uploadingFiles.length !== 1 ? "s" : ""}`}
+                </button>
               </div>
             )}
           </div>
         </div>
+        </>
       ) : (
         <div className="bg-card rounded-xl card-shadow border border-border overflow-hidden">
           <div className="p-6 border-b border-border">

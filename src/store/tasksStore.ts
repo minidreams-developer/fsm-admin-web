@@ -1,6 +1,16 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
+export type Attachment = {
+  id?: string;
+  name: string;
+  size: number;
+  data?: string; // base64 for small files
+  dataId?: string; // reference to IndexedDB for large files (stored as string)
+  uploadedBy?: string;
+  uploadedAt?: string;
+};
+
 export type Task = {
   id: string;
   workOrderId: string;
@@ -19,7 +29,7 @@ export type Task = {
   igst?: string;
   fromTime?: string;
   toTime?: string;
-  attachments?: Array<{ name: string; size: number; data: string }>;
+  attachments?: Attachment[];
   branch?: string;
 };
 
