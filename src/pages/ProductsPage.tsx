@@ -5,6 +5,8 @@ import { useProductsStore, type Product, type ProductCategory } from "@/store/pr
 import { Plus, Search, Edit2, Trash2, Package, Eye } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { PaginationControls } from "@/components/PaginationControls";
+import { usePagination } from "@/hooks/usePagination";
 
 const CATEGORIES: ProductCategory[] = ["Chemicals", "Equipment", "Supplies", "Services", "Other"];
 
@@ -27,6 +29,11 @@ const ProductsPage = () => {
     const matchesCategory = selectedCategory === "All" || p.category === selectedCategory;
 
     return matchesSearch && matchesCategory;
+  });
+
+  const pagination = usePagination({
+    items: filtered,
+    itemsPerPage: 10,
   });
 
   const activeProducts = products.filter((p) => p.status === "Active").length;
@@ -143,10 +150,10 @@ const ProductsPage = () => {
             </tr>
           </thead>
           <tbody>
-            {filtered.length > 0 ? (
-              filtered.map((product, index) => (
+            {pagination.paginatedItems.length > 0 ? (
+              pagination.paginatedItems.map((product, index) => (
                 <tr key={product.id} onClick={() => { setDetailsProduct(product); setShowDetails(true); }} className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors cursor-pointer">
-                  <td className="px-3 py-3 text-xs text-muted-foreground font-medium">{index + 1}</td>
+                  <td className="px-3 py-3 text-xs text-muted-foreground font-medium">{pagination.startIndex + index + 1}</td>
                   <td className="px-3 py-3 font-medium text-card-foreground text-xs">{product.id}</td>
                   <td className="px-3 py-3">
                     <div className="flex items-center gap-2">
@@ -196,6 +203,17 @@ const ProductsPage = () => {
             </tbody>
           </table>
       </div>
+
+      <PaginationControls
+        currentPage={pagination.currentPage}
+        totalPages={pagination.totalPages}
+        itemsPerPage={pagination.itemsPerPage}
+        totalItems={filtered.length}
+        onPageChange={pagination.setCurrentPage}
+        onItemsPerPageChange={pagination.setItemsPerPage}
+        startIndex={pagination.startIndex}
+        endIndex={pagination.endIndex}
+      />
 
       <ProductFormModal open={showForm} mode={formMode} product={selectedProduct} onClose={handleFormClose} />
       <ProductDetailsModal open={showDetails} product={detailsProduct} onClose={() => setShowDetails(false)} />

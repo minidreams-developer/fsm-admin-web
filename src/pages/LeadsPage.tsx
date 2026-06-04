@@ -10,6 +10,8 @@ import { ConvertLeadModal } from "@/components/ConvertLeadModal";
 import { useBranchesStore } from "@/store/branchesStore";
 import { useEmployeesStore } from "@/store/employeesStore";
 import { TimeInput12Hour } from "@/components/TimeInput12Hour";
+import { PaginationControls } from "@/components/PaginationControls";
+import { usePagination } from "@/hooks/usePagination";
 
 const statusBadge: Record<LeadStatus, "info" | "warning" | "success" | "error" | "neutral"> = {
   New: "info", Contacted: "warning", "Follow Up": "info", Converted: "success", Lost: "error",
@@ -59,7 +61,6 @@ const LeadsPage = () => {
   const [transferTo, setTransferTo] = useState("");
 
   // Pagination state
-  const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   
   // Form state for new lead
@@ -252,21 +253,21 @@ const LeadsPage = () => {
     }
   };
 
-  // Pagination calculations
-  const totalPages = Math.ceil(filtered.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const paginatedLeads = filtered.slice(startIndex, endIndex);
+  // Use pagination hook
+  const pagination = usePagination({
+    items: filtered,
+    itemsPerPage,
+  });
 
   // Reset to first page when filters change
   const handleFilterChange = (newFilter: LeadStatus | "All") => {
     setFilter(newFilter);
-    setCurrentPage(1);
+    pagination.resetPage();
   };
 
   const handleItemsPerPageChange = (newItemsPerPage: number) => {
     setItemsPerPage(newItemsPerPage);
-    setCurrentPage(1);
+    pagination.setItemsPerPage(newItemsPerPage);
   };
 
   return (
@@ -609,7 +610,7 @@ const LeadsPage = () => {
               ))}
             </tr></thead>
             <tbody>
-              {paginatedLeads.map((l) => {
+              {pagination.paginatedItems.map((l) => {
                 const serviceCount = getServiceCount(l);
                 return (
                   <tr key={l.id} onClick={() => navigate(`/leads/${l.id}`)} className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors cursor-pointer">
@@ -693,24 +694,24 @@ const LeadsPage = () => {
 
         <div className="flex items-center justify-center gap-2">
           <button
-            onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-            disabled={currentPage === 1}
+            onClick={() => pagination.setCurrentPage(Math.max(1, pagination.currentPage - 1))}
+            disabled={pagination.currentPage === 1}
             className="px-3 py-2 rounded-lg border border-border text-sm font-medium text-card-foreground hover:bg-secondary disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             Previous
           </button>
 
           <div className="flex items-center gap-1">
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+            {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map((page) => (
               <button
                 key={page}
-                onClick={() => setCurrentPage(page)}
+                onClick={() => pagination.setCurrentPage(page)}
                 className={`w-8 h-8 rounded-lg text-xs font-semibold transition-colors ${
-                  currentPage === page
+                  pagination.currentPage === page
                     ? "text-white shadow-[0px_5px_12px_rgba(39,47,158,0.2)]"
                     : "border border-border text-card-foreground hover:bg-secondary"
                 }`}
-                style={currentPage === page ? { background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" } : {}}
+                style={pagination.currentPage === page ? { background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" } : {}}
               >
                 {page}
               </button>
@@ -718,8 +719,8 @@ const LeadsPage = () => {
           </div>
 
           <button
-            onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-            disabled={currentPage === totalPages}
+            onClick={() => pagination.setCurrentPage(Math.min(pagination.totalPages, pagination.currentPage + 1))}
+            disabled={pagination.currentPage === pagination.totalPages}
             className="px-3 py-2 rounded-lg border border-border text-sm font-medium text-card-foreground hover:bg-secondary disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             Next
@@ -727,7 +728,7 @@ const LeadsPage = () => {
         </div>
 
         <div className="text-sm text-muted-foreground text-center sm:text-right">
-          Showing {startIndex + 1} to {Math.min(endIndex, filtered.length)} of {filtered.length} entries
+          Showing {pagination.startIndex + 1} to {Math.min(pagination.endIndex, filtered.length)} of {filtered.length} entries
         </div>
       </div>
 

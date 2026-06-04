@@ -6,6 +6,8 @@ import { useProductsStore } from "@/store/productsStore";
 import { useInventoryStore } from "@/store/inventoryStore";
 import { InventoryFormModal } from "@/components/InventoryFormModal";
 import { InventoryDetailsModal } from "@/components/InventoryDetailsModal";
+import { PaginationControls } from "@/components/PaginationControls";
+import { usePagination } from "@/hooks/usePagination";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 
@@ -31,6 +33,11 @@ const InventoryPage = () => {
     (branchFilter === "All" || i.branch === branchFilter) &&
     (statusFilter === "All" || i.status === statusFilter)
   );
+
+  const pagination = usePagination({
+    items: filtered,
+    itemsPerPage: 10,
+  });
 
   const totalItems = inventoryItems.length;
   const okItems = inventoryItems.filter((i) => i.status === "OK").length;
@@ -167,11 +174,11 @@ const InventoryPage = () => {
             ))}
           </tr></thead>
           <tbody>
-            {filtered.map((i, index) => {
+            {pagination.paginatedItems.map((i, index) => {
               const product = products.find((p) => p.name === i.name);
               return (
                 <tr key={i.id} onClick={() => { setDetailsItem(i); setShowDetails(true); }} className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors cursor-pointer">
-                  <td className="px-3 py-3 text-xs text-muted-foreground font-medium">{index + 1}</td>
+                  <td className="px-3 py-3 text-xs text-muted-foreground font-medium">{pagination.startIndex + index + 1}</td>
                   <td className="px-3 py-3 font-medium text-card-foreground text-xs">{product?.name || i.name}</td>
                   <td className="px-3 py-3 text-muted-foreground text-xs">{i.branch}</td>
                   <td className="px-3 py-3 font-bold text-card-foreground text-xs">{i.stock}</td>
@@ -191,12 +198,23 @@ const InventoryPage = () => {
                 </tr>
               );
             })}
-            {filtered.length === 0 && (
+            {pagination.paginatedItems.length === 0 && (
               <tr><td colSpan={8} className="px-3 py-8 text-center text-sm text-muted-foreground">No inventory items for this branch.</td></tr>
             )}
           </tbody>
         </table>
       </div>
+
+      <PaginationControls
+        currentPage={pagination.currentPage}
+        totalPages={pagination.totalPages}
+        itemsPerPage={pagination.itemsPerPage}
+        totalItems={filtered.length}
+        onPageChange={pagination.setCurrentPage}
+        onItemsPerPageChange={pagination.setItemsPerPage}
+        startIndex={pagination.startIndex}
+        endIndex={pagination.endIndex}
+      />
     </div>
   );
 };

@@ -7,6 +7,8 @@ import { useTasksStore, type Task } from "@/store/tasksStore";
 import { useEmployeesStore } from "@/store/employeesStore";
 import { useBranchesStore } from "@/store/branchesStore";
 import { StatusBadge } from "@/components/StatusBadge";
+import { PaginationControls } from "@/components/PaginationControls";
+import { usePagination } from "@/hooks/usePagination";
 
 const PAGE_SIZE = 10;
 const STATUSES = ["Pending", "In Progress", "Completed", "Overdue", "Verified"] as const;
@@ -188,8 +190,10 @@ const TaskManagementPage = () => {
     return matchSearch && matchStatus && matchBranch && matchEmployee;
   });
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const pagination = usePagination({
+    items: filtered,
+    itemsPerPage: 10,
+  });
 
   const openCreate = () => { setEditingTask(null); setForm({ ...emptyForm }); setShowModal(true); };
   const openEdit = (t: Task) => { setEditingTask(t); setForm({ title: t.title, description: t.description, workOrderId: t.workOrderId, startDate: t.startDate, endDate: t.endDate, branch: (t as any).branch || "", assignedEmployees: t.assignedEmployees || [t.assignedTo], status: t.status, attachments: [] }); setShowModal(true); };
@@ -353,7 +357,7 @@ const TaskManagementPage = () => {
                 <th className="px-3 py-2.5 w-10">
                   <input
                     type="checkbox"
-                    checked={paginated.length > 0 && selectedTaskIds.size === paginated.length}
+                    checked={pagination.paginatedItems.length > 0 && selectedTaskIds.size === pagination.paginatedItems.length}
                     onChange={toggleSelectAll}
                     className="w-4 h-4 rounded border-border accent-primary cursor-pointer"
                   />
@@ -364,9 +368,9 @@ const TaskManagementPage = () => {
               </tr>
             </thead>
             <tbody>
-              {paginated.length === 0 ? (
+              {pagination.paginatedItems.length === 0 ? (
                 <tr><td colSpan={8} className="px-3 py-8 text-center text-xs text-muted-foreground">No tasks found.</td></tr>
-              ) : paginated.map(t => {
+              ) : pagination.paginatedItems.map(t => {
                 const taskStatus = getTaskStatus(t);
                 return (
                 <tr key={t.id} onClick={() => navigate(`/task-management/${t.id}`)} className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors cursor-pointer">
@@ -410,31 +414,16 @@ const TaskManagementPage = () => {
         </div>
       </div>
 
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <p className="text-xs text-muted-foreground">Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filtered.length)} of {filtered.length} tasks</p>
-          <div className="flex items-center gap-1">
-            <button onClick={() => setPage(1)} disabled={page === 1} className="p-2 rounded-lg border border-border bg-card hover:bg-secondary transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
-              <ChevronLeft className="w-3.5 h-3.5 text-muted-foreground" />
-            </button>
-            <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="p-2 rounded-lg border border-border bg-card hover:bg-secondary transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
-              <ChevronLeft className="w-3.5 h-3.5 text-muted-foreground" />
-            </button>
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
-              <button key={p} onClick={() => setPage(p)}
-                className={`w-8 h-8 rounded-lg text-xs font-semibold transition-colors ${p === page ? "text-white" : "border border-border bg-card text-muted-foreground hover:bg-secondary"}`}
-                style={p === page ? { background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" } : {}}>{p}</button>
-            ))}
-            <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="p-2 rounded-lg border border-border bg-card hover:bg-secondary transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
-              <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
-            </button>
-            <button onClick={() => setPage(totalPages)} disabled={page === totalPages} className="p-2 rounded-lg border border-border bg-card hover:bg-secondary transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
-              <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
-            </button>
-          </div>
-        </div>
-      )}
+      <PaginationControls
+        currentPage={pagination.currentPage}
+        totalPages={pagination.totalPages}
+        itemsPerPage={pagination.itemsPerPage}
+        totalItems={filtered.length}
+        onPageChange={pagination.setCurrentPage}
+        onItemsPerPageChange={pagination.setItemsPerPage}
+        startIndex={pagination.startIndex}
+        endIndex={pagination.endIndex}
+      />
 
       {/* Task Details Popup */}
       {/* Removed - now opens in a new page */}
