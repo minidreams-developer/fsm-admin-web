@@ -5,6 +5,8 @@ import { useNavigate } from "react-router-dom";
 import { useServicesStore } from "@/store/servicesStore";
 import { StatusBadge } from "@/components/StatusBadge";
 import { ServiceFormModal } from "@/components/ServiceFormModal";
+import { PaginationControls } from "@/components/PaginationControls";
+import { usePagination } from "@/hooks/usePagination";
 import { useEmployeesStore } from "@/store/employeesStore";
 import { useBranchesStore } from "@/store/branchesStore";
 import type { ServiceAppointment } from "@/store/servicesStore";
@@ -52,6 +54,11 @@ const ServiceManagementPage = () => {
     }
     
     return matchStatus && matchSearch && matchEmployee && matchBranch && matchDate;
+  });
+
+  const pagination = usePagination({
+    items: filtered,
+    itemsPerPage: 10,
   });
 
   const stats = {
@@ -277,13 +284,13 @@ const ServiceManagementPage = () => {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((apt, index) => (
+              {pagination.paginatedItems.map((apt, index) => (
                 <tr
                   key={apt.id}
                   onClick={() => navigate(`/service/${apt.id}`)}
                   className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors cursor-pointer"
                 >
-                  <td className="px-3 py-2.5 text-xs text-muted-foreground font-medium">{index + 1}</td>
+                  <td className="px-3 py-2.5 text-xs text-muted-foreground font-medium">{pagination.startIndex + index + 1}</td>
                   <td className="px-3 py-2.5">
                     <div className="space-y-0.5">
                       <p className="font-semibold text-card-foreground text-xs">{apt.subject || "—"}</p>
@@ -327,6 +334,17 @@ const ServiceManagementPage = () => {
           </table>
         </div>
       </div>
+
+      <PaginationControls
+        currentPage={pagination.currentPage}
+        totalPages={pagination.totalPages}
+        itemsPerPage={pagination.itemsPerPage}
+        totalItems={filtered.length}
+        onPageChange={pagination.setCurrentPage}
+        onItemsPerPageChange={pagination.setItemsPerPage}
+        startIndex={pagination.startIndex}
+        endIndex={pagination.endIndex}
+      />
 
       {/* Service Form Modal */}
       <ServiceFormModal

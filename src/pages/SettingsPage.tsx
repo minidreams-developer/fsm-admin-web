@@ -47,7 +47,7 @@ export const SettingsPage = () => {
         <div>
           <h2 className="text-lg sm:text-xl font-bold text-card-foreground flex items-center gap-2">
             <SettingsIcon className="w-5 h-5" />
-            Settings
+           Travel Expense
           </h2>
           <p className="text-sm text-muted-foreground">Configure global application settings</p>
         </div>

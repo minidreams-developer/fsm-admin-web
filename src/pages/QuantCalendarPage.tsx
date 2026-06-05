@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from "react";
-import { 
+import { useNavigate } from "react-router-dom";
+import {
   Search, 
   ChevronLeft,
   ChevronRight,
@@ -11,7 +12,8 @@ import {
   RefreshCw,
   Filter,
   Calendar as CalendarIcon,
-  X
+  X,
+  Edit2
 } from "lucide-react";
 import { useProjectsStore } from "@/store/projectsStore";
 import { useEmployeesStore } from "@/store/employeesStore";
@@ -23,11 +25,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -230,7 +227,7 @@ const DraggableWorkOrderCard = ({ wo, service, priority, hasServices, isSelected
 };
 
 // Draggable Service Card Component
-const DraggableServiceCard = ({ service, workOrder }: any) => {
+const DraggableServiceCard = ({ service, workOrder, onEdit }: any) => {
   const dragData: DragData = {
     type: 'service',
     workOrder,
@@ -297,6 +294,16 @@ const DraggableServiceCard = ({ service, workOrder }: any) => {
           <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-primary/10 text-primary">{workOrder.id}</span>
           <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-blue-100 text-blue-700">SA-{service.id?.slice(-1) || '1'}</span>
         </div>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onEdit?.(workOrder.id);
+          }}
+          className="p-1 rounded hover:bg-primary/10 transition-colors flex-shrink-0"
+          title="Edit Work Order"
+        >
+          <Edit2 className="w-3 h-3 text-primary" />
+        </button>
       </div>
 
       {/* Service Title and Status */}
@@ -608,6 +615,7 @@ const priorityBgColors: Record<Priority, string> = {
 };
 
 const QuantCalendarPage = () => {
+  const navigate = useNavigate();
   const { workOrders } = useProjectsStore();
   const { employees } = useEmployeesStore();
   const { getTasksByWorkOrder } = useTasksStore();
@@ -628,6 +636,24 @@ const QuantCalendarPage = () => {
   const [searchText, setSearchText] = useState("");
   const [searchEmployee, setSearchEmployee] = useState("");
   const [selectedWorkOrder, setSelectedWorkOrder] = useState<any | null>(null);
+  
+  // Dashboard date filter state
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [appliedFrom, setAppliedFrom] = useState("");
+  const [appliedTo, setAppliedTo] = useState("");
+
+  const applyDateFilter = () => {
+    setAppliedFrom(dateFrom);
+    setAppliedTo(dateTo);
+  };
+
+  const resetDateFilter = () => {
+    setDateFrom("");
+    setDateTo("");
+    setAppliedFrom("");
+    setAppliedTo("");
+  };
   
   // Schedule state
   const [schedule, setSchedule] = useState<ScheduledJob[]>([]);
@@ -754,11 +780,21 @@ const QuantCalendarPage = () => {
   const filteredSchedule = useMemo(() => {
     return schedule.filter(job => {
       const jobDate = new Date(job.date);
+      
+      // Apply dashboard date range filter if set
+      if (appliedFrom && jobDate < new Date(appliedFrom)) return false;
+      if (appliedTo) {
+        const endDate = new Date(appliedTo);
+        endDate.setHours(23, 59, 59, 999);
+        if (jobDate > endDate) return false;
+      }
+      
+      // Apply calendar date range filter
       return dateRange.some(d => 
         d.toISOString().split('T')[0] === jobDate.toISOString().split('T')[0]
       );
     });
-  }, [schedule, dateRange]);
+  }, [schedule, dateRange, appliedFrom, appliedTo]);
   
   // Handle refresh
   const handleRefresh = () => {
@@ -1123,107 +1159,78 @@ const QuantCalendarPage = () => {
       onDragCancel={handleDragCancel}
     >
       <div className="space-y-4 animate-fade-in">
-      {/* Top Filters Bar */}
-      <div className="bg-card rounded-xl border border-border p-4">
-        <div className="flex items-center gap-3 flex-wrap">
-          <div className="flex items-center gap-2">
-            <Filter className="w-4 h-4 text-muted-foreground" />
-            <span className="text-sm font-semibold">Filters:</span>
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+          <div>
+            <h2 className="text-xl font-bold text-card-foreground">Service Appointment</h2>
+            <p className="text-sm text-muted-foreground">Drag and drop services to schedule technicians and manage workload</p>
           </div>
-          
-          {/* Branch Filter */}
-          <Select value={selectedBranch} onValueChange={setSelectedBranch}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Select Branch" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Branches</SelectItem>
-              {branches.map(branch => (
-                <SelectItem key={branch} value={branch}>{branch}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          
-          {/* Date Range Pickers */}
-          <div className="flex items-center gap-2">
-            <button onClick={handlePreviousDay} className="p-2 hover:bg-secondary rounded-lg border border-border transition-colors">
-              <ChevronLeft className="w-4 h-4" />
-            </button>
+          {/* Global Date Range Filter - Exact Dashboard Style */}
+          <div className="flex items-center gap-2 bg-card border border-border rounded-xl px-3 py-2 shadow-sm">
             
-            {/* From Date */}
-            <Popover>
-              <PopoverTrigger asChild>
-                <button className="flex items-center gap-2 border border-border rounded-lg px-3 py-2 hover:bg-secondary transition-colors">
-                  <CalendarIcon className="w-4 h-4" />
-                  <div className="text-left">
-                    <div className="text-[10px] text-muted-foreground">From</div>
-                    <span className="text-sm font-medium">
-                      {format(fromDate, "MMM dd, yyyy")}
-                    </span>
-                  </div>
-                </button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={fromDate}
-                  onSelect={(date) => {
-                    if (date) {
-                      setFromDate(date);
-                      // Ensure toDate is not before fromDate
-                      if (date > toDate) {
-                        const newToDate = new Date(date);
-                        newToDate.setDate(newToDate.getDate() + 7);
-                        setToDate(newToDate);
-                      }
-                    }
-                  }}
-                  initialFocus
-                />
-              </PopoverContent>
-            </Popover>
-            
-            {/* To Date */}
-            <Popover>
-              <PopoverTrigger asChild>
-                <button className="flex items-center gap-2 border border-border rounded-lg px-3 py-2 hover:bg-secondary transition-colors">
-                  <CalendarIcon className="w-4 h-4" />
-                  <div className="text-left">
-                    <div className="text-[10px] text-muted-foreground">To</div>
-                    <span className="text-sm font-medium">
-                      {format(toDate, "MMM dd, yyyy")}
-                    </span>
-                  </div>
-                </button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={toDate}
-                  onSelect={(date) => {
-                    if (date) {
-                      setToDate(date);
-                      // Ensure fromDate is not after toDate
-                      if (date < fromDate) {
-                        const newFromDate = new Date(date);
-                        newFromDate.setDate(newFromDate.getDate() - 7);
-                        setFromDate(newFromDate);
-                      }
-                    }
-                  }}
-                  initialFocus
-                  disabled={(date) => date < fromDate}
-                />
-              </PopoverContent>
-            </Popover>
-            
-            <button onClick={handleNextDay} className="p-2 hover:bg-secondary rounded-lg border border-border transition-colors">
-              <ChevronRight className="w-4 h-4" />
-            </button>
-            {/* <button onClick={handleToday} className="px-3 py-2 text-sm font-medium hover:bg-secondary rounded-lg border border-border transition-colors">
-              Today
-            </button> */}
+             <span className="text-xs text-muted-foreground">From :</span>
+             <input
+              type="date"
+              value={dateFrom}
+              onChange={e => setDateFrom(e.target.value)}
+              className="bg-transparent text-xs text-card-foreground focus:outline-none w-[120px]"
+            />
+            <span className="text-xs text-muted-foreground">To :</span>
+            <input
+              type="date"
+              value={dateTo}
+              min={dateFrom}
+              onChange={e => setDateTo(e.target.value)}
+              className="bg-transparent text-xs text-card-foreground focus:outline-none w-[120px]"
+            />
+            <div className="flex items-center gap-1.5 ml-1 pl-2 border-l border-border">
+              <button
+                onClick={applyDateFilter}
+                disabled={!dateFrom && !dateTo}
+                className="px-3 py-1 rounded-lg text-xs font-semibold text-white transition-all hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
+                style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}
+              >
+                Apply
+              </button>
+              <button
+                onClick={resetDateFilter}
+                className="px-3 py-1 rounded-lg text-xs font-semibold border border-border text-muted-foreground hover:text-card-foreground hover:bg-secondary transition-colors"
+              >
+                Reset
+              </button>
+            </div>
           </div>
+        </div>
+
+        {/* Top Filters Bar */}
+        <div className="bg-card rounded-xl border border-border p-4">
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="flex items-center gap-2">
+              <Filter className="w-4 h-4 text-muted-foreground" />
+              <span className="text-sm font-semibold">Filters:</span>
+            </div>
+            
+            {/* Branch Filter */}
+            <Select value={selectedBranch} onValueChange={setSelectedBranch}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Select Branch" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Branches</SelectItem>
+                {branches.map(branch => (
+                  <SelectItem key={branch} value={branch}>{branch}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            
+            {/* Navigation Buttons (kept for day navigation only) */}
+            <div className="flex items-center gap-2">
+              {/* <button onClick={handlePreviousDay} className="p-2 hover:bg-secondary rounded-lg border border-border transition-colors">
+                <ChevronLeft className="w-4 h-4" />
+              </button> */}
+              {/* <button onClick={handleNextDay} className="p-2 hover:bg-secondary rounded-lg border border-border transition-colors">
+                <ChevronRight className="w-4 h-4" />
+              </button> */}
+            </div>
           
           {/* View Mode Filter */}
           <Select value={viewMode} onValueChange={(value: ViewMode) => setViewMode(value)}>
@@ -1233,7 +1240,7 @@ const QuantCalendarPage = () => {
             <SelectContent>
               <SelectItem value="day">Day</SelectItem>
               <SelectItem value="week">Week</SelectItem>
-              <SelectItem value="month">Month</SelectItem>
+              {/* <SelectItem value="month">Month</SelectItem> */}
             </SelectContent>
           </Select>
           
@@ -1349,6 +1356,7 @@ const QuantCalendarPage = () => {
                     key={service.id}
                     service={service}
                     workOrder={wo}
+                    onEdit={(id: string) => navigate(`/edit-work-order/${id}`)}
                   />
                 ));
               })

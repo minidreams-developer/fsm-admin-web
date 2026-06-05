@@ -10,11 +10,15 @@ export type InventoryItem = {
   unitPrice?: number;
   reorder: number;
   status: "OK" | "Low" | "Critical";
+  previousQuantity?: number;
+  supplierName?: string;
+  supplierContact?: string;
   allocations?: Array<{
     employeeId: string;
     employeeName: string;
     quantity: number;
     allocatedAt: string;
+    allocatedBy?: string;
   }>;
 };
 

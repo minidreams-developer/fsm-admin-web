@@ -10,12 +10,39 @@ import { useProjectsStore } from "@/store/projectsStore";
 import { useEmployeesStore } from "@/store/employeesStore";
 import { useTasksStore } from "@/store/tasksStore";
 
+function ServiceMultiSelect({ options, selected, onChange }: { options: Array<{ id: string; title: string }>; selected: string[]; onChange: (v: string[]) => void }) {
+  const [open, setOpen] = useState(false);
+  const toggle = (id: string) => onChange(selected.includes(id) ? selected.filter(x => x !== id) : [...selected, id]);
+  return (
+    <div className="relative">
+      <button type="button" onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20">
+        <span className={selected.length === 0 ? "text-muted-foreground" : ""}>
+          {selected.length === 0 ? "Select services (optional)" : `${selected.length} service${selected.length !== 1 ? 's' : ''} selected`}
+        </span>
+        <X className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+      </button>
+      {open && (
+        <div className="absolute top-full left-0 right-0 mt-1 bg-card border border-border rounded-lg shadow-lg z-20 max-h-48 overflow-y-auto">
+          {options.map(service => (
+            <label key={service.id} className="flex items-center gap-2.5 px-3 py-2 hover:bg-secondary cursor-pointer text-sm text-card-foreground">
+              <input type="checkbox" checked={selected.includes(service.id)} onChange={() => toggle(service.id)} className="accent-primary" />
+              <span className="flex-1">{service.title}</span>
+            </label>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 const paymentSchema = z.object({
   paymentMethod: z.enum(["Cash", "UPI", "Check", "Bank Transfer"]),
   amount: z.string().min(1, "Amount is required"),
   date: z.string().min(1, "Date is required"),
   paidBy: z.string().min(1, "Paid by is required"),
-  serviceId: z.string().optional(),
+  transactionId: z.string().optional(),
+  serviceIds: z.array(z.string()).optional(),
 });
 
 type PaymentFormData = z.infer<typeof paymentSchema>;
@@ -37,6 +64,8 @@ export function PaymentUpdateModal({ open, workOrder, onClose }: Props) {
     handleSubmit,
     reset,
     formState: { errors },
+    watch,
+    setValue,
   } = useForm<PaymentFormData>({
     resolver: zodResolver(paymentSchema),
     defaultValues: {
@@ -44,9 +73,12 @@ export function PaymentUpdateModal({ open, workOrder, onClose }: Props) {
       amount: "",
       date: new Date().toISOString().split("T")[0],
       paidBy: "",
-      serviceId: "",
+      transactionId: workOrder?.transactionId || "",
+      serviceIds: [],
     },
   });
+
+  const selectedServiceIds = watch("serviceIds") || [];
 
   const services = workOrder ? getTasksByWorkOrder(workOrder.id) : [];
 
@@ -61,6 +93,7 @@ export function PaymentUpdateModal({ open, workOrder, onClose }: Props) {
 
       updateWorkOrder(workOrder.id, {
         paidAmount: `₹ ${totalPaid.toLocaleString()}`,
+        transactionId: data.transactionId || undefined,
       });
 
       toast.success("Payment updated successfully!");
@@ -92,21 +125,12 @@ export function PaymentUpdateModal({ open, workOrder, onClose }: Props) {
         {/* Content */}
         <div className="overflow-y-auto flex-1 p-6 space-y-4 min-h-0">
           <div>
-            <label className="text-xs font-medium text-muted-foreground mb-2 block">Service</label>
-            <select
-              {...register("serviceId")}
-              className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
-            >
-              <option value="">Select a service (optional)</option>
-              {services.map((service) => (
-                <option key={service.id} value={service.id}>
-                  {service.title} — {service.status}
-                </option>
-              ))}
-            </select>
-            {errors.serviceId && (
-              <p className="text-xs text-red-500 mt-1">{errors.serviceId.message}</p>
-            )}
+            <label className="text-xs font-medium text-muted-foreground mb-2 block">Services</label>
+            <ServiceMultiSelect
+              options={services.map(s => ({ id: s.id, title: `${s.title} — ${s.status}` }))}
+              selected={selectedServiceIds}
+              onChange={(ids) => setValue("serviceIds", ids)}
+            />
           </div>
 
           <div>
@@ -122,6 +146,19 @@ export function PaymentUpdateModal({ open, workOrder, onClose }: Props) {
             </select>
             {errors.paymentMethod && (
               <p className="text-xs text-red-500 mt-1">{errors.paymentMethod.message}</p>
+            )}
+          </div>
+
+          <div>
+            <label className="text-xs font-medium text-muted-foreground mb-2 block">Transaction ID</label>
+            <input
+              type="text"
+              placeholder="e.g. TXN-12345678 or UPI reference"
+              {...register("transactionId")}
+              className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground font-mono"
+            />
+            {errors.transactionId && (
+              <p className="text-xs text-red-500 mt-1">{errors.transactionId.message}</p>
             )}
           </div>
 

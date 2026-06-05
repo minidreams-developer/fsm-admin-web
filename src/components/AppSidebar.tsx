@@ -1,11 +1,11 @@
 import { useLocation, Link, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, Users, FolderKanban, Wrench, CreditCard,
-  Package, UserCog, UserCircle, FileText, LogOut, Bug, Building2, Boxes, ChevronDown, Shield, CalendarDays, Settings
+  UserCog, UserCircle, FileText, LogOut, Bug, Boxes, ChevronDown, CalendarDays, Settings
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { FC } from "react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { logout } from "@/lib/auth";
 
 const menuItems = [
@@ -20,15 +20,18 @@ const menuItems = [
   { label: "Work Orders", icon: FolderKanban, path: "/projects" },
   { label: "Task Management", icon: FileText, path: "/task-management" },
   { label: "Payments", icon: CreditCard, path: "/payments" },
-  { label: "Settings", icon: Settings, path: "/settings" },
   // { label: "Role", icon: Shield, path: "/roles" },
   // { label: "Reports", icon: FileText, path: "/reports" },
+];
+
+const settingsMenuItems = [
+  { label: "Travel Expense", path: "/settings" },
+  { label: "Branches", path: "/branches" },
 ];
 
 const inventoryMenuItems = [
   { label: "Inventory", path: "/inventory" },
   { label: "Allocate Stock", path: "/inventory/allocate" },
-  { label: "Branches", path: "/branches" },
   { label: "Products", path: "/products" },
 ];
 
@@ -43,12 +46,17 @@ export const AppSidebar: FC<AppSidebarProps> = ({ className, onNavigate, collaps
   const navigate = useNavigate();
   const [expandedMenu, setExpandedMenu] = useState<string | null>(null);
 
-  const isInventoryActive = ["/inventory", "/inventory/history", "/inventory/allocate", "/branches", "/products"].includes(location.pathname);
+  const isInventoryActive = ["/inventory", "/inventory/history", "/inventory/allocate", "/products"].includes(location.pathname);
+  const isSettingsActive = ["/settings", "/branches"].includes(location.pathname);
 
-  // Auto-expand inventory menu if on an inventory page
-  if (isInventoryActive && expandedMenu !== "inventory") {
-    setExpandedMenu("inventory");
-  }
+  // Auto-expand menus based on current path
+  useEffect(() => {
+    if (isInventoryActive) {
+      setExpandedMenu("inventory");
+    } else if (isSettingsActive) {
+      setExpandedMenu("settings");
+    }
+  }, [isInventoryActive, isSettingsActive]);
 
   return (
     <aside className={cn(
@@ -120,6 +128,54 @@ export const AppSidebar: FC<AppSidebarProps> = ({ className, onNavigate, collaps
             {!collapsed && expandedMenu === "inventory" && (
               <div className="mt-1 ml-3 space-y-1 border-l-2 border-border pl-3 animate-in slide-in-from-top-2 duration-200">
                 {inventoryMenuItems.map((item) => {
+                  const active = location.pathname === item.path;
+                  return (
+                    <Link
+                      key={item.path}
+                      to={item.path}
+                      onClick={onNavigate}
+                      className={cn(
+                        "flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-all",
+                        active
+                          ? "bg-secondary text-primary"
+                          : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
+                      )}
+                    >
+                      <span className="truncate">{item.label}</span>
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Settings Menu */}
+          <div className="pt-1">
+            <button
+              onClick={() => setExpandedMenu(expandedMenu === "settings" ? null : "settings")}
+              className={cn(
+                "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all",
+                isSettingsActive
+                  ? "bg-secondary text-primary"
+                  : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
+              )}
+              title={collapsed ? "Settings" : undefined}
+            >
+              <Settings className="w-[18px] h-[18px] flex-shrink-0" />
+              {!collapsed && <span className="flex-1 text-left truncate">Settings</span>}
+              {!collapsed && (
+                <ChevronDown
+                  className={cn(
+                    "w-4 h-4 transition-transform flex-shrink-0",
+                    expandedMenu === "settings" ? "rotate-180" : ""
+                  )}
+                />
+              )}
+            </button>
+
+            {!collapsed && expandedMenu === "settings" && (
+              <div className="mt-1 ml-3 space-y-1 border-l-2 border-border pl-3 animate-in slide-in-from-top-2 duration-200">
+                {settingsMenuItems.map((item) => {
                   const active = location.pathname === item.path;
                   return (
                     <Link

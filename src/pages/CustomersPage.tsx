@@ -2,6 +2,8 @@ import { Search, Eye, Plus, Edit2, Trash2, ArrowLeft, Users, Briefcase, FileText
 import { useState } from "react";
 import { StatusBadge } from "@/components/StatusBadge";
 import { CustomerFormModal } from "@/components/CustomerFormModal";
+import { PaginationControls } from "@/components/PaginationControls";
+import { usePagination } from "@/hooks/usePagination";
 import { useCustomersStore, type Customer } from "@/store/customersStore";
 import { useProjectsStore, type WorkOrder } from "@/store/projectsStore";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
@@ -37,7 +39,7 @@ const CustomersPage = () => {
   const [search, setSearch] = useState("");
   const [showAdd, setShowAdd] = useState(false);
   const [editCustomer, setEditCustomer] = useState<Customer | null>(null);
-  const [clearedOverrides, setClearedOverrides] = useState<Record<string, boolean>>({});
+  const [clearedOverrides, setClearedOverrides] = useState<Record<string, boolean>>({})
 
   const normalizedSearch = search.trim().toLowerCase();
   const filtered = customers.filter((c) => {
@@ -50,6 +52,11 @@ const CustomersPage = () => {
       c.emailAddress.toLowerCase().includes(normalizedSearch) ||
       c.gstNumber.toLowerCase().includes(normalizedSearch)
     );
+  });
+
+  const pagination = usePagination({
+    items: filtered,
+    itemsPerPage: 10,
   });
 
   return (
@@ -126,7 +133,7 @@ const CustomersPage = () => {
             </tr>
           </thead>
           <tbody>
-            {filtered.map((c) => {
+            {pagination.paginatedItems.map((c) => {
               const name = buildDisplayName(c);
               const ledger = getLedger(workOrders, name);
               const balance = ledger.balance;
@@ -168,6 +175,17 @@ const CustomersPage = () => {
           </tbody>
         </table>
       </div>
+
+      <PaginationControls
+        currentPage={pagination.currentPage}
+        totalPages={pagination.totalPages}
+        itemsPerPage={pagination.itemsPerPage}
+        totalItems={filtered.length}
+        onPageChange={pagination.setCurrentPage}
+        onItemsPerPageChange={pagination.setItemsPerPage}
+        startIndex={pagination.startIndex}
+        endIndex={pagination.endIndex}
+      />
 
       <CustomerFormModal
         open={showAdd}

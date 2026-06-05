@@ -5,6 +5,8 @@ import { useBranchesStore, type Branch } from "@/store/branchesStore";
 import { Plus, Search, Edit2, Trash2, MapPin, Eye } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { PaginationControls } from "@/components/PaginationControls";
+import { usePagination } from "@/hooks/usePagination";
 
 const BranchesPage = () => {
   const { branches, deleteBranch, updateBranch } = useBranchesStore();
@@ -21,6 +23,11 @@ const BranchesPage = () => {
       b.city.toLowerCase().includes(search.toLowerCase()) ||
       b.id.toLowerCase().includes(search.toLowerCase()),
   );
+
+  const pagination = usePagination({
+    items: filtered,
+    itemsPerPage: 10,
+  });
 
   const activeBranches = branches.filter((b) => b.status === "Active").length;
   const totalStaff = branches.length * 3; // Placeholder calculation
@@ -110,9 +117,9 @@ const BranchesPage = () => {
           </thead>
           <tbody>
             {filtered.length > 0 ? (
-              filtered.map((branch, index) => (
+              pagination.paginatedItems.map((branch, index) => (
                 <tr key={branch.id} onClick={() => { setDetailsBranch(branch); setShowDetails(true); }} className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors cursor-pointer">
-                  <td className="px-3 py-3 text-xs text-muted-foreground font-medium">{index + 1}</td>
+                  <td className="px-3 py-3 text-xs text-muted-foreground font-medium">{pagination.startIndex + index + 1}</td>
                   <td className="px-3 py-3 font-medium text-card-foreground text-xs">{branch.id}</td>
                   <td className="px-3 py-3">
                     <div className="flex items-center gap-2">
@@ -162,6 +169,17 @@ const BranchesPage = () => {
           </tbody>
         </table>
       </div>
+
+      <PaginationControls
+        currentPage={pagination.currentPage}
+        totalPages={pagination.totalPages}
+        itemsPerPage={pagination.itemsPerPage}
+        totalItems={filtered.length}
+        onPageChange={pagination.setCurrentPage}
+        onItemsPerPageChange={pagination.setItemsPerPage}
+        startIndex={pagination.startIndex}
+        endIndex={pagination.endIndex}
+      />
 
       <BranchFormModal open={showForm} mode={formMode} branch={selectedBranch} onClose={handleFormClose} />
       <BranchDetailsModal open={showDetails} branch={detailsBranch} onClose={() => setShowDetails(false)} />

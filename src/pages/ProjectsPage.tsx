@@ -6,6 +6,8 @@ import { useProjectsStore, type WorkOrder } from "@/store/projectsStore";
 import { useLeadsStore } from "@/store/leadsStore";
 import { useEmployeesStore } from "@/store/employeesStore";
 import { useBranchesStore } from "@/store/branchesStore";
+import { PaginationControls } from "@/components/PaginationControls";
+import { usePagination } from "@/hooks/usePagination";
 import * as XLSX from 'xlsx';
 import { toast } from "sonner";
 
@@ -14,7 +16,7 @@ const statusMap = {
   Ongoing: "success",
   Upcoming: "info",
   Overdue: "error",
-  Missed: "destructive",
+  Missed: "error",
   Cancelled: "neutral",
   Completed: "neutral",
   Converted: "info",
@@ -76,6 +78,11 @@ const ProjectsPage = () => {
     const matchBranch = branchFilter === "All" || wo.location === branchFilter;
 
     return matchSearch && matchStatus && matchStart && matchEnd && matchEmployee && matchBranch;
+  });
+
+  const pagination = usePagination({
+    items: filtered,
+    itemsPerPage: 10,
   });
 
   const getPaymentProgress = (project: WorkOrder) => {
@@ -379,7 +386,7 @@ const ProjectsPage = () => {
             </tr>
           </thead>
           <tbody>
-            {filtered.map((project) => (
+            {pagination.paginatedItems.map((project) => (
               <tr key={project.id} className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors">
                 <td className="px-3 py-3 cursor-pointer" onClick={() => navigate(`/work-order/${project.id}`)}>
                   <div className="font-semibold text-primary text-xs">{project.id}</div>
@@ -404,13 +411,24 @@ const ProjectsPage = () => {
                 <td className="px-3 py-3 text-xs text-muted-foreground cursor-pointer" onClick={() => navigate(`/work-order/${project.id}`)}>{project.start || "—"}</td>
                 <td className="px-3 py-3 text-xs text-muted-foreground cursor-pointer" onClick={() => navigate(`/work-order/${project.id}`)}>{project.end || "—"}</td>
                 <td className="px-3 py-3 cursor-pointer" onClick={() => navigate(`/work-order/${project.id}`)}>
-                  <StatusBadge label={project.status} variant={statusMap[project.status as keyof typeof statusMap] || "neutral"} />
+                  <StatusBadge label={project.status} variant={statusMap[project.status as keyof typeof statusMap] as any || "neutral"} />
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+
+      <PaginationControls
+        currentPage={pagination.currentPage}
+        totalPages={pagination.totalPages}
+        itemsPerPage={pagination.itemsPerPage}
+        totalItems={filtered.length}
+        onPageChange={pagination.setCurrentPage}
+        onItemsPerPageChange={pagination.setItemsPerPage}
+        startIndex={pagination.startIndex}
+        endIndex={pagination.endIndex}
+      />
     </div>
   );
 };

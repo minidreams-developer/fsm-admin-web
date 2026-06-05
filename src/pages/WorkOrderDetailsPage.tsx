@@ -364,6 +364,31 @@ export const WorkOrderDetailsPage = () => {
           </div>
         </div>
 
+        {/* Cash Collection Status */}
+        {workOrder.assignedTech && workOrder.assignedTech !== "Unassigned" && workOrder.cashCollection && Object.keys(workOrder.cashCollection).length > 0 && (
+          <div className="mb-8 pb-8 border-b border-border">
+            <h3 className="text-lg font-bold text-card-foreground mb-4">Cash Collection Status</h3>
+            <div className="space-y-3">
+              {workOrder.assignedTech.split(", ").map((employee, idx) => (
+                <div key={idx} className="flex items-center justify-between p-3 bg-secondary/30 rounded-lg border border-border">
+                  <span className="text-sm font-medium text-card-foreground">{employee}</span>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={workOrder.cashCollection[employee] ?? false}
+                      disabled
+                      className="w-4 h-4 rounded border border-border cursor-not-allowed"
+                    />
+                    <span className="text-xs text-muted-foreground">
+                      {workOrder.cashCollection[employee] ? "Cash Not Needed" : "Cash Collection Expected"}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Timeline Information */}
         <div className="mb-8 pb-8 border-b border-border">
           <h3 className="text-lg font-bold text-card-foreground mb-4">Timeline</h3>

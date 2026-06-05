@@ -599,7 +599,7 @@ export const EmployeeDetailPage = () => {
                 </h4>
                 <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
                   <div>
-                    <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Employee *</label>
+                    <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Cash collected by *</label>
                     <select
                       value={collectEmployee}
                       onChange={e => setCollectEmployee(e.target.value)}

@@ -47,10 +47,13 @@ export type WorkOrder = {
   frequency: string;
   totalValue: string;
   paidAmount: string;
+  transactionId?: string;
   nextService: string;
   assignedTech: string;
   notes: string;
   leadId?: number;
+  cashCollection?: Record<string, boolean>;
+  cashCollectionNotNeeded?: boolean;
 };
 
 interface ProjectsStore {
@@ -551,10 +554,12 @@ export const useProjectsStore = create<ProjectsStore>()(
             frequency: typeof wo.frequency === "string" ? wo.frequency : "",
             totalValue: typeof wo.totalValue === "string" ? wo.totalValue : "₹ 0",
             paidAmount: typeof wo.paidAmount === "string" ? wo.paidAmount : "₹ 0",
+            transactionId: typeof wo.transactionId === "string" ? wo.transactionId : undefined,
             nextService: typeof wo.nextService === "string" ? wo.nextService : "Unassigned",
             assignedTech: typeof wo.assignedTech === "string" ? wo.assignedTech : "Unassigned",
             notes: typeof wo.notes === "string" ? wo.notes : "",
             leadId: typeof wo.leadId === "number" ? wo.leadId : undefined,
+            cashCollectionNotNeeded: typeof wo.cashCollectionNotNeeded === "boolean" ? wo.cashCollectionNotNeeded : undefined,
           }));
           return { workOrders: migrated.length ? migrated : initialWorkOrders };
         }
