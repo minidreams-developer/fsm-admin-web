@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { X, Camera } from "lucide-react";
 import { toast } from "sonner";
 import { useServicesStore, type ServiceAppointment } from "@/store/servicesStore";
-import { TimeInput12Hour } from "@/components/TimeInput12Hour";
+import { format24to12 } from "@/utils/timeFormat";
 
 type Props = {
   open: boolean;

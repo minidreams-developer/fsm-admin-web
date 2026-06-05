@@ -196,6 +196,7 @@ const initialWorkOrders: WorkOrder[] = [
     frequency: "Quarterly",
     totalValue: "₹ 12,000",
     paidAmount: "₹ 4,000",
+    transactionId: "TXN-2026010401-WO1001",
     nextService: "Apr 10, 2026",
     assignedTech: "Mani",
     notes: "Residential apartment. Customer prefers morning slots."
@@ -222,6 +223,7 @@ const initialWorkOrders: WorkOrder[] = [
     frequency: "One-Time",
     totalValue: "₹ 6,500",
     paidAmount: "₹ 6,500",
+    transactionId: "TXN-2026020501-WO1002",
     nextService: "Unassigned",
     assignedTech: "Safeeq",
     notes: "Wood treatment for furniture and flooring."
@@ -274,6 +276,7 @@ const initialWorkOrders: WorkOrder[] = [
     frequency: "Bi-Monthly",
     totalValue: "₹ 9,000",
     paidAmount: "₹ 3,000",
+    transactionId: "TXN-2026032001-WO1004",
     nextService: "May 20, 2026",
     assignedTech: "Mani",
     notes: "Kitchen and store room focus."
@@ -302,6 +305,7 @@ const initialWorkOrders: WorkOrder[] = [
     frequency: "Monthly",
     totalValue: "₹ 96,000",
     paidAmount: "₹ 48,000",
+    transactionId: "TXN-2026011501-WO1005",
     nextService: "Apr 15, 2026",
     assignedTech: "Safeeq",
     notes: "Full hotel treatment including kitchen, rooms, and common areas."
@@ -328,6 +332,7 @@ const initialWorkOrders: WorkOrder[] = [
     frequency: "Monthly",
     totalValue: "₹ 24,000",
     paidAmount: "₹ 8,000",
+    transactionId: "TXN-2026021001-WO1006",
     nextService: "Apr 10, 2026",
     assignedTech: "Mani",
     notes: "Kitchen and restaurant area focus."
@@ -354,6 +359,7 @@ const initialWorkOrders: WorkOrder[] = [
     frequency: "One-Time",
     totalValue: "₹ 5,000",
     paidAmount: "₹ 5,000",
+    transactionId: "TXN-2026030501-WO1007",
     nextService: "Unassigned",
     assignedTech: "Safeeq",
     notes: "Basement and storage area treatment."
@@ -408,6 +414,7 @@ const initialWorkOrders: WorkOrder[] = [
     frequency: "One-Time",
     totalValue: "₹ 8,000",
     paidAmount: "₹ 8,000",
+    transactionId: "TXN-2026012001-WO1009",
     nextService: "Unassigned",
     assignedTech: "Mani",
     notes: "Store perimeter and wooden shelving treatment."
@@ -434,6 +441,7 @@ const initialWorkOrders: WorkOrder[] = [
     frequency: "Quarterly",
     totalValue: "₹ 10,000",
     paidAmount: "₹ 2,500",
+    transactionId: "TXN-2026021501-WO1010",
     nextService: "May 15, 2026",
     assignedTech: "Safeeq",
     notes: "Avoid peak business hours 10 AM - 6 PM."
@@ -460,6 +468,7 @@ const initialWorkOrders: WorkOrder[] = [
     frequency: "One-Time",
     totalValue: "₹ 4,500",
     paidAmount: "₹ 4,500",
+    transactionId: "TXN-2026030801-WO1011",
     nextService: "Unassigned",
     assignedTech: "Mani",
     notes: "Warehouse and storage area."

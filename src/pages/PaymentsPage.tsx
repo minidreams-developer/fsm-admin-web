@@ -129,6 +129,7 @@ const PaymentsPage = () => {
       payments.push({
         method: "Cash",
         paymentId: `manual_${workOrder.id}_001`,
+        transactionId: `TXN-${workOrder.id}-001`,
         amount: halfAmount,
         date: "10-02-2026",
         paidBy: "Arun-Itboomi"
@@ -139,6 +140,7 @@ const PaymentsPage = () => {
       payments.push({
         method: "UPI",
         paymentId: `payment_${workOrder.id}_002`,
+        transactionId: `TXN-${workOrder.id}-002`,
         amount: paidAmount - halfAmount,
         date: "10-02-2026",
         paidBy: "-/-"
@@ -389,6 +391,7 @@ const PaymentsPage = () => {
                         <tr className="border-b border-border">
                           <th className="text-left px-3 py-2 font-semibold text-muted-foreground">Service</th>
                           <th className="text-left px-3 py-2 font-semibold text-muted-foreground">Payment Method</th>
+                          <th className="text-left px-3 py-2 font-semibold text-muted-foreground">Transaction ID</th>
                           <th className="text-left px-3 py-2 font-semibold text-muted-foreground">Payment ID</th>
                           <th className="text-left px-3 py-2 font-semibold text-muted-foreground">Total Amount (₹)</th>
                           <th className="text-left px-3 py-2 font-semibold text-muted-foreground">Date</th>
@@ -414,6 +417,7 @@ const PaymentsPage = () => {
                               </div>
                             </td>
                             <td className="px-3 py-2 text-card-foreground">{payment.method}</td>
+                            <td className="px-3 py-2 text-muted-foreground text-xs font-mono truncate">{payment.transactionId}</td>
                             <td className="px-3 py-2 text-muted-foreground text-xs truncate">{payment.paymentId}</td>
                             <td className="px-3 py-2 text-primary font-semibold">{payment.amount.toLocaleString()}.00</td>
                             <td className="px-3 py-2 text-muted-foreground">{payment.date}</td>
