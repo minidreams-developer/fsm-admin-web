@@ -22,11 +22,11 @@ const LABELS = {
   description: "Description",
   unitOfMeasurement: "Unit of Measurement",
   unitPrice: "Unit Price (₹)",
-  supplierName: "Supplier Name",
-  supplierContact: "Supplier Contact",
-  sku: "SKU/Code",
-  status: "Status",
-  notes: "Notes",
+  // supplierName: "Supplier Name",
+  // supplierContact: "Supplier Contact",
+  // sku: "SKU/Code",
+  // status: "Status",
+  // notes: "Notes",
 } as const;
 
 const CATEGORIES: ProductCategory[] = ["Chemicals", "Equipment", "Supplies", "Services", "Other"];
@@ -218,7 +218,7 @@ export function ProductFormModal({ open, mode, product, onClose, onSaved }: Prop
               />
             </div>
 
-            <div>
+            {/* <div>
               <label className="text-xs font-medium text-muted-foreground mb-2 block">{LABELS.sku}</label>
               <input
                 value={form.sku}
@@ -226,9 +226,9 @@ export function ProductFormModal({ open, mode, product, onClose, onSaved }: Prop
                 placeholder="Enter SKU/Code"
                 className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
               />
-            </div>
+            </div> */}
 
-            <div className="md:col-span-2">
+            {/* <div className="md:col-span-2">
               <label className="text-xs font-medium text-muted-foreground mb-2 block">{LABELS.supplierName}</label>
               <input
                 value={form.supplierName}
@@ -267,7 +267,7 @@ export function ProductFormModal({ open, mode, product, onClose, onSaved }: Prop
                 rows={3}
                 className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none"
               />
-            </div>
+            </div> */}
           </div>
         </div>
 

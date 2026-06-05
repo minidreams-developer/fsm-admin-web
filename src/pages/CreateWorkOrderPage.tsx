@@ -105,7 +105,7 @@ const CreateWorkOrderPage = () => {
     requiredEmployees: number;
   };
   const [serviceSchedules, setServiceSchedules] = useState<ServiceSchedule[]>([]);
-  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(true);
   const [isEditingTerms, setIsEditingTerms] = useState(false);
   const [termsList, setTermsList] = useState([
     "Services will be performed as per the scheduled appointments",
@@ -743,7 +743,7 @@ const CreateWorkOrderPage = () => {
               <div className="space-y-2 mt-3">
                 {selectedEmployees.map((empName) => {
                   const emp = employees.find(e => e.name === empName);
-                  const willCollectCash = cashCollectionMap[empName] ?? true;
+                  const cashNotNeeded = cashCollectionMap[empName] ?? true;
                   return (
                     <div key={empName} className="flex items-center justify-between gap-3 px-3 py-2 bg-primary/10 border border-primary/20 rounded-lg">
                       <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -753,19 +753,16 @@ const CreateWorkOrderPage = () => {
                         </div>
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => toggleCashCollection(empName)}
-                          className={`flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium transition-colors ${
-                            willCollectCash
-                              ? 'bg-success/10 text-success border border-success/20'
-                              : 'bg-warning/10 text-warning border border-warning/20'
-                          }`}
-                          title={willCollectCash ? "Click to disable cash collection" : "Click to enable cash collection"}
-                        >
-                          <Check className="w-3 h-3" />
-                          {willCollectCash ? 'Collect Cash' : 'No Cash'}
-                        </button>
+                        <label className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity">
+                          <input
+                            type="checkbox"
+                            checked={cashNotNeeded}
+                            onChange={() => toggleCashCollection(empName)}
+                            className="w-4 h-4 rounded border-2 border-primary accent-primary cursor-pointer"
+                            title="Check if cash collection is not needed for this employee"
+                          />
+                          <span className="text-xs font-medium text-primary whitespace-nowrap">Cash Not Needed</span>
+                        </label>
                         <button 
                           type="button" 
                           onClick={() => toggleEmployee(empName)} 
@@ -823,6 +820,20 @@ const CreateWorkOrderPage = () => {
             )}
             {/* hidden input to satisfy react-hook-form */}
             <input type="hidden" {...register("serviceType")} />
+          </div>
+
+          <div className="pt-4 border-t border-border">
+            <label className="flex items-center gap-3 cursor-pointer group">
+              <input
+                type="checkbox"
+                checked={termsAccepted}
+                onChange={(e) => setTermsAccepted(e.target.checked)}
+                className="w-5 h-5 rounded border-2 border-border text-primary focus:ring-2 focus:ring-primary/20 cursor-pointer"
+              />
+              <span className="text-sm font-medium text-card-foreground group-hover:text-primary transition-colors">
+                Cash Collection Not Needed Employee
+              </span>
+            </label>
           </div>
 
 
@@ -1330,19 +1341,7 @@ const CreateWorkOrderPage = () => {
             )}
           </div>
 
-          {/* <div className="pt-4 border-t border-border">
-            <label className="flex items-center gap-3 cursor-pointer group">
-              <input
-                type="checkbox"
-                checked={termsAccepted}
-                onChange={(e) => setTermsAccepted(e.target.checked)}
-                className="w-5 h-5 rounded border-2 border-border text-primary focus:ring-2 focus:ring-primary/20 cursor-pointer"
-              />
-              <span className="text-sm font-medium text-card-foreground group-hover:text-primary transition-colors">
-                I agree to the terms and conditions
-              </span>
-            </label>
-          </div> */}
+          
         </div>
       </div>
 

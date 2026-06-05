@@ -169,7 +169,7 @@ const InventoryPage = () => {
       <div className="bg-card rounded-xl card-shadow overflow-hidden">
         <table className="w-full text-sm">
           <thead><tr className="border-b border-border">
-            {["#", "Product", "Branch", "Stock", "Unit", "Reorder Level", "Status", "Actions"].map((h) => (
+            {["#", "Product", "Branch", "Previous Qty", "Stock", "Unit", "Reorder Level", "Status", "Actions"].map((h) => (
               <th key={h} className="text-left px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">{h}</th>
             ))}
           </tr></thead>
@@ -181,6 +181,7 @@ const InventoryPage = () => {
                   <td className="px-3 py-3 text-xs text-muted-foreground font-medium">{pagination.startIndex + index + 1}</td>
                   <td className="px-3 py-3 font-medium text-card-foreground text-xs">{product?.name || i.name}</td>
                   <td className="px-3 py-3 text-muted-foreground text-xs">{i.branch}</td>
+                  <td className="px-3 py-3 font-semibold text-card-foreground text-xs">{i.previousQuantity || "-"}</td>
                   <td className="px-3 py-3 font-bold text-card-foreground text-xs">{i.stock}</td>
                   <td className="px-3 py-3 text-muted-foreground text-xs">{i.unit}</td>
                   <td className="px-3 py-3 text-muted-foreground text-xs">{i.reorder}</td>
@@ -199,7 +200,7 @@ const InventoryPage = () => {
               );
             })}
             {pagination.paginatedItems.length === 0 && (
-              <tr><td colSpan={8} className="px-3 py-8 text-center text-sm text-muted-foreground">No inventory items for this branch.</td></tr>
+              <tr><td colSpan={9} className="px-3 py-8 text-center text-sm text-muted-foreground">No inventory items for this branch.</td></tr>
             )}
           </tbody>
         </table>

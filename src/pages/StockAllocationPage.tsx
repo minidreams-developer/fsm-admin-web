@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Package, UserCheck, Search, ArrowRight, CheckCircle, History } from "lucide-react";
+import { Package, UserCheck, Search, ArrowRight, CheckCircle, History, Edit2, Trash2, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useInventoryStore } from "@/store/inventoryStore";
 import { useEmployeesStore } from "@/store/employeesStore";
@@ -17,6 +17,8 @@ const StockAllocationPage = () => {
   const [selectedEmployee, setSelectedEmployee] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [allocations, setAllocations] = useState<Record<number, number>>({});
+  const [editingAllocationId, setEditingAllocationId] = useState<string | null>(null);
+  const [editingQuantity, setEditingQuantity] = useState<number>(0);
 
   const activeEmployees = employees.filter(e => e.isActive !== false);
   const branchNames = Array.from(new Set(inventory.map(i => i.branch)));
@@ -92,6 +94,80 @@ const StockAllocationPage = () => {
   };
 
   const totalAllocating = Object.values(allocations).reduce((sum, qty) => sum + qty, 0);
+
+  const handleEditAllocation = (itemId: number, employeeId: string, currentQty: number) => {
+    setEditingAllocationId(`${itemId}-${employeeId}`);
+    setEditingQuantity(currentQty);
+  };
+
+  const handleSaveEditAllocation = (itemId: number, employeeId: string, oldQuantity: number) => {
+    if (editingQuantity === oldQuantity) {
+      setEditingAllocationId(null);
+      return;
+    }
+
+    const item = inventory.find(i => i.id === itemId);
+    if (!item) return;
+
+    const quantityDifference = editingQuantity - oldQuantity;
+    const newStock = item.stock - quantityDifference;
+
+    if (newStock < 0) {
+      toast.error(`Insufficient stock. Available: ${item.stock} ${item.unit}`);
+      return;
+    }
+
+    // Update inventory stock
+    let newStatus = item.status;
+    if (newStock <= 0) {
+      newStatus = "Critical";
+    } else if (newStock < item.reorder) {
+      newStatus = "Low";
+    } else {
+      newStatus = "OK";
+    }
+
+    updateItem(itemId, { 
+      stock: newStock,
+      status: newStatus
+    });
+
+    // Update allocation in the item's allocations array
+    const updatedAllocations = item.allocations?.map(alloc => 
+      alloc.employeeId === employeeId ? { ...alloc, quantity: editingQuantity } : alloc
+    ) || [];
+
+    updateItem(itemId, { allocations: updatedAllocations });
+
+    toast.success(`Allocation updated: ${editingQuantity} ${item.unit} for ${employees.find(e => e.id === employeeId)?.name}`);
+    setEditingAllocationId(null);
+    setEditingQuantity(0);
+  };
+
+  const handleRemoveAllocation = (itemId: number, employeeId: string, quantity: number) => {
+    const item = inventory.find(i => i.id === itemId);
+    if (!item) return;
+
+    const newStock = item.stock + quantity;
+    let newStatus = item.status;
+    
+    if (newStock > item.reorder) {
+      newStatus = "OK";
+    } else if (newStock > 0) {
+      newStatus = "Low";
+    }
+
+    // Remove from allocations array
+    const updatedAllocations = item.allocations?.filter(alloc => alloc.employeeId !== employeeId) || [];
+
+    updateItem(itemId, { 
+      stock: newStock,
+      status: newStatus,
+      allocations: updatedAllocations
+    });
+
+    toast.success(`Allocation removed for ${employees.find(e => e.id === employeeId)?.name}`);
+  };
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -339,6 +415,123 @@ const StockAllocationPage = () => {
           </button>
         </div>
       )}
+
+      {/* Allocated Stock Management */}
+      <div className="bg-card rounded-xl card-shadow overflow-hidden">
+        <div className="p-4 border-b border-border flex items-center gap-2">
+          <UserCheck className="w-5 h-5 text-primary" />
+          <h3 className="font-semibold text-card-foreground">Allocated Stock</h3>
+          <p className="text-xs text-muted-foreground ml-auto">Edit or remove employee allocations</p>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border bg-secondary/30">
+                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase">Product</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase">Employee</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase">Branch</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase">Allocated Qty</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase">Unit</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase">Allocated Date</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {inventory.filter(item => item.allocations && item.allocations.length > 0).length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="px-4 py-12 text-center">
+                    <p className="text-sm text-muted-foreground">No allocations yet</p>
+                  </td>
+                </tr>
+              ) : (
+                inventory
+                  .filter(item => item.allocations && item.allocations.length > 0)
+                  .flatMap(item => 
+                    item.allocations!.map(alloc => ({
+                      itemId: item.id,
+                      itemName: item.name,
+                      branch: item.branch,
+                      unit: item.unit,
+                      ...alloc
+                    }))
+                  )
+                  .map((allocation, idx) => {
+                    const isEditing = editingAllocationId === `${allocation.itemId}-${allocation.employeeId}`;
+                    const emp = employees.find(e => e.id === allocation.employeeId);
+                    return (
+                      <tr key={idx} className="border-b border-border last:border-0 hover:bg-secondary/20 transition-colors">
+                        <td className="px-4 py-3">
+                          <p className="font-medium text-card-foreground">{allocation.itemName}</p>
+                        </td>
+                        <td className="px-4 py-3 text-card-foreground">{emp?.name || allocation.employeeName}</td>
+                        <td className="px-4 py-3 text-muted-foreground">{allocation.branch}</td>
+                        <td className="px-4 py-3">
+                          {isEditing ? (
+                            <input
+                              type="number"
+                              min="0"
+                              value={editingQuantity}
+                              onChange={(e) => setEditingQuantity(Number(e.target.value))}
+                              className="w-24 px-2 py-1 rounded-lg bg-background text-sm border border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground font-bold"
+                            />
+                          ) : (
+                            <span className="font-bold text-card-foreground">{allocation.quantity}</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-muted-foreground">{allocation.unit}</td>
+                        <td className="px-4 py-3 text-muted-foreground text-xs">
+                          {new Date(allocation.allocatedAt).toLocaleDateString('en-IN', { 
+                            month: 'short', 
+                            day: 'numeric', 
+                            year: 'numeric' 
+                          })}
+                        </td>
+                        <td className="px-4 py-3 flex items-center gap-2">
+                          {isEditing ? (
+                            <>
+                              <button
+                                onClick={() => handleSaveEditAllocation(allocation.itemId, allocation.employeeId, allocation.quantity)}
+                                className="p-1 hover:bg-success/10 rounded transition-colors text-success hover:text-success/80"
+                                title="Save"
+                              >
+                                <CheckCircle className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => setEditingAllocationId(null)}
+                                className="p-1 hover:bg-secondary rounded transition-colors text-muted-foreground hover:text-card-foreground"
+                                title="Cancel"
+                              >
+                                <X className="w-4 h-4" />
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              <button
+                                onClick={() => handleEditAllocation(allocation.itemId, allocation.employeeId, allocation.quantity)}
+                                className="p-1 hover:bg-secondary rounded transition-colors text-muted-foreground hover:text-primary"
+                                title="Edit"
+                              >
+                                <Edit2 className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => handleRemoveAllocation(allocation.itemId, allocation.employeeId, allocation.quantity)}
+                                className="p-1 hover:bg-secondary rounded transition-colors text-muted-foreground hover:text-destructive"
+                                title="Remove"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   );
 };

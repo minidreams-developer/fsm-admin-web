@@ -53,6 +53,7 @@ export type WorkOrder = {
   notes: string;
   leadId?: number;
   cashCollection?: Record<string, boolean>;
+  cashCollectionNotNeeded?: boolean;
 };
 
 interface ProjectsStore {
@@ -558,6 +559,7 @@ export const useProjectsStore = create<ProjectsStore>()(
             assignedTech: typeof wo.assignedTech === "string" ? wo.assignedTech : "Unassigned",
             notes: typeof wo.notes === "string" ? wo.notes : "",
             leadId: typeof wo.leadId === "number" ? wo.leadId : undefined,
+            cashCollectionNotNeeded: typeof wo.cashCollectionNotNeeded === "boolean" ? wo.cashCollectionNotNeeded : undefined,
           }));
           return { workOrders: migrated.length ? migrated : initialWorkOrders };
         }

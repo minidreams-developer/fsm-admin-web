@@ -439,12 +439,12 @@ const TaskDetailsPage = () => {
         {/* Documents Section */}
         <div className="bg-card rounded-xl card-shadow border border-border overflow-hidden">
           <div className="px-6 py-4 border-b border-border">
-            <h2 className="text-base font-bold text-card-foreground">Documents</h2>
-            <p className="text-xs text-muted-foreground mt-0.5">
+            <h1 className="text-base font-bold text-card-foreground">Documents</h1>
+            {/* <p className="text-xs text-muted-foreground mt-0.5">
               {task.attachments && task.attachments.length > 0
                 ? `${task.attachments.length} document${task.attachments.length !== 1 ? "s" : ""} uploaded`
                 : "No documents yet"}
-            </p>
+            </p> */}
           </div>
 
           {/* Uploaded documents list */}
@@ -558,13 +558,12 @@ const TaskDetailsPage = () => {
                 className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
               >
                 <option value="">— Select your name —</option>
-                {(task.assignedEmployees?.length ? task.assignedEmployees : task.assignedTo ? [task.assignedTo] : [])
+                {employeeNames
                   .filter(n => n && n !== "Unassigned")
                   .map(name => (
                     <option key={name} value={name}>{name}</option>
                   ))}
               </select>
-              <p className="text-[10px] text-muted-foreground mt-1">Only assigned employees can upload documents</p>
             </div>
 
             {/* File drop zone */}

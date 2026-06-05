@@ -24,6 +24,7 @@ const LABELS = {
   unit: "Unit",
   reorder: "Reorder Level",
   status: "Status",
+  previousQuantity: "Previous Quantity",
 } as const;
 
 export function InventoryFormModal({ open, mode, item, onClose, onSaved }: Props) {
@@ -39,10 +40,13 @@ export function InventoryFormModal({ open, mode, item, onClose, onSaved }: Props
     unit: "Liters",
     reorder: 0,
     status: "OK",
+    previousQuantity: 0,
   });
   
   const [restockQuantity, setRestockQuantity] = useState<number>(0);
   const [currentStock, setCurrentStock] = useState<number>(0);
+  const [isSaveDisabled, setIsSaveDisabled] = useState(false);
+  const [formChanged, setFormChanged] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -50,6 +54,8 @@ export function InventoryFormModal({ open, mode, item, onClose, onSaved }: Props
       setForm(item);
       setCurrentStock(item.stock);
       setRestockQuantity(0);
+      setIsSaveDisabled(false);
+      setFormChanged(false);
       return;
     }
     setForm({
@@ -60,13 +66,18 @@ export function InventoryFormModal({ open, mode, item, onClose, onSaved }: Props
       unit: "Liters",
       reorder: 0,
       status: "OK",
+      previousQuantity: 0,
     });
     setCurrentStock(0);
     setRestockQuantity(0);
+    setIsSaveDisabled(false);
+    setFormChanged(false);
   }, [open, mode, item]);
 
   const setField = <K extends keyof InventoryItem>(key: K, value: InventoryItem[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }));
+    setFormChanged(true);
+    setIsSaveDisabled(false);
   };
 
   const handleProductChange = (productName: string) => {
@@ -115,14 +126,16 @@ export function InventoryFormModal({ open, mode, item, onClose, onSaved }: Props
       }
       
       onSaved?.(updatedForm);
-      onClose();
+      setIsSaveDisabled(true);
+      setFormChanged(false);
       return;
     }
 
     addItem(form);
     toast.success(`Inventory added: ${form.name}`);
     onSaved?.(form);
-    onClose();
+    setIsSaveDisabled(true);
+    setFormChanged(false);
   };
 
   if (!open) return null;
@@ -146,22 +159,7 @@ export function InventoryFormModal({ open, mode, item, onClose, onSaved }: Props
         {/* Content */}
         <div className="overflow-y-auto flex-1 p-6 space-y-6 min-h-0">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="md:col-span-2">
-              <label className="text-xs font-medium text-muted-foreground mb-2 block">{LABELS.product}</label>
-              <select
-                value={form.name}
-                onChange={(e) => handleProductChange(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
-              >
-                <option value="">Select product</option>
-                {products.map((p) => (
-                  <option key={p.id} value={p.name}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
+            {/* Branch - Moved to Top */}
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-2 block">{LABELS.branch}</label>
               <select
@@ -179,8 +177,37 @@ export function InventoryFormModal({ open, mode, item, onClose, onSaved }: Props
               </select>
             </div>
 
+            {/* Product */}
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-2 block">{LABELS.product}</label>
+              <select
+                value={form.name}
+                onChange={(e) => handleProductChange(e.target.value)}
+                className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+              >
+                <option value="">Select product</option>
+                {products.map((p) => (
+                  <option key={p.id} value={p.name}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             {mode === "edit" ? (
               <>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-2 block">Previous Quantity</label>
+                  <input
+                    value={form.previousQuantity || 0}
+                    onChange={(e) => setField("previousQuantity", Number(e.target.value))}
+                    type="number"
+                    min="0"
+                    placeholder="Previous stock quantity"
+                    className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  />
+                </div>
+
                 <div>
                   <label className="text-xs font-medium text-muted-foreground mb-2 block">Current Stock</label>
                   <div className="w-full px-3 py-2.5 rounded-lg bg-secondary/50 border border-border text-sm text-card-foreground font-semibold">
@@ -192,7 +219,11 @@ export function InventoryFormModal({ open, mode, item, onClose, onSaved }: Props
                   <label className="text-xs font-medium text-muted-foreground mb-2 block">Add Stock Quantity</label>
                   <input
                     value={restockQuantity}
-                    onChange={(e) => setRestockQuantity(Number(e.target.value))}
+                    onChange={(e) => {
+                      setRestockQuantity(Number(e.target.value));
+                      setFormChanged(true);
+                      setIsSaveDisabled(false);
+                    }}
                     type="number"
                     min="0"
                     placeholder="Enter quantity to add"
@@ -208,16 +239,30 @@ export function InventoryFormModal({ open, mode, item, onClose, onSaved }: Props
                 </div>
               </>
             ) : (
-              <div>
-                <label className="text-xs font-medium text-muted-foreground mb-2 block">{LABELS.stock}</label>
-                <input
-                  value={form.stock}
-                  onChange={(e) => setField("stock", Number(e.target.value))}
-                  type="number"
-                  min="0"
-                  className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
-                />
-              </div>
+              <>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-2 block">{LABELS.previousQuantity}</label>
+                  <input
+                    value={form.previousQuantity || 0}
+                    onChange={(e) => setField("previousQuantity", Number(e.target.value))}
+                    type="number"
+                    min="0"
+                    placeholder="Previous quantity"
+                    className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-2 block">{LABELS.stock}</label>
+                  <input
+                    value={form.stock}
+                    onChange={(e) => setField("stock", Number(e.target.value))}
+                    type="number"
+                    min="0"
+                    className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  />
+                </div>
+              </>
             )}
 
             <div>
@@ -258,14 +303,19 @@ export function InventoryFormModal({ open, mode, item, onClose, onSaved }: Props
             onClick={onClose}
             className="flex-1 h-10 border border-border text-card-foreground text-sm font-medium hover:text-primary transition-colors rounded-lg"
           >
-            Cancel
+            Close
           </button>
           <button
             onClick={save}
-            className="flex-1 h-10 text-sm font-semibold hover:opacity-90 text-white shadow-[0px_5px_12px_rgba(39,47,158,0.2)] transition-all rounded-lg"
+            disabled={isSaveDisabled}
+            className={`flex-1 h-10 text-sm font-semibold rounded-lg transition-all ${
+              isSaveDisabled
+                ? "opacity-50 cursor-not-allowed text-white"
+                : "hover:opacity-90 text-white shadow-[0px_5px_12px_rgba(39,47,158,0.2)]"
+            }`}
             style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}
           >
-            {mode === "create" ? "Add Item" : restockQuantity > 0 ? "Restock Item" : "Update Item"}
+            {isSaveDisabled ? "✓ Saved" : mode === "create" ? "Add Item" : restockQuantity > 0 ? "Restock Item" : "Update Item"}
           </button>
         </div>
       </div>
