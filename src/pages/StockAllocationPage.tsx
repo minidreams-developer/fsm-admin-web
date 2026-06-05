@@ -15,6 +15,7 @@ const StockAllocationPage = () => {
   
   const [selectedBranch, setSelectedBranch] = useState("");
   const [selectedEmployee, setSelectedEmployee] = useState("");
+  const [selectedAllocatingUser, setSelectedAllocatingUser] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [allocations, setAllocations] = useState<Record<number, number>>({});
   const [editingAllocationId, setEditingAllocationId] = useState<string | null>(null);
@@ -51,6 +52,11 @@ const StockAllocationPage = () => {
       return;
     }
 
+    if (!selectedAllocatingUser) {
+      toast.error("Please select who is allocating the stock");
+      return;
+    }
+
     const allocationEntries = Object.entries(allocations).filter(([_, qty]) => qty > 0);
     
     if (allocationEntries.length === 0) {
@@ -81,14 +87,25 @@ const StockAllocationPage = () => {
           newStatus = "Low";
         }
         
+        // Add allocatedBy information
+        const updatedAllocations = (item.allocations || []).map(alloc => alloc.employeeId === selectedEmployee ? { ...alloc, allocatedBy: selectedAllocatingUser } : alloc);
+        const newAllocation = {
+          employeeId: selectedEmployee,
+          employeeName: selectedEmp?.name || "",
+          quantity,
+          allocatedAt: new Date().toISOString(),
+          allocatedBy: selectedAllocatingUser
+        };
+        
         updateItem(Number(itemId), { 
           stock: newStock,
-          status: newStatus
+          status: newStatus,
+          allocations: [...updatedAllocations, newAllocation]
         });
       }
     });
 
-    toast.success(`${allocationEntries.length} item(s) allocated to ${selectedEmp?.name}`);
+    toast.success(`${allocationEntries.length} item(s) allocated to ${selectedEmp?.name} by ${selectedAllocatingUser}`);
     setAllocations({});
     setSelectedEmployee("");
   };
@@ -284,6 +301,38 @@ const StockAllocationPage = () => {
         )}
       </div>
 
+      {/* Allocated By Selection Card */}
+      <div className="bg-card rounded-xl p-6 card-shadow border border-border">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="p-2 bg-primary/10 rounded-lg">
+            <UserCheck className="w-5 h-5 text-primary" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-card-foreground">Allocating User</h3>
+            <p className="text-xs text-muted-foreground">Who is allocating this stock?</p>
+          </div>
+        </div>
+        
+        <select
+          value={selectedAllocatingUser}
+          onChange={(e) => setSelectedAllocatingUser(e.target.value)}
+          className="w-full px-4 py-3 rounded-lg bg-background text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
+        >
+          <option value="">-- Select Allocating User --</option>
+          {activeEmployees.map(emp => (
+            <option key={emp.id} value={emp.name}>
+              {emp.name} ({emp.role})
+            </option>
+          ))}
+        </select>
+
+        {selectedAllocatingUser && (
+          <div className="mt-2 p-2 bg-success/10 rounded border border-success/20">
+            <p className="text-xs text-success font-medium">Allocating as: <span className="font-bold">{selectedAllocatingUser}</span></p>
+          </div>
+        )}
+      </div>
+
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
@@ -433,6 +482,7 @@ const StockAllocationPage = () => {
                 <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase">Branch</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase">Allocated Qty</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase">Unit</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase">Allocated By</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase">Allocated Date</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase">Actions</th>
               </tr>
@@ -440,7 +490,7 @@ const StockAllocationPage = () => {
             <tbody>
               {inventory.filter(item => item.allocations && item.allocations.length > 0).length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-12 text-center">
+                  <td colSpan={8} className="px-4 py-12 text-center">
                     <p className="text-sm text-muted-foreground">No allocations yet</p>
                   </td>
                 </tr>
@@ -480,6 +530,7 @@ const StockAllocationPage = () => {
                           )}
                         </td>
                         <td className="px-4 py-3 text-muted-foreground">{allocation.unit}</td>
+                        <td className="px-4 py-3 text-sm text-card-foreground font-medium">{allocation.allocatedBy || "-"}</td>
                         <td className="px-4 py-3 text-muted-foreground text-xs">
                           {new Date(allocation.allocatedAt).toLocaleDateString('en-IN', { 
                             month: 'short', 

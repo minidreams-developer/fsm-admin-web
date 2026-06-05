@@ -25,6 +25,8 @@ const LABELS = {
   reorder: "Reorder Level",
   status: "Status",
   previousQuantity: "Previous Quantity",
+  supplierName: "Supplier Name",
+  supplierContact: "Supplier Contact",
 } as const;
 
 export function InventoryFormModal({ open, mode, item, onClose, onSaved }: Props) {
@@ -41,6 +43,8 @@ export function InventoryFormModal({ open, mode, item, onClose, onSaved }: Props
     reorder: 0,
     status: "OK",
     previousQuantity: 0,
+    supplierName: "",
+    supplierContact: "",
   });
   
   const [restockQuantity, setRestockQuantity] = useState<number>(0);
@@ -67,6 +71,8 @@ export function InventoryFormModal({ open, mode, item, onClose, onSaved }: Props
       reorder: 0,
       status: "OK",
       previousQuantity: 0,
+      supplierName: "",
+      supplierContact: "",
     });
     setCurrentStock(0);
     setRestockQuantity(0);
@@ -291,6 +297,41 @@ export function InventoryFormModal({ open, mode, item, onClose, onSaved }: Props
                 onChange={(e) => setField("reorder", Number(e.target.value))}
                 type="number"
                 min="0"
+                className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-2 block">{LABELS.status}</label>
+              <select
+                value={form.status}
+                onChange={(e) => setField("status", e.target.value as any)}
+                className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+              >
+                <option value="OK">OK</option>
+                <option value="Low">Low</option>
+                <option value="Critical">Critical</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-2 block">{LABELS.supplierName}</label>
+              <input
+                value={form.supplierName || ""}
+                onChange={(e) => setField("supplierName", e.target.value)}
+                type="text"
+                placeholder="Supplier name"
+                className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-2 block">{LABELS.supplierContact}</label>
+              <input
+                value={form.supplierContact || ""}
+                onChange={(e) => setField("supplierContact", e.target.value)}
+                type="text"
+                placeholder="Phone or email"
                 className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
               />
             </div>

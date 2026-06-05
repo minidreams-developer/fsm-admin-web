@@ -169,7 +169,7 @@ const InventoryPage = () => {
       <div className="bg-card rounded-xl card-shadow overflow-hidden">
         <table className="w-full text-sm">
           <thead><tr className="border-b border-border">
-            {["#", "Product", "Branch", "Previous Qty", "Stock", "Unit", "Reorder Level", "Status", "Actions"].map((h) => (
+            {["#", "Product", "Branch", "Previous Qty", "Stock", "Unit", "Reorder Level", "Supplier", "Supplier Contact", "Status", "Actions"].map((h) => (
               <th key={h} className="text-left px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">{h}</th>
             ))}
           </tr></thead>
@@ -185,6 +185,8 @@ const InventoryPage = () => {
                   <td className="px-3 py-3 font-bold text-card-foreground text-xs">{i.stock}</td>
                   <td className="px-3 py-3 text-muted-foreground text-xs">{i.unit}</td>
                   <td className="px-3 py-3 text-muted-foreground text-xs">{i.reorder}</td>
+                  <td className="px-3 py-3 text-muted-foreground text-xs">{i.supplierName || "-"}</td>
+                  <td className="px-3 py-3 text-muted-foreground text-xs">{i.supplierContact || "-"}</td>
                   <td className="px-3 py-3">
                     <StatusBadge label={i.status} variant={statusMap[i.status as keyof typeof statusMap] || "neutral"} />
                   </td>
@@ -200,7 +202,7 @@ const InventoryPage = () => {
               );
             })}
             {pagination.paginatedItems.length === 0 && (
-              <tr><td colSpan={9} className="px-3 py-8 text-center text-sm text-muted-foreground">No inventory items for this branch.</td></tr>
+              <tr><td colSpan={11} className="px-3 py-8 text-center text-sm text-muted-foreground">No inventory items for this branch.</td></tr>
             )}
           </tbody>
         </table>
