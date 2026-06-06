@@ -9,7 +9,7 @@ import { useEmployeesStore } from "@/store/employeesStore";
 import { useProductsStore } from "@/store/productsStore";
 import { useCustomersStore } from "@/store/customersStore";
 import { useServicesStore } from "@/store/servicesStore";
-import { TimeInput12Hour } from "@/components/TimeInput12Hour";
+import { TimePickerUnified } from "@/components/TimePickerUnified";
 
 const urgencyLevels: UrgencyLevel[] = ["Low", "Medium", "High"];
           
@@ -503,8 +503,11 @@ const CreateLeadPage = () => {
           </div>
 
           <div>
-            <label className="text-xs font-medium text-muted-foreground mb-2 block">Next Follow Up Time</label>
-            <input type="time" value={(form as any).nextFollowUpTime || ""} onChange={(e) => setForm(prev => ({ ...prev, nextFollowUpTime: e.target.value }))} className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20" />
+            <TimePickerUnified 
+              label="Next Follow Up Time"
+              value={(form as any).nextFollowUpTime || ""} 
+              onChange={(e) => setForm(prev => ({ ...prev, nextFollowUpTime: e }))} 
+            />
           </div>
 
           <div className="md:col-span-2">

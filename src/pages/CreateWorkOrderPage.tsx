@@ -15,6 +15,7 @@ import { useEmployeesStore } from "@/store/employeesStore";
 import { useCustomersStore } from "@/store/customersStore";
 import { useServicesStore } from "@/store/servicesStore";
 import { formatTimeRange12Hour, format24to12 } from "@/utils/timeFormat";
+import { TimePickerUnified } from "@/components/TimePickerUnified";
 
 const workOrderSchema = z.object({
   customer: z.string().min(1, "Customer name is required"),
@@ -1082,46 +1083,32 @@ const CreateWorkOrderPage = () => {
                         />
                       </td>
                       <td className="px-4 py-3">
-                        <div className="space-y-1">
-                          <input
-                            type="time"
-                            value={schedule.fromTime}
-                            onChange={(e) => {
-                              setServiceSchedules(prev => {
-                                const existing = prev.find(s => s.id === schedule.id);
-                                if (existing) {
-                                  return prev.map(s => s.id === schedule.id ? { ...s, fromTime: e.target.value } : s);
-                                }
-                                return [...prev, { ...schedule, fromTime: e.target.value }];
-                              });
-                            }}
-                            className="w-full px-3 py-1.5 rounded-lg bg-secondary text-xs border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
-                          />
-                          {schedule.fromTime && (
-                            <p className="text-xs text-muted-foreground">{format24to12(schedule.fromTime)}</p>
-                          )}
-                        </div>
+                        <TimePickerUnified
+                          value={schedule.fromTime}
+                          onChange={(e) => {
+                            setServiceSchedules(prev => {
+                              const existing = prev.find(s => s.id === schedule.id);
+                              if (existing) {
+                                return prev.map(s => s.id === schedule.id ? { ...s, fromTime: e } : s);
+                              }
+                              return [...prev, { ...schedule, fromTime: e }];
+                            });
+                          }}
+                        />
                       </td>
                       <td className="px-4 py-3">
-                        <div className="space-y-1">
-                          <input
-                            type="time"
-                            value={schedule.toTime}
-                            onChange={(e) => {
-                              setServiceSchedules(prev => {
-                                const existing = prev.find(s => s.id === schedule.id);
-                                if (existing) {
-                                  return prev.map(s => s.id === schedule.id ? { ...s, toTime: e.target.value } : s);
-                                }
-                                return [...prev, { ...schedule, toTime: e.target.value }];
-                              });
-                            }}
-                            className="w-full px-3 py-1.5 rounded-lg bg-secondary text-xs border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
-                          />
-                          {schedule.toTime && (
-                            <p className="text-xs text-muted-foreground">{format24to12(schedule.toTime)}</p>
-                          )}
-                        </div>
+                        <TimePickerUnified
+                          value={schedule.toTime}
+                          onChange={(e) => {
+                            setServiceSchedules(prev => {
+                              const existing = prev.find(s => s.id === schedule.id);
+                              if (existing) {
+                                return prev.map(s => s.id === schedule.id ? { ...s, toTime: e } : s);
+                              }
+                              return [...prev, { ...schedule, toTime: e }];
+                            });
+                          }}
+                        />
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center justify-center gap-2">
@@ -1430,24 +1417,16 @@ const CreateWorkOrderPage = () => {
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-2 block">From Time</label>
-                  <input 
-                    type="time"
-                    value={editingTask.fromTime || ""} 
-                    onChange={(e) => setEditingTask({ ...editingTask, fromTime: e.target.value })} 
-                    className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground" 
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-2 block">To Time</label>
-                  <input 
-                    type="time"
-                    value={editingTask.toTime || ""} 
-                    onChange={(e) => setEditingTask({ ...editingTask, toTime: e.target.value })} 
-                    className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground" 
-                  />
-                </div>
+                <TimePickerUnified
+                  label="From Time"
+                  value={editingTask.fromTime || ""} 
+                  onChange={(e) => setEditingTask({ ...editingTask, fromTime: e })} 
+                />
+                <TimePickerUnified
+                  label="To Time"
+                  value={editingTask.toTime || ""} 
+                  onChange={(e) => setEditingTask({ ...editingTask, toTime: e })} 
+                />
               </div>
               {customerState ? (
                 <div className="rounded-lg bg-secondary/40 border border-border px-4 py-3 space-y-3">

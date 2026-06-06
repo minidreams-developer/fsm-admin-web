@@ -7,6 +7,7 @@ import { useServicesStore } from "@/store/servicesStore";
 import { useProjectsStore } from "@/store/projectsStore";
 import type { ServiceAppointment, Task, Attachment, AttachmentKind } from "@/store/servicesStore";
 import type { WorkOrder } from "@/store/projectsStore";
+import { TimePickerUnified } from "@/components/TimePickerUnified";
 
 const employees = [
   { id: 1, name: "Safeeq", phone: "9876543220", availability: "Available" },
@@ -526,18 +527,11 @@ const ServicesPage = () => {
                     className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
                   />
                 </div>
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1 block">
-                    <Clock className="w-3 h-3" />
-                    Time
-                  </label>
-                  <input 
-                    type="time"
-                    value={formData.appointmentTime}
-                    onChange={(e) => setFormData({ ...formData, appointmentTime: e.target.value })}
-                    className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
-                  />
-                </div>
+                <TimePickerUnified
+                  label="Time"
+                  value={formData.appointmentTime}
+                  onChange={(e) => setFormData({ ...formData, appointmentTime: e })}
+                />
               </div>
               <p className="text-xs text-muted-foreground">Leave Date/Time empty to create an unscheduled assignment.</p>
             </div>
