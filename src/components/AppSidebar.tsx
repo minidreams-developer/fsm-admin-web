@@ -13,7 +13,6 @@ const menuItems = [
   { label: "Customers", icon: UserCircle, path: "/customers" },
   { label: "Employees", icon: UserCog, path: "/employees" },
   { label: "Leads", icon: Users, path: "/leads" },
-  { label: "Service list", icon: Wrench, path: "/service-management" },
   { label: " Service appointment", icon: CalendarDays, path: "/quant-calendar" },
   // { label: "Service Appointments", icon: Wrench, path: "/services" },
   
@@ -27,6 +26,7 @@ const menuItems = [
 const settingsMenuItems = [
   { label: "Travel Expense", path: "/settings" },
   { label: "Branches", path: "/branches" },
+  { label: "Service list", icon: Wrench, path: "/service-management" },
 ];
 
 const inventoryMenuItems = [
@@ -47,7 +47,7 @@ export const AppSidebar: FC<AppSidebarProps> = ({ className, onNavigate, collaps
   const [expandedMenu, setExpandedMenu] = useState<string | null>(null);
 
   const isInventoryActive = ["/inventory", "/inventory/history", "/inventory/allocate", "/products"].includes(location.pathname);
-  const isSettingsActive = ["/settings", "/branches"].includes(location.pathname);
+  const isSettingsActive = ["/settings", "/branches", "/service-management"].includes(location.pathname);
 
   // Auto-expand menus based on current path
   useEffect(() => {
