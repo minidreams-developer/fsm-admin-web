@@ -171,6 +171,19 @@ const formatTimeSlot = (hour: number): string => {
   return `${hour}AM`;
 };
 
+// Helper function to format date range display
+const formatDateRangeDisplay = (dateRange: Date[]): string => {
+  if (dateRange.length === 0) return "No dates selected";
+  
+  // Always show first date in full format: "Wednesday, June 10, 2026"
+  return dateRange[0].toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric'
+  });
+};
+
 // Draggable Work Order Card Component
 const DraggableWorkOrderCard = ({ wo, service, priority, hasServices, isSelected, onWorkOrderClick }: any) => {
   // Only make it draggable if it's a service, not a work order
@@ -320,6 +333,14 @@ const DraggableServiceCard = ({ service, workOrder, onEdit }: any) => {
         </span>
       </div>
       
+      {/* Site Address */}
+      {workOrder.address && (
+        <div className="flex items-start gap-1 mb-1">
+          <MapPin className="w-3 h-3 text-muted-foreground flex-shrink-0 mt-0.5" />
+          <span className="text-[10px] text-card-foreground line-clamp-1">{workOrder.address}</span>
+        </div>
+      )}
+
       {/* Date and Time Display */}
       <div className="space-y-0.5 mb-1">
         {startDate && (
@@ -724,10 +745,10 @@ const QuantCalendarPage = () => {
     return dummySchedule;
   };
   
-  // Initialize schedule on mount
+  // Initialize schedule on mount and when workOrders change
   useEffect(() => {
     setSchedule(generateDummySchedule());
-  }, []);
+  }, [workOrders, employees]);
   
   // Get unique branches
   const branches = useMemo(() => {
@@ -875,6 +896,11 @@ const QuantCalendarPage = () => {
       return filteredSchedule.filter(s => s.employeeId === employeeId && s.date === date);
     }
     return filteredSchedule.filter(s => s.employeeId === employeeId);
+  };
+
+  // Get work order details for display
+  const getWorkOrderDetails = (workOrderId: string) => {
+    return workOrders.find(wo => wo.id === workOrderId);
   };
   
   // Handle date navigation
@@ -1233,16 +1259,16 @@ const QuantCalendarPage = () => {
             </div>
           
           {/* View Mode Filter */}
-          <Select value={viewMode} onValueChange={(value: ViewMode) => setViewMode(value)}>
+          {/* <Select value={viewMode} onValueChange={(value: ViewMode) => setViewMode(value)}>
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Select View" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="day">Day</SelectItem>
               <SelectItem value="week">Week</SelectItem>
-              {/* <SelectItem value="month">Month</SelectItem> */}
+              <SelectItem value="month">Month</SelectItem>
             </SelectContent>
-          </Select>
+          </Select> */}
           
           {/* Employee Filter */}
           <Select value={selectedEmployee} onValueChange={setSelectedEmployee}>
@@ -1311,16 +1337,40 @@ const QuantCalendarPage = () => {
       </div>
 
       {/* Top Navigation */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <span className="text-lg font-semibold">
-            {dateRange.length === 1 
-              ? dateRange[0].toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
-              : `${dateRange[0].toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${dateRange[dateRange.length - 1].toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
-            }
-          </span>
-        </div>
+      <div className="flex items-center justify-center gap-4">
+        <button 
+          onClick={() => {
+            const newDate = new Date(fromDate);
+            newDate.setDate(newDate.getDate() - 1);
+            setFromDate(newDate);
+            const newToDate = new Date(toDate);
+            newToDate.setDate(newToDate.getDate() - 1);
+            setToDate(newToDate);
+          }}
+          className="p-2 hover:bg-secondary rounded-lg border border-border transition-colors"
+          title="Previous day"
+        >
+          <ChevronLeft className="w-5 h-5" />
+        </button>
         
+        <span className="text-lg font-semibold whitespace-nowrap">
+          {formatDateRangeDisplay(dateRange)}
+        </span>
+        
+        <button 
+          onClick={() => {
+            const newDate = new Date(fromDate);
+            newDate.setDate(newDate.getDate() + 1);
+            setFromDate(newDate);
+            const newToDate = new Date(toDate);
+            newToDate.setDate(newToDate.getDate() + 1);
+            setToDate(newToDate);
+          }}
+          className="p-2 hover:bg-secondary rounded-lg border border-border transition-colors"
+          title="Next day"
+        >
+          <ChevronRight className="w-5 h-5" />
+        </button>
       </div>
 
       {/* Main Content */}
@@ -1370,7 +1420,7 @@ const QuantCalendarPage = () => {
           <div className="border-b border-border">
             <div className="flex items-center gap-4 px-4">
               <div className="px-4 py-3 text-sm font-semibold text-primary border-b-2 border-primary">
-                {viewMode === "day" && "DAY VIEW"}
+                {viewMode === "day" && "TODAY VIEW"}
                 {viewMode === "week" && "WEEK VIEW"}
                 {viewMode === "month" && "MONTH VIEW"}
               </div>
