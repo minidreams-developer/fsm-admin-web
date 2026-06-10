@@ -1,10 +1,13 @@
 import { useState, useEffect } from "react";
-import { Search } from "lucide-react";
+import { Search, Download } from "lucide-react";
+import { toast } from "sonner";
 import { useProjectsStore, type WorkOrder } from "@/store/projectsStore";
+import { useTasksStore } from "@/store/tasksStore";
 import { StatusBadge } from "@/components/StatusBadge";
 import { WorkOrderDetailsModal } from "@/components/WorkOrderDetailsModal";
 import { PaymentUpdateModal } from "@/components/PaymentUpdateModal";
 import { useLocation } from "react-router-dom";
+import { downloadFile } from "@/utils/fileStorage";
 
 const statusMap = { "Open": "warning", "Partial": "info", "Overdue": "error", "Completed": "success" } as const;
 
@@ -41,6 +44,7 @@ const PaymentsPage = () => {
   const [appliedToDate, setAppliedToDate] = useState("");
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [selectedWorkOrder, setSelectedWorkOrder] = useState<WorkOrder | undefined>(
     workOrders.length > 0 ? workOrders[0] : undefined
   );
@@ -51,7 +55,15 @@ const PaymentsPage = () => {
       const found = workOrders.find((w) => w.id === woId);
       if (found) setSelectedWorkOrder(found);
     }
-  }, [location.state, workOrders]);
+  }, [location.state, workOrders, refreshTrigger]);
+
+  useEffect(() => {
+    // Refresh selected work order when work orders change (after payment update)
+    if (selectedWorkOrder) {
+      const updated = workOrders.find(w => w.id === selectedWorkOrder.id);
+      if (updated) setSelectedWorkOrder(updated);
+    }
+  }, [workOrders]);
 
   const handleApplyDateFilter = () => {
     setAppliedFromDate(fromDate);
@@ -117,37 +129,16 @@ const PaymentsPage = () => {
     setSelectedWorkOrder(workOrder);
   };
 
+  const { getTasksByWorkOrder } = useTasksStore();
+
   const getPaymentHistory = (workOrder: WorkOrder) => {
-    const paidAmount = parseFloat(workOrder.paidAmount?.replace(/[₹,]/g, '') || '0');
-    if (paidAmount === 0) return [];
-    
-    // Generate sample payment history based on paid amount
-    const payments = [];
-    const halfAmount = Math.round(paidAmount / 2);
-    
-    if (halfAmount > 0) {
-      payments.push({
-        method: "Cash",
-        paymentId: `manual_${workOrder.id}_001`,
-        transactionId: `TXN-${workOrder.id}-001`,
-        amount: halfAmount,
-        date: "10-02-2026",
-        paidBy: "Arun-Itboomi"
-      });
-    }
-    
-    if (paidAmount - halfAmount > 0) {
-      payments.push({
-        method: "UPI",
-        paymentId: `payment_${workOrder.id}_002`,
-        transactionId: `TXN-${workOrder.id}-002`,
-        amount: paidAmount - halfAmount,
-        date: "10-02-2026",
-        paidBy: "-/-"
-      });
-    }
-    
-    return payments;
+    return workOrder.paymentHistory || [];
+  };
+
+  const getServiceName = (serviceId: string | undefined, workOrder: WorkOrder) => {
+    if (!serviceId) return "—";
+    const services = getTasksByWorkOrder(workOrder.id);
+    return services.find(s => s.id === serviceId)?.title || "—";
   };
 
   return (
@@ -388,40 +379,61 @@ const PaymentsPage = () => {
                   <div className="overflow-x-auto rounded-lg border border-border">
                     <table className="w-full text-xs">
                       <thead>
-                        <tr className="border-b border-border">
-                          <th className="text-left px-3 py-2 font-semibold text-muted-foreground">Service</th>
+                        <tr className="border-b border-border bg-secondary/30">
+                          <th className="text-left px-3 py-2 font-semibold text-muted-foreground">Date</th>
+                          <th className="text-left px-3 py-2 font-semibold text-muted-foreground">Amount (₹)</th>
                           <th className="text-left px-3 py-2 font-semibold text-muted-foreground">Payment Method</th>
                           <th className="text-left px-3 py-2 font-semibold text-muted-foreground">Transaction ID</th>
+                          <th className="text-left px-3 py-2 font-semibold text-muted-foreground">Service</th>
+                          <th className="text-left px-3 py-2 font-semibold text-muted-foreground">Paid By</th>
+                          <th className="text-left px-3 py-2 font-semibold text-muted-foreground">Attachment</th>
                           <th className="text-left px-3 py-2 font-semibold text-muted-foreground">Payment ID</th>
-                          <th className="text-left px-3 py-2 font-semibold text-muted-foreground">Total Amount (₹)</th>
-                          <th className="text-left px-3 py-2 font-semibold text-muted-foreground">Date</th>
-                          <th className="text-left px-3 py-2 font-semibold text-muted-foreground">Payment By</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {getPaymentHistory(selectedWorkOrder).map((payment, idx) => (
-                          <tr key={idx} className="border-b border-border hover:bg-secondary/30">
-                            <td className="px-3 py-2 text-card-foreground max-w-xs">
-                              <div className="flex flex-wrap gap-1">
-                                {selectedWorkOrder.serviceTypes && selectedWorkOrder.serviceTypes.length > 0 ? (
-                                  selectedWorkOrder.serviceTypes.map((service, sidx) => (
-                                    <span key={sidx} className="inline-flex items-center px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-semibold whitespace-nowrap">
-                                      {service}
-                                    </span>
-                                  ))
-                                ) : (
-                                  <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-semibold whitespace-nowrap">
-                                    {selectedWorkOrder.serviceType}
-                                  </span>
-                                )}
-                              </div>
-                            </td>
-                            <td className="px-3 py-2 text-card-foreground">{payment.method}</td>
-                            <td className="px-3 py-2 text-muted-foreground text-xs font-mono truncate">{payment.transactionId}</td>
-                            <td className="px-3 py-2 text-muted-foreground text-xs truncate">{payment.paymentId}</td>
+                        {getPaymentHistory(selectedWorkOrder).map((payment) => (
+                          <tr key={payment.id} className="border-b border-border hover:bg-secondary/20 transition-colors">
+                            <td className="px-3 py-2 text-card-foreground">{payment.date}</td>
                             <td className="px-3 py-2 text-primary font-semibold">{payment.amount.toLocaleString()}.00</td>
-                            <td className="px-3 py-2 text-muted-foreground">{payment.date}</td>
-                            <td className="px-3 py-2 text-muted-foreground">{payment.paidBy}</td>
+                            <td className="px-3 py-2 text-card-foreground">{payment.paymentMethod}</td>
+                            <td className="px-3 py-2 text-muted-foreground font-mono text-[11px] truncate" title={payment.transactionId || "—"}>
+                              {payment.transactionId || "—"}
+                            </td>
+                            <td className="px-3 py-2 text-card-foreground">
+                              {payment.serviceId ? (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-primary/10 text-primary font-semibold whitespace-nowrap">
+                                  {getServiceName(payment.serviceId, selectedWorkOrder)}
+                                </span>
+                              ) : (
+                                <span className="text-muted-foreground">—</span>
+                              )}
+                            </td>
+                            <td className="px-3 py-2 text-card-foreground">{payment.paidBy}</td>
+                            <td className="px-3 py-2">
+                              {payment.attachmentIds && payment.attachmentIds.length > 0 ? (
+                                <div className="flex flex-wrap gap-1">
+                                  {payment.attachmentIds.map((attachmentId) => (
+                                    <button
+                                      key={attachmentId}
+                                      onClick={() => {
+                                        downloadFile(attachmentId)
+                                          .catch(() => toast.error("Failed to download file"));
+                                      }}
+                                      className="flex items-center gap-1 px-2 py-1 rounded bg-primary/10 hover:bg-primary/20 text-primary font-semibold transition-colors whitespace-nowrap"
+                                      title={`Download attachment`}
+                                    >
+                                      <Download className="w-3 h-3" />
+                                      <span className="text-[10px]">File</span>
+                                    </button>
+                                  ))}
+                                </div>
+                              ) : (
+                                <span className="text-muted-foreground">—</span>
+                              )}
+                            </td>
+                            <td className="px-3 py-2 text-muted-foreground font-mono text-[11px] truncate" title={payment.id}>
+                              {payment.id.substring(0, 12)}...
+                            </td>
                           </tr>
                         ))}
                       </tbody>
@@ -449,7 +461,10 @@ const PaymentsPage = () => {
       <PaymentUpdateModal 
         open={showPaymentModal}
         workOrder={selectedWorkOrder}
-        onClose={() => setShowPaymentModal(false)}
+        onClose={() => {
+          setShowPaymentModal(false);
+          setRefreshTrigger(t => t + 1); // Trigger refresh
+        }}
       />
     </div>
   );

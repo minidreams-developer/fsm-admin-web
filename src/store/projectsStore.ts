@@ -26,6 +26,18 @@ export type ServiceSchedule = {
   requiredEmployees: number;
 };
 
+export type PaymentRecord = {
+  id: string;
+  amount: number;
+  paymentMethod: "Cash" | "UPI" | "Check" | "Bank Transfer";
+  transactionId?: string;
+  serviceId?: string;
+  attachmentIds?: string[];
+  paidBy: string;
+  date: string;
+  createdAt: string;
+};
+
 export type WorkOrder = {
   id: string;
   customer: string;
@@ -57,7 +69,8 @@ export type WorkOrder = {
   totalValue: string;
   paidAmount: string;
   transactionId?: string;
-  serviceTransactionIds?: Record<string, string>;
+  paymentAttachmentId?: string;
+  paymentHistory?: PaymentRecord[];
   serviceSchedules?: ServiceSchedule[];
   nextService: string;
   assignedTech: string;

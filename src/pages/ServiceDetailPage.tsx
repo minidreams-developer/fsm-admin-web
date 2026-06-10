@@ -23,6 +23,16 @@ const dummyOdometerReadings = [
     fromImage: "/placeholder.svg",
     toImage: "/placeholder.svg"
   },
+  { 
+    id: 2, 
+    date: "2026-02-02", 
+    fromKm: 12485, 
+    toKm: 12542, 
+    distance: 57, 
+    vehicle: "Van-01",
+    fromImage: "/placeholder.svg",
+    toImage: "/placeholder.svg"
+  },
 ];
 
 // Dummy workplace images
@@ -30,6 +40,50 @@ const workplaceImages = {
   before: "/placeholder.svg",
   after: "/placeholder.svg"
 };
+
+// Dummy customer visits data for multiple entries
+const dummyCustomerVisits = [
+  {
+    id: 1,
+    customerName: "Lakshmi Stores",
+    phone: "9876543240",
+    email: "lakshmi.stores@email.com",
+    siteAddress: "Market Road, Ernakulam, Kerala 682011",
+    billingAddress: "Market Road, Ernakulam, Kerala 682011",
+    checkInTime: "08:45 AM",
+    checkOutTime: "11:30 AM",
+  },
+  {
+    id: 2,
+    customerName: "Rajesh Enterprises",
+    phone: "9987654321",
+    email: "rajesh.enterprises@email.com",
+    siteAddress: "Bangalore Road, Bangalore, Karnataka 560001",
+    billingAddress: "Brigade Road, Bangalore, Karnataka 560001",
+    checkInTime: "02:15 PM",
+    checkOutTime: "04:45 PM",
+  },
+];
+
+// Dummy visit times for multiple entries
+const dummyVisitTimes = [
+  {
+    id: 1,
+    date: "2026-02-01",
+    customerName: "Lakshmi Stores",
+    checkInTime: "08:45 AM",
+    checkOutTime: "11:30 AM",
+    duration: "2h 45m",
+  },
+  {
+    id: 2,
+    date: "2026-02-02",
+    customerName: "Rajesh Enterprises",
+    checkInTime: "02:15 PM",
+    checkOutTime: "04:45 PM",
+    duration: "2h 30m",
+  },
+];
 
 const defaultTaskFieldData = {
   customerName: "Lakshmi Stores",
@@ -440,35 +494,41 @@ export const ServiceDetailPage = () => {
                 <User className="w-5 h-5" />
                 Customer Information
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="bg-secondary/30 rounded-lg p-4 border border-border">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Customer Name</p>
-                  <p className="text-sm font-bold text-card-foreground">{taskFieldData.customerName}</p>
-                </div>
-                <div className="bg-secondary/30 rounded-lg p-4 border border-border">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1 flex items-center gap-1">
-                    <Phone className="w-3.5 h-3.5" /> Phone Number
-                  </p>
-                  <p className="text-sm font-bold text-card-foreground">{taskFieldData.phone}</p>
-                </div>
-                <div className="bg-secondary/30 rounded-lg p-4 border border-border md:col-span-2">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1 flex items-center gap-1">
-                    <Mail className="w-3.5 h-3.5" /> Email
-                  </p>
-                  <p className="text-sm font-bold text-card-foreground">{taskFieldData.email || "—"}</p>
-                </div>
-                <div className="bg-secondary/30 rounded-lg p-4 border border-border">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1 flex items-center gap-1">
-                    <MapPin className="w-3.5 h-3.5" /> Site Address
-                  </p>
-                  <p className="text-sm font-bold text-card-foreground">{taskFieldData.siteAddress}</p>
-                </div>
-                <div className="bg-secondary/30 rounded-lg p-4 border border-border">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1 flex items-center gap-1">
-                    <MapPin className="w-3.5 h-3.5" /> Billing Address
-                  </p>
-                  <p className="text-sm font-bold text-card-foreground">{taskFieldData.billingAddress}</p>
-                </div>
+              <div className="space-y-4">
+                {dummyCustomerVisits.map((visit) => (
+                  <div key={visit.id} className="bg-secondary/20 rounded-lg p-4 border border-border">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Customer Name</p>
+                        <p className="text-sm font-bold text-card-foreground">{visit.customerName}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1 flex items-center gap-1">
+                          <Phone className="w-3.5 h-3.5" /> Phone Number
+                        </p>
+                        <p className="text-sm font-bold text-card-foreground">{visit.phone}</p>
+                      </div>
+                      <div className="md:col-span-2">
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1 flex items-center gap-1">
+                          <Mail className="w-3.5 h-3.5" /> Email
+                        </p>
+                        <p className="text-sm font-bold text-card-foreground">{visit.email || "—"}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1 flex items-center gap-1">
+                          <MapPin className="w-3.5 h-3.5" /> Site Address
+                        </p>
+                        <p className="text-sm font-bold text-card-foreground">{visit.siteAddress}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1 flex items-center gap-1">
+                          <MapPin className="w-3.5 h-3.5" /> Billing Address
+                        </p>
+                        <p className="text-sm font-bold text-card-foreground">{visit.billingAddress}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
 
@@ -478,25 +538,45 @@ export const ServiceDetailPage = () => {
                 <Clock className="w-5 h-5" />
                 Visit Times
               </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="bg-secondary/30 rounded-lg p-4 border border-border flex items-start gap-3">
-                  <div className="p-2 bg-success/10 rounded-lg">
-                    <LogIn className="w-5 h-5 text-success" />
+              <div className="space-y-3">
+                {dummyVisitTimes.map((visit) => (
+                  <div key={visit.id} className="bg-secondary/20 rounded-lg p-4 border border-border">
+                    <div className="flex items-center justify-between mb-3 pb-3 border-b border-border gap-2 flex-wrap">
+                      <div>
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Date & Customer</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-sm font-semibold text-card-foreground">{visit.date}</span>
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-md bg-primary/10 border border-primary/20 text-primary text-xs font-semibold">
+                            📍 {visit.customerName}
+                          </span>
+                        </div>
+                      </div>
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-md bg-warning/10 border border-warning/20 text-warning text-xs font-semibold whitespace-nowrap">
+                        ⏱️ {visit.duration}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="flex items-start gap-3">
+                        <div className="p-2 bg-success/10 rounded-lg flex-shrink-0">
+                          <LogIn className="w-5 h-5 text-success" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Check-in Time</p>
+                          <p className="text-lg font-bold text-card-foreground mt-1">{visit.checkInTime}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-3">
+                        <div className="p-2 bg-destructive/10 rounded-lg flex-shrink-0">
+                          <LogOut className="w-5 h-5 text-destructive" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Check-out Time</p>
+                          <p className="text-lg font-bold text-card-foreground mt-1">{visit.checkOutTime}</p>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Check-in Time</p>
-                    <p className="text-lg font-bold text-card-foreground mt-1">{taskFieldData.checkInTime}</p>
-                  </div>
-                </div>
-                <div className="bg-secondary/30 rounded-lg p-4 border border-border flex items-start gap-3">
-                  <div className="p-2 bg-destructive/10 rounded-lg">
-                    <LogOut className="w-5 h-5 text-destructive" />
-                  </div>
-                  <div>
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Check-out Time</p>
-                    <p className="text-lg font-bold text-card-foreground mt-1">{taskFieldData.checkOutTime}</p>
-                  </div>
-                </div>
+                ))}
               </div>
             </div>
 
@@ -584,21 +664,21 @@ export const ServiceDetailPage = () => {
                     </div>
 
                     {/* Odometer Images */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       {/* From Image */}
                       <div className="space-y-2">
                         <div className="flex items-center gap-2">
-                          <ImageIcon className="w-4 h-4 text-primary" />
+                          <ImageIcon className="w-3.5 h-3.5 text-primary" />
                           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">From Odometer</p>
                         </div>
-                        <div className="relative aspect-video bg-secondary rounded-lg overflow-hidden border border-border group">
+                        <div className="relative h-32 bg-secondary rounded-lg overflow-hidden border border-border group">
                           <img 
                             src={reading.fromImage} 
                             alt={`From odometer - ${reading.fromKm} km`}
                             className="w-full h-full object-cover"
                           />
                           <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                            <p className="text-white text-sm font-semibold">{reading.fromKm.toLocaleString()} km</p>
+                            <p className="text-white text-xs font-semibold">{reading.fromKm.toLocaleString()} km</p>
                           </div>
                         </div>
                       </div>
@@ -606,17 +686,17 @@ export const ServiceDetailPage = () => {
                       {/* To Image */}
                       <div className="space-y-2">
                         <div className="flex items-center gap-2">
-                          <ImageIcon className="w-4 h-4 text-primary" />
+                          <ImageIcon className="w-3.5 h-3.5 text-primary" />
                           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">To Odometer</p>
                         </div>
-                        <div className="relative aspect-video bg-secondary rounded-lg overflow-hidden border border-border group">
+                        <div className="relative h-32 bg-secondary rounded-lg overflow-hidden border border-border group">
                           <img 
                             src={reading.toImage} 
                             alt={`To odometer - ${reading.toKm} km`}
                             className="w-full h-full object-cover"
                           />
                           <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                            <p className="text-white text-sm font-semibold">{reading.toKm.toLocaleString()} km</p>
+                            <p className="text-white text-xs font-semibold">{reading.toKm.toLocaleString()} km</p>
                           </div>
                         </div>
                       </div>

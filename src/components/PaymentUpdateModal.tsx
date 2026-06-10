@@ -1,40 +1,15 @@
 import { createPortal } from "react-dom";
-import { X } from "lucide-react";
+import { X, Upload } from "lucide-react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
-import type { WorkOrder } from "@/store/projectsStore";
+import type { WorkOrder, PaymentRecord } from "@/store/projectsStore";
 import { useProjectsStore } from "@/store/projectsStore";
 import { useEmployeesStore } from "@/store/employeesStore";
 import { useTasksStore } from "@/store/tasksStore";
-
-function ServiceMultiSelect({ options, selected, onChange }: { options: Array<{ id: string; title: string }>; selected: string[]; onChange: (v: string[]) => void }) {
-  const [open, setOpen] = useState(false);
-  const toggle = (id: string) => onChange(selected.includes(id) ? selected.filter(x => x !== id) : [...selected, id]);
-  return (
-    <div className="relative">
-      <button type="button" onClick={() => setOpen(o => !o)}
-        className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20">
-        <span className={selected.length === 0 ? "text-muted-foreground" : "text-primary font-semibold"}>
-          {selected.length === 0 ? "Select services (optional)" : `✓ ${selected.length} service${selected.length !== 1 ? 's' : ''} selected`}
-        </span>
-        <X className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-      </button>
-      {open && (
-        <div className="absolute top-full left-0 right-0 mt-1 bg-card border border-border rounded-lg shadow-lg z-20 max-h-48 overflow-y-auto">
-          {options.map(service => (
-            <label key={service.id} className="flex items-center gap-2.5 px-3 py-2 hover:bg-secondary cursor-pointer text-sm text-card-foreground">
-              <input type="checkbox" checked={selected.includes(service.id)} onChange={() => toggle(service.id)} className="accent-primary" />
-              <span className="flex-1">{service.title}</span>
-            </label>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
+import { saveFile, generateFileId } from "@/utils/fileStorage";
 
 const paymentSchema = z.object({
   paymentMethod: z.enum(["Cash", "UPI", "Check", "Bank Transfer"]),
@@ -42,8 +17,8 @@ const paymentSchema = z.object({
   date: z.string().min(1, "Date is required"),
   paidBy: z.string().min(1, "Paid by is required"),
   transactionId: z.string().optional(),
-  serviceIds: z.array(z.string()).optional(),
-  serviceTransactionIds: z.record(z.string()).optional(),
+  serviceId: z.string().optional(),
+  attachmentId: z.string().optional(),
 });
 
 type PaymentFormData = z.infer<typeof paymentSchema>;
@@ -59,14 +34,13 @@ export function PaymentUpdateModal({ open, workOrder, onClose }: Props) {
   const { employees } = useEmployeesStore();
   const { getTasksByWorkOrder } = useTasksStore();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [serviceTransactionIds, setServiceTransactionIds] = useState<Record<string, string>>({});
+  const [attachmentFiles, setAttachmentFiles] = useState<Array<{ name: string; id: string }>>([]);
 
   const {
     register,
     handleSubmit,
     reset,
     formState: { errors },
-    watch,
     setValue,
   } = useForm<PaymentFormData>({
     resolver: zodResolver(paymentSchema),
@@ -76,13 +50,46 @@ export function PaymentUpdateModal({ open, workOrder, onClose }: Props) {
       date: new Date().toISOString().split("T")[0],
       paidBy: "",
       transactionId: workOrder?.transactionId || "",
-      serviceIds: [],
-      serviceTransactionIds: {},
+      serviceId: "",
+      attachmentId: "",
     },
   });
 
-  const selectedServiceIds = watch("serviceIds") || [];
   const services = workOrder ? getTasksByWorkOrder(workOrder.id) : [];
+
+  const handleAttachmentChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+
+      // Limit file size to 10MB
+      if (file.size > 10 * 1024 * 1024) {
+        toast.error(`${file.name}: File size must be less than 10MB`);
+        continue;
+      }
+
+      try {
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+          const arrayBuffer = event.target?.result as ArrayBuffer;
+          const fileId = generateFileId(workOrder?.id || "payment", file.name);
+          
+          await saveFile(fileId, file.name, arrayBuffer, file.type);
+          setAttachmentFiles(prev => [...prev, { name: file.name, id: fileId }]);
+          toast.success(`${file.name} attached successfully`);
+        };
+        reader.readAsArrayBuffer(file);
+      } catch (error) {
+        toast.error(`Failed to attach ${file.name}`);
+      }
+    }
+  };
+
+  const removeAttachment = (fileId: string) => {
+    setAttachmentFiles(prev => prev.filter(f => f.id !== fileId));
+  };
 
   const onSubmit = async (data: PaymentFormData) => {
     if (!workOrder) return;
@@ -93,15 +100,31 @@ export function PaymentUpdateModal({ open, workOrder, onClose }: Props) {
       const newAmount = parseFloat(data.amount);
       const totalPaid = currentPaid + newAmount;
 
+      // Create payment record
+      const paymentRecord: PaymentRecord = {
+        id: `payment_${workOrder.id}_${Date.now()}`,
+        amount: newAmount,
+        paymentMethod: data.paymentMethod,
+        transactionId: data.transactionId || undefined,
+        serviceId: data.serviceId || undefined,
+        attachmentIds: attachmentFiles.length > 0 ? attachmentFiles.map(f => f.id) : undefined,
+        paidBy: data.paidBy,
+        date: data.date,
+        createdAt: new Date().toISOString(),
+      };
+
+      // Add to payment history
+      const updatedPaymentHistory = [...(workOrder.paymentHistory || []), paymentRecord];
+
       updateWorkOrder(workOrder.id, {
         paidAmount: `₹ ${totalPaid.toLocaleString()}`,
         transactionId: data.transactionId || undefined,
-        serviceTransactionIds: Object.keys(serviceTransactionIds).length > 0 ? serviceTransactionIds : undefined,
+        paymentHistory: updatedPaymentHistory,
       });
 
-      toast.success(`Payment updated! ${selectedServiceIds.length > 0 ? `${selectedServiceIds.length} service${selectedServiceIds.length !== 1 ? 's' : ''} linked` : ''}`);
+      toast.success("Payment updated!");
       reset();
-      setServiceTransactionIds({});
+      setAttachmentFiles([]);
       onClose();
     } catch (error) {
       toast.error("Failed to update payment");
@@ -129,49 +152,58 @@ export function PaymentUpdateModal({ open, workOrder, onClose }: Props) {
         {/* Content */}
         <div className="overflow-y-auto flex-1 p-6 space-y-4 min-h-0">
           <div>
-            <label className="text-xs font-medium text-muted-foreground mb-2 block">Services</label>
-            <ServiceMultiSelect
-              options={services.map(s => ({ id: s.id, title: `${s.title} — ${s.status}` }))}
-              selected={selectedServiceIds}
-              onChange={(ids) => setValue("serviceIds", ids)}
-            />
-            {selectedServiceIds.length > 0 && (
-              <div className="mt-2 p-2.5 bg-primary/10 border border-primary/20 rounded-lg">
-                <p className="text-xs text-primary font-semibold">✓ {selectedServiceIds.length} service{selectedServiceIds.length !== 1 ? 's' : ''} selected</p>
+            <label className="text-xs font-medium text-muted-foreground mb-2 block">Attachments (Optional)</label>
+            <div className="mb-2">
+              <label className="flex items-center gap-2 px-3 py-2 rounded-lg bg-secondary text-sm border border-border cursor-pointer hover:bg-secondary/80 transition-colors text-card-foreground">
+                <Upload className="w-4 h-4" />
+                <span>Choose files (receipts, invoices, etc.)</span>
+                <input
+                  type="file"
+                  onChange={handleAttachmentChange}
+                  className="hidden"
+                  accept="image/*,.pdf,.doc,.docx"
+                  multiple
+                />
+              </label>
+            </div>
+            
+            {/* Attached Files List */}
+            {attachmentFiles.length > 0 && (
+              <div className="space-y-2">
+                {attachmentFiles.map((file) => (
+                  <div key={file.id} className="flex items-center justify-between px-3 py-2 rounded-lg bg-primary/10 border border-primary/20">
+                    <span className="text-sm font-medium text-primary truncate flex-1">{file.name}</span>
+                    <button
+                      type="button"
+                      onClick={() => removeAttachment(file.id)}
+                      className="p-1 hover:bg-red-500/10 rounded transition-colors flex-shrink-0 ml-2"
+                    >
+                      <X className="w-4 h-4 text-red-500" />
+                    </button>
+                  </div>
+                ))}
               </div>
             )}
           </div>
 
-          {/* Individual Transaction ID Fields for Each Selected Service */}
-          {selectedServiceIds.length > 0 && (
-            <div className="bg-primary/5 rounded-lg border border-primary/20 p-4 space-y-3">
-              <p className="text-sm font-semibold text-primary">Transaction IDs for Selected Services</p>
-              <div className="space-y-3">
-                {selectedServiceIds.map((serviceId) => {
-                  const service = services.find(s => s.id === serviceId);
-                  return (
-                    <div key={serviceId} className="bg-card border border-border rounded-lg p-3 space-y-1.5">
-                      <label className="text-xs font-semibold text-card-foreground block">
-                        📦 {service?.title}
-                      </label>
-                      <input
-                        type="text"
-                        placeholder={`Enter transaction ID for ${service?.title}`}
-                        value={serviceTransactionIds[serviceId] || ""}
-                        onChange={(e) => {
-                          setServiceTransactionIds({
-                            ...serviceTransactionIds,
-                            [serviceId]: e.target.value,
-                          });
-                        }}
-                        className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground font-mono"
-                      />
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
+          <div>
+                        <label className="text-xs font-medium text-muted-foreground mb-2 block">Service</label>
+
+            <select
+              {...register("serviceId")}
+              className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
+            >
+              <option value="">Select a service (optional)</option>
+              {services.map((service) => (
+                <option key={service.id} value={service.id}>
+                  {service.title} — {service.status}
+                </option>
+              ))}
+            </select>
+            {errors.serviceId && (
+              <p className="text-xs text-red-500 mt-1">{errors.serviceId.message}</p>
+            )}
+          </div>
 
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-2 block">Payment Method</label>
@@ -189,18 +221,18 @@ export function PaymentUpdateModal({ open, workOrder, onClose }: Props) {
             )}
           </div>
 
-          {/* <div>
-            <label className="text-xs font-medium text-muted-foreground mb-2 block">Overall Transaction ID (Optional)</label>
+          <div>
+            <label className="text-xs font-medium text-muted-foreground mb-2 block">Transaction ID (Optional)</label>
             <input
               type="text"
-              placeholder="e.g. TXN-12345678 or UPI reference (optional)"
+              placeholder="e.g. TXN-12345678 or UPI reference"
               {...register("transactionId")}
               className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground font-mono"
             />
             {errors.transactionId && (
               <p className="text-xs text-red-500 mt-1">{errors.transactionId.message}</p>
             )}
-          </div> */}
+          </div>
 
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-2 block">Amount (₹)</label>

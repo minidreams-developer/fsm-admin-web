@@ -240,7 +240,7 @@ const DraggableWorkOrderCard = ({ wo, service, priority, hasServices, isSelected
 };
 
 // Draggable Service Card Component
-const DraggableServiceCard = ({ service, workOrder, onEdit, employeeNumber = 1, totalEmployees = 1 }: any) => {
+const DraggableServiceCard = ({ service, workOrder, onEdit, employeeNumber = 1, totalEmployees = 1, isPrimary = false }: any) => {
   const dragData: DragData = {
     type: 'service',
     workOrder,
@@ -326,7 +326,11 @@ const DraggableServiceCard = ({ service, workOrder, onEdit, employeeNumber = 1, 
       ref={setNodeRef}
       {...listeners}
       {...attributes}
-      className={`p-2 rounded-lg border border-border bg-secondary/50 cursor-move hover:shadow-md transition-all ${isDragging ? 'opacity-50' : ''}`}
+      className={`p-2 rounded-lg border-2 cursor-move hover:shadow-md transition-all ${isDragging ? 'opacity-50' : ''} ${
+        isPrimary 
+          ? 'border-primary bg-primary/10 shadow-md shadow-primary/20' 
+          : 'border-border bg-secondary/50'
+      }`}
     >
       {/* Top Row - Work Order ID and Service ID */}
       <div className="flex items-center justify-between mb-1.5">
@@ -1459,6 +1463,11 @@ const QuantCalendarPage = () => {
                   // Get the required employees count (default to 1 if not specified)
                   const requiredEmployees = serviceSchedule?.requiredEmployees || 1;
                   
+                  // Generate a random primary employee number (only when requiredEmployees > 1)
+                  const primaryEmployeeNumber = requiredEmployees > 1 
+                    ? Math.floor(Math.random() * requiredEmployees) + 1 
+                    : 1;
+                  
                   // Create multiple cards based on requiredEmployees count
                   return Array.from({ length: requiredEmployees }, (_, index) => (
                     <DraggableServiceCard
@@ -1467,6 +1476,7 @@ const QuantCalendarPage = () => {
                       workOrder={wo}
                       employeeNumber={index + 1}
                       totalEmployees={requiredEmployees}
+                      isPrimary={index + 1 === primaryEmployeeNumber}
                       onEdit={(id: string) => navigate(`/edit-work-order/${id}`)}
                     />
                   ));
