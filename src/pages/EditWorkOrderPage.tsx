@@ -14,6 +14,7 @@ import { useProductsStore } from "@/store/productsStore";
 import { useEmployeesStore } from "@/store/employeesStore";
 import { useCustomersStore } from "@/store/customersStore";
 import { useServicesStore } from "@/store/servicesStore";
+import { TimePickerUnified } from "@/components/TimePickerUnified";
 
 const workOrderSchema = z.object({
   customer: z.string().min(1, "Customer name is required"),
@@ -369,6 +370,11 @@ const EditWorkOrderPage = () => {
     }));
     setTasks(formattedTasks);
 
+    // Load service appointment schedules
+    if (workOrder.serviceSchedules && workOrder.serviceSchedules.length > 0) {
+      setServiceSchedules(workOrder.serviceSchedules);
+    }
+
     // Find and select the customer
     const customer = customers.find(c => c.firstName && c.lastName && 
       `${c.firstName} ${c.lastName}`.toLowerCase() === workOrder.customer.toLowerCase());
@@ -513,6 +519,7 @@ const EditWorkOrderPage = () => {
         executiveSignatureImage: executiveSignatureImage || undefined,
         customerSignature: customerSignatureImage || undefined,
         cashCollection: cashCollectionMap,
+        serviceSchedules: serviceSchedules.length > 0 ? serviceSchedules : undefined,
       });
 
       // Update existing tasks
@@ -1012,6 +1019,342 @@ const EditWorkOrderPage = () => {
           );
         })()}
 
+        {/* Service Appointments Schedule */}
+        {tasks.length > 0 && (
+          <div className="bg-card rounded-xl card-shadow border border-border overflow-hidden">
+            <div className="px-6 py-4 border-b border-border">
+              <h2 className="text-base font-bold text-card-foreground">Service Appointments Schedule</h2>
+              <p className="text-xs text-muted-foreground mt-0.5">Schedule service visits for this work order</p>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border bg-secondary/30">
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-12">#</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Service</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Schedule Date</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">From Time</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">To Time</th>
+                    <th className="text-center px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Required Employees</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {tasks.flatMap((task, taskIndex) => {
+                    // Create an array of appointments based on quantity
+                    const appointments = Array.from({ length: task.quantity || 1 }, (_, appointmentIndex) => {
+                      const scheduleId = `${task.id}-${appointmentIndex + 1}`;
+                      // Try to find schedule by ID first, then by service title and appointment index
+                      let schedule = serviceSchedules.find(s => s.id === scheduleId);
+                      
+                      if (!schedule) {
+                        // If not found by ID, look for schedules matching this service title
+                        const serviceSchedulesForThisTask = serviceSchedules.filter(s => s.service === task.title);
+                        if (serviceSchedulesForThisTask.length > appointmentIndex) {
+                          schedule = serviceSchedulesForThisTask[appointmentIndex];
+                        }
+                      }
+                      
+                      if (!schedule) {
+                        schedule = {
+                          id: scheduleId,
+                          service: task.title,
+                          scheduleDate: "",
+                          fromTime: "",
+                          toTime: "",
+                          requiredEmployees: 1
+                        };
+                      }
+                      return { schedule, taskIndex, appointmentIndex };
+                    });
+
+                    return appointments.map(({ schedule, taskIndex, appointmentIndex }, rowIndex) => (
+                      <tr key={schedule.id} className="border-b border-border last:border-0 hover:bg-secondary/10 transition-colors">
+                        <td className="px-4 py-3 text-xs text-muted-foreground">
+                          {taskIndex + 1}.{appointmentIndex + 1}
+                        </td>
+                        <td className="px-4 py-3 font-medium text-card-foreground text-sm">
+                          {task.title}
+                          {task.quantity > 1 && (
+                            <span className="text-xs text-muted-foreground ml-2">
+                              (Appointment {appointmentIndex + 1} of {task.quantity})
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          <input
+                            type="date"
+                            value={schedule.scheduleDate}
+                            onChange={(e) => {
+                              setServiceSchedules(prev => {
+                                const existing = prev.find(s => s.id === schedule.id);
+                                if (existing) {
+                                  return prev.map(s => s.id === schedule.id ? { ...s, scheduleDate: e.target.value } : s);
+                                }
+                                return [...prev, { ...schedule, scheduleDate: e.target.value }];
+                              });
+                            }}
+                            className="w-full px-3 py-1.5 rounded-lg bg-secondary text-xs border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
+                          />
+                        </td>
+                        <td className="px-4 py-3">
+                          <TimePickerUnified
+                            value={schedule.fromTime}
+                            onChange={(e) => {
+                              setServiceSchedules(prev => {
+                                const existing = prev.find(s => s.id === schedule.id);
+                                if (existing) {
+                                  return prev.map(s => s.id === schedule.id ? { ...s, fromTime: e } : s);
+                                }
+                                return [...prev, { ...schedule, fromTime: e }];
+                              });
+                            }}
+                          />
+                        </td>
+                        <td className="px-4 py-3">
+                          <TimePickerUnified
+                            value={schedule.toTime}
+                            onChange={(e) => {
+                              setServiceSchedules(prev => {
+                                const existing = prev.find(s => s.id === schedule.id);
+                                if (existing) {
+                                  return prev.map(s => s.id === schedule.id ? { ...s, toTime: e } : s);
+                                }
+                                return [...prev, { ...schedule, toTime: e }];
+                              });
+                            }}
+                          />
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center justify-center gap-2">
+                            <button 
+                              type="button"
+                              onClick={() => {
+                                setServiceSchedules(prev => {
+                                  const existing = prev.find(s => s.id === schedule.id);
+                                  const newQuantity = Math.max(0, (existing?.requiredEmployees || 1) - 1);
+                                  if (existing) {
+                                    return prev.map(s => s.id === schedule.id ? { ...s, requiredEmployees: newQuantity } : s);
+                                  }
+                                  return [...prev, { ...schedule, requiredEmployees: newQuantity }];
+                                });
+                              }}
+                              className="w-7 h-7 flex items-center justify-center rounded border border-border hover:bg-secondary transition-colors"
+                            >
+                              <span className="text-sm">−</span>
+                            </button>
+                            <span className="text-sm font-semibold text-card-foreground min-w-[2.5rem] text-center">
+                              {schedule.requiredEmployees}
+                            </span>
+                            <button 
+                              type="button"
+                              onClick={() => {
+                                setServiceSchedules(prev => {
+                                  const existing = prev.find(s => s.id === schedule.id);
+                                  const newQuantity = (existing?.requiredEmployees || 1) + 1;
+                                  if (existing) {
+                                    return prev.map(s => s.id === schedule.id ? { ...s, requiredEmployees: newQuantity } : s);
+                                  }
+                                  return [...prev, { ...schedule, requiredEmployees: newQuantity }];
+                                });
+                              }}
+                              className="w-7 h-7 flex items-center justify-center rounded border border-border hover:bg-secondary transition-colors"
+                            >
+                              <span className="text-sm">+</span>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ));
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* Sales Executive Signature */}
+        <div className="bg-card rounded-xl card-shadow border border-border overflow-hidden">
+          <div className="px-6 py-4 border-b border-border flex items-center justify-between">
+            <h2 className="text-base font-bold text-card-foreground flex items-center gap-2">
+              <User className="w-5 h-5" />
+              Sales Executive Signature
+            </h2>
+            {!executiveSignatureImage && (
+              <button
+                type="button"
+                onClick={() => setShowSignatureModal(true)}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-white text-sm font-semibold hover:opacity-90 transition-all"
+                style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}
+              >
+                <Edit2 className="w-4 h-4" />
+                Add Signature
+              </button>
+            )}
+            {executiveSignatureImage && (
+              <button
+                type="button"
+                onClick={() => setShowSignatureModal(true)}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-border text-card-foreground text-sm font-semibold hover:bg-secondary transition-colors"
+              >
+                <Edit2 className="w-4 h-4" />
+                Re-sign
+              </button>
+            )}
+          </div>
+          <div className="px-6 py-5">
+            {executiveSignatureImage ? (
+              <div className="bg-secondary/30 rounded-lg p-5 border border-border">
+                <div className="flex items-start gap-4">
+                  <div className="bg-white rounded-lg border border-border p-3 flex-shrink-0">
+                    <img
+                      src={executiveSignatureImage}
+                      alt="Executive Signature"
+                      className="h-20 max-w-[200px] object-contain"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-sm font-semibold text-card-foreground">
+                      {selectedEmployees.length > 0 ? selectedEmployees[0] : "Sales Executive"}
+                    </p>
+                    <p className="text-xs text-muted-foreground">Signed at: {new Date().toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}</p>
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-success/10 text-success text-xs font-semibold border border-success/20">
+                      ✓ Signed
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-secondary/30 rounded-lg border-2 border-dashed border-border p-8 flex items-center justify-center">
+                <div className="text-center">
+                  <div className="w-14 h-14 rounded-full bg-secondary flex items-center justify-center mx-auto mb-3">
+                    <Edit2 className="w-6 h-6 text-muted-foreground" />
+                  </div>
+                  <p className="text-sm font-medium text-muted-foreground">No signature yet</p>
+                  <p className="text-xs text-muted-foreground mt-1">Click "Add Signature" to sign this work order</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Customer Signature */}
+        <div className="bg-card rounded-xl card-shadow border border-border overflow-hidden">
+          <div className="px-6 py-4 border-b border-border flex items-center justify-between">
+            <h2 className="text-base font-bold text-card-foreground flex items-center gap-2">
+              <User className="w-5 h-5" />
+              Customer Signature
+            </h2>
+            {!customerSignatureImage && (
+              <button
+                type="button"
+                onClick={() => setShowCustomerSignatureModal(true)}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-white text-sm font-semibold hover:opacity-90 transition-all"
+                style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}
+              >
+                <Edit2 className="w-4 h-4" />
+                Add Signature
+              </button>
+            )}
+            {customerSignatureImage && (
+              <button
+                type="button"
+                onClick={() => setShowCustomerSignatureModal(true)}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-border text-card-foreground text-sm font-semibold hover:bg-secondary transition-colors"
+              >
+                <Edit2 className="w-4 h-4" />
+                Re-sign
+              </button>
+            )}
+          </div>
+          <div className="px-6 py-5">
+            {customerSignatureImage ? (
+              <div className="bg-secondary/30 rounded-lg p-5 border border-border">
+                <div className="flex items-start gap-4">
+                  <div className="bg-white rounded-lg border border-border p-3 flex-shrink-0">
+                    <img
+                      src={customerSignatureImage}
+                      alt="Customer Signature"
+                      className="h-20 max-w-[200px] object-contain"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-sm font-semibold text-card-foreground">
+                      {watch("customer") || "Customer"}
+                    </p>
+                    <p className="text-xs text-muted-foreground">Signed at: {new Date().toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}</p>
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-success/10 text-success text-xs font-semibold border border-success/20">
+                      ✓ Signed
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-secondary/30 rounded-lg border-2 border-dashed border-border p-8 flex items-center justify-center">
+                <div className="text-center">
+                  <div className="w-14 h-14 rounded-full bg-secondary flex items-center justify-center mx-auto mb-3">
+                    <Edit2 className="w-6 h-6 text-muted-foreground" />
+                  </div>
+                  <p className="text-sm font-medium text-muted-foreground">No signature yet</p>
+                  <p className="text-xs text-muted-foreground mt-1">Click "Add Signature" to capture customer signature</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Terms & Conditions */}
+        <div className="bg-card rounded-xl card-shadow border border-border overflow-hidden">
+          <div className="px-6 py-4 border-b border-border flex items-center justify-between">
+            <h2 className="text-base font-bold text-card-foreground">Terms & Conditions</h2>
+            <button
+              type="button"
+              onClick={() => setIsEditingTerms(e => !e)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-card hover:bg-secondary transition-colors text-xs font-semibold text-card-foreground"
+            >
+              <Edit2 className="w-3.5 h-3.5" />
+              {isEditingTerms ? "Done" : "Edit"}
+            </button>
+          </div>
+          <div className="px-6 py-5 space-y-3">
+            <div className="space-y-2.5">
+              {termsList.map((term, idx) => (
+                <div key={idx} className="flex items-start gap-3">
+                  <span className="text-sm font-medium text-muted-foreground flex-shrink-0 mt-0.5">{idx + 1}.</span>
+                  {isEditingTerms ? (
+                    <div className="flex-1 flex items-center gap-2">
+                      <input
+                        value={term}
+                        onChange={(e) => setTermsList(prev => prev.map((t, i) => i === idx ? e.target.value : t))}
+                        className="flex-1 px-3 py-1.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setTermsList(prev => prev.filter((_, i) => i !== idx))}
+                        className="p-1 hover:bg-destructive/10 rounded transition-colors flex-shrink-0"
+                        title="Remove"
+                      >
+                        <X className="w-4 h-4 text-destructive" />
+                      </button>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">{term}</p>
+                  )}
+                </div>
+              ))}
+              {isEditingTerms && (
+                <button
+                  type="button"
+                  onClick={() => setTermsList(prev => [...prev, ""])}
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:opacity-80 transition-opacity mt-1"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  Add Term
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
         {/* Submit Button */}
         <div className="flex gap-3 justify-end pt-6 border-t border-border">
           <button
@@ -1030,6 +1373,118 @@ const EditWorkOrderPage = () => {
           </button>
         </div>
       </form>
+
+      {/* Sales Executive Signature Modal */}
+      {showSignatureModal && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/75">
+          <div className="bg-card rounded-[20px] shadow-2xl w-full max-w-md animate-in fade-in slide-in-from-bottom-4 duration-300">
+            <div className="flex items-center justify-between p-6 border-b border-border">
+              <div>
+                <h2 className="text-lg font-bold text-card-foreground">Sales Executive Signature</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Signing as: <span className="font-semibold text-primary">{selectedEmployees.length > 0 ? selectedEmployees[0] : "Sales Executive"}</span>
+                </p>
+              </div>
+              <button
+                onClick={() => setShowSignatureModal(false)}
+                className="p-2 hover:bg-secondary rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5 text-muted-foreground" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Please sign below to confirm your authorization of this work order.
+              </p>
+
+              {/* Signature Canvas */}
+              <div className="border-2 border-border rounded-lg bg-white overflow-hidden">
+                <SignatureCanvas
+                  ref={execSignatureRef}
+                  canvasProps={{ className: "w-full h-44" }}
+                  backgroundColor="white"
+                />
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => execSignatureRef.current?.clear()}
+                  className="flex-1 h-10 border border-border text-card-foreground text-sm font-medium hover:bg-secondary transition-colors rounded-lg"
+                >
+                  Clear
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveExecSignature}
+                  className="flex-1 h-10 text-white text-sm font-semibold rounded-lg hover:opacity-90 transition-all"
+                  style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}
+                >
+                  Save Signature
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Customer Signature Modal */}
+      {showCustomerSignatureModal && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/75">
+          <div className="bg-card rounded-[20px] shadow-2xl w-full max-w-md animate-in fade-in slide-in-from-bottom-4 duration-300">
+            <div className="flex items-center justify-between p-6 border-b border-border">
+              <div>
+                <h2 className="text-lg font-bold text-card-foreground">Customer Signature</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Signing as: <span className="font-semibold text-primary">{watch("customer") || "Customer"}</span>
+                </p>
+              </div>
+              <button
+                onClick={() => setShowCustomerSignatureModal(false)}
+                className="p-2 hover:bg-secondary rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5 text-muted-foreground" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Customer signature to confirm agreement to this work order.
+              </p>
+
+              {/* Signature Canvas */}
+              <div className="border-2 border-border rounded-lg bg-white overflow-hidden">
+                <SignatureCanvas
+                  ref={customerSignatureRef}
+                  canvasProps={{ className: "w-full h-44" }}
+                  backgroundColor="white"
+                />
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => customerSignatureRef.current?.clear()}
+                  className="flex-1 h-10 border border-border text-card-foreground text-sm font-medium hover:bg-secondary transition-colors rounded-lg"
+                >
+                  Clear
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveCustomerSignature}
+                  className="flex-1 h-10 text-white text-sm font-semibold rounded-lg hover:opacity-90 transition-all"
+                  style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}
+                >
+                  Save Signature
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 };

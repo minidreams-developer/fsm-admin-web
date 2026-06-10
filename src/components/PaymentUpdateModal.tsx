@@ -17,8 +17,8 @@ function ServiceMultiSelect({ options, selected, onChange }: { options: Array<{ 
     <div className="relative">
       <button type="button" onClick={() => setOpen(o => !o)}
         className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20">
-        <span className={selected.length === 0 ? "text-muted-foreground" : ""}>
-          {selected.length === 0 ? "Select services (optional)" : `${selected.length} service${selected.length !== 1 ? 's' : ''} selected`}
+        <span className={selected.length === 0 ? "text-muted-foreground" : "text-primary font-semibold"}>
+          {selected.length === 0 ? "Select services (optional)" : `✓ ${selected.length} service${selected.length !== 1 ? 's' : ''} selected`}
         </span>
         <X className="w-4 h-4 text-muted-foreground flex-shrink-0" />
       </button>
@@ -43,6 +43,7 @@ const paymentSchema = z.object({
   paidBy: z.string().min(1, "Paid by is required"),
   transactionId: z.string().optional(),
   serviceIds: z.array(z.string()).optional(),
+  serviceTransactionIds: z.record(z.string()).optional(),
 });
 
 type PaymentFormData = z.infer<typeof paymentSchema>;
@@ -58,6 +59,7 @@ export function PaymentUpdateModal({ open, workOrder, onClose }: Props) {
   const { employees } = useEmployeesStore();
   const { getTasksByWorkOrder } = useTasksStore();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [serviceTransactionIds, setServiceTransactionIds] = useState<Record<string, string>>({});
 
   const {
     register,
@@ -75,11 +77,11 @@ export function PaymentUpdateModal({ open, workOrder, onClose }: Props) {
       paidBy: "",
       transactionId: workOrder?.transactionId || "",
       serviceIds: [],
+      serviceTransactionIds: {},
     },
   });
 
   const selectedServiceIds = watch("serviceIds") || [];
-
   const services = workOrder ? getTasksByWorkOrder(workOrder.id) : [];
 
   const onSubmit = async (data: PaymentFormData) => {
@@ -94,10 +96,12 @@ export function PaymentUpdateModal({ open, workOrder, onClose }: Props) {
       updateWorkOrder(workOrder.id, {
         paidAmount: `₹ ${totalPaid.toLocaleString()}`,
         transactionId: data.transactionId || undefined,
+        serviceTransactionIds: Object.keys(serviceTransactionIds).length > 0 ? serviceTransactionIds : undefined,
       });
 
-      toast.success("Payment updated successfully!");
+      toast.success(`Payment updated! ${selectedServiceIds.length > 0 ? `${selectedServiceIds.length} service${selectedServiceIds.length !== 1 ? 's' : ''} linked` : ''}`);
       reset();
+      setServiceTransactionIds({});
       onClose();
     } catch (error) {
       toast.error("Failed to update payment");
@@ -131,7 +135,43 @@ export function PaymentUpdateModal({ open, workOrder, onClose }: Props) {
               selected={selectedServiceIds}
               onChange={(ids) => setValue("serviceIds", ids)}
             />
+            {selectedServiceIds.length > 0 && (
+              <div className="mt-2 p-2.5 bg-primary/10 border border-primary/20 rounded-lg">
+                <p className="text-xs text-primary font-semibold">✓ {selectedServiceIds.length} service{selectedServiceIds.length !== 1 ? 's' : ''} selected</p>
+              </div>
+            )}
           </div>
+
+          {/* Individual Transaction ID Fields for Each Selected Service */}
+          {selectedServiceIds.length > 0 && (
+            <div className="bg-primary/5 rounded-lg border border-primary/20 p-4 space-y-3">
+              <p className="text-sm font-semibold text-primary">Transaction IDs for Selected Services</p>
+              <div className="space-y-3">
+                {selectedServiceIds.map((serviceId) => {
+                  const service = services.find(s => s.id === serviceId);
+                  return (
+                    <div key={serviceId} className="bg-card border border-border rounded-lg p-3 space-y-1.5">
+                      <label className="text-xs font-semibold text-card-foreground block">
+                        📦 {service?.title}
+                      </label>
+                      <input
+                        type="text"
+                        placeholder={`Enter transaction ID for ${service?.title}`}
+                        value={serviceTransactionIds[serviceId] || ""}
+                        onChange={(e) => {
+                          setServiceTransactionIds({
+                            ...serviceTransactionIds,
+                            [serviceId]: e.target.value,
+                          });
+                        }}
+                        className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground font-mono"
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-2 block">Payment Method</label>
@@ -149,18 +189,18 @@ export function PaymentUpdateModal({ open, workOrder, onClose }: Props) {
             )}
           </div>
 
-          <div>
-            <label className="text-xs font-medium text-muted-foreground mb-2 block">Transaction ID</label>
+          {/* <div>
+            <label className="text-xs font-medium text-muted-foreground mb-2 block">Overall Transaction ID (Optional)</label>
             <input
               type="text"
-              placeholder="e.g. TXN-12345678 or UPI reference"
+              placeholder="e.g. TXN-12345678 or UPI reference (optional)"
               {...register("transactionId")}
               className="w-full px-3 py-2 rounded-lg bg-secondary text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground font-mono"
             />
             {errors.transactionId && (
               <p className="text-xs text-red-500 mt-1">{errors.transactionId.message}</p>
             )}
-          </div>
+          </div> */}
 
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-2 block">Amount (₹)</label>

@@ -429,6 +429,7 @@ const CreateWorkOrderPage = () => {
         executiveSignatureImage: executiveSignatureImage || undefined,
         customerSignature: customerSignatureImage || undefined,
         cashCollection: cashCollectionMap,
+        serviceSchedules: serviceSchedules.length > 0 ? serviceSchedules : undefined,
       });
       tasks.forEach((t, i) => {
         addTask({

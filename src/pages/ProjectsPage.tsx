@@ -1,5 +1,5 @@
 import { StatusBadge } from "@/components/StatusBadge";
-import { Search, Plus, Clipboard, Calendar, User, CreditCard, Download } from "lucide-react";
+import { Search, Plus, Clipboard, Calendar, User, CreditCard } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { useProjectsStore, type WorkOrder } from "@/store/projectsStore";
@@ -8,7 +8,6 @@ import { useEmployeesStore } from "@/store/employeesStore";
 import { useBranchesStore } from "@/store/branchesStore";
 import { PaginationControls } from "@/components/PaginationControls";
 import { usePagination } from "@/hooks/usePagination";
-import * as XLSX from 'xlsx';
 import { toast } from "sonner";
 
 const statusMap = {
@@ -55,10 +54,10 @@ const ProjectsPage = () => {
     }
   }, [searchParams, getLead, updateLead]);
 
-  const parseNextServiceDate = (value: string) => {
-    const ts = Date.parse(value);
-    if (Number.isNaN(ts)) return null;
-    return new Date(ts);
+  const getPaymentProgress = (project: WorkOrder) => {
+    const total = parseInt(project.totalValue.replace(/[₹,\s]/g, ""));
+    const paid = parseInt(project.paidAmount.replace(/[₹,\s]/g, ""));
+    return Math.round((paid / total) * 100);
   };
 
   const filtered = workOrders.filter((wo) => {
@@ -85,84 +84,6 @@ const ProjectsPage = () => {
     itemsPerPage: 10,
   });
 
-  const getPaymentProgress = (project: WorkOrder) => {
-    const total = parseInt(project.totalValue.replace(/[₹,\s]/g, ""));
-    const paid = parseInt(project.paidAmount.replace(/[₹,\s]/g, ""));
-    return Math.round((paid / total) * 100);
-  };
-
-
-
-  const handleExportToExcel = () => {
-    try {
-      // Prepare data for export
-      const exportData = filtered.map((wo) => ({
-        'Work Order ID': wo.id,
-        'Customer': wo.customer,
-        'Phone': wo.phone,
-        'Email': wo.email || '-',
-        'Address': wo.address,
-        'Site Address': wo.siteAddress || '-',
-        'Billing Address': wo.billingAddress || '-',
-        'Subject': wo.subject,
-        'Service Type': wo.serviceType,
-        'Frequency': wo.frequency,
-        'Total Value': wo.totalValue,
-        'Paid Amount': wo.paidAmount,
-        'Payment Progress': `${getPaymentProgress(wo)}%`,
-        'Start Date': wo.start,
-        'End Date': wo.end || '-',
-        'Status': wo.status,
-        'Assigned Tech': wo.assignedTech,
-        'Next Service': wo.nextService,
-        'Notes': wo.notes || '-',
-      }));
-
-      // Create worksheet
-      const ws = XLSX.utils.json_to_sheet(exportData);
-
-      // Set column widths
-      const colWidths = [
-        { wch: 15 }, // Work Order ID
-        { wch: 25 }, // Customer
-        { wch: 15 }, // Phone
-        { wch: 25 }, // Email
-        { wch: 30 }, // Address
-        { wch: 30 }, // Site Address
-        { wch: 30 }, // Billing Address
-        { wch: 30 }, // Subject
-        { wch: 20 }, // Service Type
-        { wch: 15 }, // Frequency
-        { wch: 15 }, // Total Value
-        { wch: 15 }, // Paid Amount
-        { wch: 15 }, // Payment Progress
-        { wch: 12 }, // Start Date
-        { wch: 12 }, // End Date
-        { wch: 15 }, // Status
-        { wch: 20 }, // Assigned Tech
-        { wch: 15 }, // Next Service
-        { wch: 30 }, // Notes
-      ];
-      ws['!cols'] = colWidths;
-
-      // Create workbook
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, 'Work Orders');
-
-      // Generate filename with current date
-      const date = new Date().toISOString().split('T')[0];
-      const filename = `Work_Orders_${date}.xlsx`;
-
-      // Download file
-      XLSX.writeFile(wb, filename);
-
-      toast.success(`Exported ${filtered.length} work order${filtered.length !== 1 ? 's' : ''} to Excel`);
-    } catch (error) {
-      console.error('Export error:', error);
-      toast.error('Failed to export data');
-    }
-  };
-
   return (
     <div className="space-y-6 animate-fade-in">
       {showSuccessMessage && (
@@ -179,13 +100,6 @@ const ProjectsPage = () => {
           <p className="text-sm text-muted-foreground">View and manage all work orders and AMCs.</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-2">
-          {/* <button 
-            onClick={handleExportToExcel}
-            className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 border border-primary text-primary bg-primary/5 hover:bg-primary/10 transition-all"
-          >
-            <Download className="w-4 h-4" />
-            Export Data
-          </button> */}
           <button 
             onClick={() => navigate("/create-work-order")} 
             className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 text-white shadow-[0px_5px_12px_rgba(39,47,158,0.2)] transition-all"
@@ -397,13 +311,35 @@ const ProjectsPage = () => {
                 </td>
                 <td className="px-3 py-3 cursor-pointer" onClick={() => navigate(`/work-order/${project.id}`)}>
                   {(() => {
-                    const count = project.serviceTypes?.length
-                      ? project.serviceTypes.length
-                      : project.serviceType?.trim() ? 1 : 0;
+                    const services = project.serviceTypes?.length 
+                      ? project.serviceTypes 
+                      : project.serviceType?.trim() ? [project.serviceType] : [];
+                    const count = services.length;
+                    
+                    // Extract service names (remove AMC/One-Time/frequency info for cleaner display)
+                    const serviceNames = services.map(svc => {
+                      const match = svc.match(/^([^(]+)/);
+                      return match ? match[1].trim() : svc;
+                    });
+                    
                     return (
-                      <div className="flex items-center gap-2">
-                        <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-primary/10 text-primary text-xs font-bold">{count}</span>
-                        <span className="text-xs text-muted-foreground">{count === 1 ? "Service" : "Services"}</span>
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-primary/10 text-primary text-xs font-bold">{count}</span>
+                          <span className="text-xs text-muted-foreground">{count === 1 ? "Service" : "Services"}</span>
+                        </div>
+                        <div className="flex flex-col gap-0.5">
+                          {serviceNames.slice(0, 2).map((name, idx) => (
+                            <div key={idx} className="text-xs bg-primary/5 text-primary px-2 py-1 rounded whitespace-nowrap truncate">
+                              📦 {name}
+                            </div>
+                          ))}
+                          {count > 2 && (
+                            <div className="text-xs text-muted-foreground px-2 py-0.5">
+                              +{count - 2} more
+                            </div>
+                          )}
+                        </div>
                       </div>
                     );
                   })()}

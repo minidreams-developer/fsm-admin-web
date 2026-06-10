@@ -240,7 +240,7 @@ const DraggableWorkOrderCard = ({ wo, service, priority, hasServices, isSelected
 };
 
 // Draggable Service Card Component
-const DraggableServiceCard = ({ service, workOrder, onEdit }: any) => {
+const DraggableServiceCard = ({ service, workOrder, onEdit, employeeNumber = 1, totalEmployees = 1 }: any) => {
   const dragData: DragData = {
     type: 'service',
     workOrder,
@@ -248,7 +248,7 @@ const DraggableServiceCard = ({ service, workOrder, onEdit }: any) => {
   };
 
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
-    id: `service-${service.id}`,
+    id: `service-${service.id}-emp-${employeeNumber}`,
     data: dragData,
   });
 
@@ -276,23 +276,50 @@ const DraggableServiceCard = ({ service, workOrder, onEdit }: any) => {
     return `${displayHour}:${minutes} ${ampm}`;
   };
 
-  // Use service dates or fallback to work order dates
-  const startDate = service.startDate || workOrder.start;
-  const endDate = service.endDate || workOrder.end;
-  
-  // Check for service-specific times first, then fallback to work order time
-  const serviceFromTime = service.fromTime ? formatTimeFromHHMM(service.fromTime) : null;
-  const serviceToTime = service.toTime ? formatTimeFromHHMM(service.toTime) : null;
-  const workOrderTime = workOrder.workOrderDateTime ? formatTime(workOrder.workOrderDateTime) : null;
-  
-  // Determine which time to display - always show something
-  const displayTime = serviceFromTime && serviceToTime 
-    ? `${serviceFromTime} - ${serviceToTime}` 
-    : serviceFromTime 
-    ? serviceFromTime 
-    : workOrderTime
-    ? workOrderTime
-    : "9:00 AM"; // Default fallback time
+  // Find matching service schedule from work order serviceSchedules
+  const serviceSchedule = workOrder.serviceSchedules?.find(
+    (ss: any) => ss.service === service.title || ss.service === service.id
+  );
+
+  // Priority: Use service schedule data, then fall back to service/work order data
+  let displayDate = null;
+  let displayTime = "9:00 AM";
+
+  if (serviceSchedule) {
+    // Use appointment schedule data if available
+    if (serviceSchedule.scheduleDate) {
+      displayDate = formatDate(serviceSchedule.scheduleDate);
+    }
+    if (serviceSchedule.fromTime && serviceSchedule.toTime) {
+      const fromTime = formatTimeFromHHMM(serviceSchedule.fromTime);
+      const toTime = formatTimeFromHHMM(serviceSchedule.toTime);
+      displayTime = `${fromTime} - ${toTime}`;
+    } else if (serviceSchedule.fromTime) {
+      displayTime = formatTimeFromHHMM(serviceSchedule.fromTime) || "9:00 AM";
+    }
+  } else {
+    // Fallback to original logic
+    const startDate = service.startDate || workOrder.start;
+    const endDate = service.endDate || workOrder.end;
+    
+    if (startDate) {
+      displayDate = formatDate(startDate);
+    }
+    
+    // Check for service-specific times first, then fallback to work order time
+    const serviceFromTime = service.fromTime ? formatTimeFromHHMM(service.fromTime) : null;
+    const serviceToTime = service.toTime ? formatTimeFromHHMM(service.toTime) : null;
+    const workOrderTime = workOrder.workOrderDateTime ? formatTime(workOrder.workOrderDateTime) : null;
+    
+    // Determine which time to display - always show something
+    displayTime = serviceFromTime && serviceToTime 
+      ? `${serviceFromTime} - ${serviceToTime}` 
+      : serviceFromTime 
+      ? serviceFromTime 
+      : workOrderTime
+      ? workOrderTime
+      : "9:00 AM"; // Default fallback time
+  }
 
   return (
     <div
@@ -306,6 +333,9 @@ const DraggableServiceCard = ({ service, workOrder, onEdit }: any) => {
         <div className="flex items-center gap-1.5">
           <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-primary/10 text-primary">{workOrder.id}</span>
           <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-blue-100 text-blue-700">SA-{service.id?.slice(-1) || '1'}</span>
+          {totalEmployees > 1 && (
+            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-purple-100 text-purple-700">E{employeeNumber}/{totalEmployees}</span>
+          )}
         </div>
         <button
           onClick={(e) => {
@@ -341,26 +371,45 @@ const DraggableServiceCard = ({ service, workOrder, onEdit }: any) => {
         </div>
       )}
 
-      {/* Date and Time Display */}
-      <div className="space-y-0.5 mb-1">
-        {startDate && (
+      {/* Appointment Schedule - Display when available */}
+      {serviceSchedule && (
+        <div className="space-y-0.5 mb-1 p-1 rounded bg-primary/5 border border-primary/20">
+          <p className="text-[9px] font-semibold text-primary">📅 Appointment Schedule:</p>
+          {displayDate && (
+            <div className="flex items-center gap-1">
+              <CalendarIcon className="w-3 h-3 text-primary flex-shrink-0" />
+              <span className="text-[9px] text-card-foreground font-medium">{displayDate}</span>
+            </div>
+          )}
           <div className="flex items-center gap-1">
-            <CalendarIcon className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-            <span className="text-[10px] text-card-foreground font-medium">{formatDate(startDate)}</span>
-            {endDate && startDate !== endDate && (
-              <>
-                <span className="text-[9px] text-muted-foreground">→</span>
-                <span className="text-[10px] text-card-foreground font-medium">{formatDate(endDate)}</span>
-              </>
-            )}
+            <Clock className="w-3 h-3 text-primary flex-shrink-0" />
+            <span className="text-[9px] text-card-foreground font-semibold text-primary">{displayTime}</span>
           </div>
-        )}
-        {/* Always show time */}
-        <div className="flex items-center gap-1">
-          <Clock className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-          <span className="text-[10px] text-card-foreground font-semibold text-primary">{displayTime}</span>
+          {/* {serviceSchedule.requiredEmployees && (
+            <div className="flex items-center gap-1">
+              <Users className="w-3 h-3 text-primary flex-shrink-0" />
+              <span className="text-[9px] text-card-foreground">{serviceSchedule.requiredEmployees} employee{serviceSchedule.requiredEmployees !== 1 ? 's' : ''}</span>
+            </div>
+          )} */}
         </div>
-      </div>
+      )}
+
+      {/* Date and Time Display (fallback when no appointment schedule) */}
+      {!serviceSchedule && (
+        <div className="space-y-0.5 mb-1">
+          {displayDate && (
+            <div className="flex items-center gap-1">
+              <CalendarIcon className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+              <span className="text-[10px] text-card-foreground font-medium">{displayDate}</span>
+            </div>
+          )}
+          {/* Always show time */}
+          <div className="flex items-center gap-1">
+            <Clock className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+            <span className="text-[10px] text-card-foreground font-semibold text-primary">{displayTime}</span>
+          </div>
+        </div>
+      )}
       
       {service.assignedTo && (
         <p className="text-[10px] text-muted-foreground">Assigned: {service.assignedTo}</p>
@@ -1191,7 +1240,7 @@ const QuantCalendarPage = () => {
             <p className="text-sm text-muted-foreground">Drag and drop services to schedule technicians and manage workload</p>
           </div>
           {/* Global Date Range Filter - Exact Dashboard Style */}
-          <div className="flex items-center gap-2 bg-card border border-border rounded-xl px-3 py-2 shadow-sm">
+          {/* <div className="flex items-center gap-2 bg-card border border-border rounded-xl px-3 py-2 shadow-sm">
             
              <span className="text-xs text-muted-foreground">From :</span>
              <input
@@ -1224,7 +1273,7 @@ const QuantCalendarPage = () => {
                 Reset
               </button>
             </div>
-          </div>
+          </div> */}
         </div>
 
         {/* Top Filters Bar */}
@@ -1337,7 +1386,7 @@ const QuantCalendarPage = () => {
       </div>
 
       {/* Top Navigation */}
-      <div className="flex items-center justify-center gap-4">
+      <div className="flex items-center justify-start gap-4">
         <button 
           onClick={() => {
             const newDate = new Date(fromDate);
@@ -1401,14 +1450,27 @@ const QuantCalendarPage = () => {
               filteredWorkOrders.map(wo => {
                 const services = getTasksByWorkOrder(wo.id);
                 
-                return services.map(service => (
-                  <DraggableServiceCard
-                    key={service.id}
-                    service={service}
-                    workOrder={wo}
-                    onEdit={(id: string) => navigate(`/edit-work-order/${id}`)}
-                  />
-                ));
+                return services.map(service => {
+                  // Find the service schedule to get requiredEmployees count
+                  const serviceSchedule = wo.serviceSchedules?.find(
+                    (ss: any) => ss.service === service.title || ss.service === service.id
+                  );
+                  
+                  // Get the required employees count (default to 1 if not specified)
+                  const requiredEmployees = serviceSchedule?.requiredEmployees || 1;
+                  
+                  // Create multiple cards based on requiredEmployees count
+                  return Array.from({ length: requiredEmployees }, (_, index) => (
+                    <DraggableServiceCard
+                      key={`${service.id}-emp-${index + 1}`}
+                      service={service}
+                      workOrder={wo}
+                      employeeNumber={index + 1}
+                      totalEmployees={requiredEmployees}
+                      onEdit={(id: string) => navigate(`/edit-work-order/${id}`)}
+                    />
+                  ));
+                });
               })
             )}
           </div>

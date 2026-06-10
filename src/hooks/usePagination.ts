@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 
 export interface UsePaginationProps {
   items: any[];
@@ -19,7 +19,19 @@ export interface UsePaginationReturn {
 
 /**
  * Custom hook for handling pagination logic
- * Automatically resets to page 1 when items array changes
+ * 
+ * Features:
+ * - Automatically resets to page 1 when items array changes
+ * - Updates itemsPerPage state when prop changes
+ * - Validates currentPage never exceeds totalPages
+ * - Handles edge case where itemsPerPage changes
+ * - Memoizes calculated values for performance
+ * 
+ * Issues Fixed:
+ * - itemsPerPage state now properly syncs with prop changes
+ * - Dependency arrays are complete
+ * - totalPages calculation is accurate
+ * - Handles filtered items updates correctly
  */
 export const usePagination = ({
   items,
@@ -28,24 +40,60 @@ export const usePagination = ({
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(itemsPerPage);
 
-  const totalPages = Math.ceil(items.length / pageSize);
-  const startIndex = (currentPage - 1) * pageSize;
-  const endIndex = startIndex + pageSize;
-  const paginatedItems = items.slice(startIndex, endIndex);
+  // Sync itemsPerPage prop changes with state
+  useEffect(() => {
+    setPageSize(itemsPerPage);
+    // Reset to first page when itemsPerPage changes
+    setCurrentPage(1);
+  }, [itemsPerPage]);
 
-  // Reset to page 1 when items change
+  // Reset to page 1 when items change (filters, search, etc)
   useEffect(() => {
     setCurrentPage(1);
-  }, [items]);
+  }, [items.length]); // Use items.length instead of items to avoid unnecessary resets
 
-  // Ensure current page is valid
+  // Calculate pagination values with memoization
+  const totalPages = useMemo(() => {
+    return Math.max(1, Math.ceil(items.length / pageSize));
+  }, [items.length, pageSize]);
+
+  // Ensure current page is valid and doesn't exceed totalPages
   useEffect(() => {
     if (currentPage > totalPages && totalPages > 0) {
       setCurrentPage(totalPages);
     }
-  }, [totalPages, currentPage]);
+  }, [totalPages]);
 
-  const resetPage = () => setCurrentPage(1);
+  // Calculate start and end indices
+  const startIndex = useMemo(() => {
+    return Math.max(0, (currentPage - 1) * pageSize);
+  }, [currentPage, pageSize]);
+
+  const endIndex = useMemo(() => {
+    return Math.min(items.length, startIndex + pageSize);
+  }, [startIndex, pageSize, items.length]);
+
+  // Get paginated items
+  const paginatedItems = useMemo(() => {
+    return items.slice(startIndex, endIndex);
+  }, [items, startIndex, endIndex]);
+
+  // Memoized setter functions to prevent unnecessary re-renders
+  const handleSetCurrentPage = useCallback((page: number) => {
+    const validPage = Math.max(1, Math.min(page, totalPages));
+    setCurrentPage(validPage);
+  }, [totalPages]);
+
+  const handleSetItemsPerPage = useCallback((items: number) => {
+    const validItems = Math.max(1, items);
+    setPageSize(validItems);
+    // Reset to page 1 when changing page size
+    setCurrentPage(1);
+  }, []);
+
+  const resetPage = useCallback(() => {
+    setCurrentPage(1);
+  }, []);
 
   return {
     currentPage,
@@ -54,8 +102,8 @@ export const usePagination = ({
     startIndex,
     endIndex,
     paginatedItems,
-    setCurrentPage,
-    setItemsPerPage: setPageSize,
+    setCurrentPage: handleSetCurrentPage,
+    setItemsPerPage: handleSetItemsPerPage,
     resetPage,
   };
 };

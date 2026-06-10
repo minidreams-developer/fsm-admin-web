@@ -192,6 +192,14 @@ const EmployeesPage = () => {
                   <p className="text-sm font-bold text-card-foreground">{e.projects}</p>
                 </div>
               </div>
+
+              {/* Cash Balance Row */}
+              <div className="mt-3 pt-3 border-t border-border">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-medium text-muted-foreground">💰 Cash Balance</p>
+                  <p className="text-sm font-bold text-primary">{e.cashBalance || "₹ 0"}</p>
+                </div>
+              </div>
             </div>
           );
         })}

@@ -17,6 +17,15 @@ export type CustomerConfirmation = {
   customerName?: string;
 };
 
+export type ServiceSchedule = {
+  id: string;
+  service: string;
+  scheduleDate: string;
+  fromTime: string;
+  toTime: string;
+  requiredEmployees: number;
+};
+
 export type WorkOrder = {
   id: string;
   customer: string;
@@ -48,6 +57,8 @@ export type WorkOrder = {
   totalValue: string;
   paidAmount: string;
   transactionId?: string;
+  serviceTransactionIds?: Record<string, string>;
+  serviceSchedules?: ServiceSchedule[];
   nextService: string;
   assignedTech: string;
   notes: string;
@@ -564,6 +575,7 @@ export const useProjectsStore = create<ProjectsStore>()(
             totalValue: typeof wo.totalValue === "string" ? wo.totalValue : "₹ 0",
             paidAmount: typeof wo.paidAmount === "string" ? wo.paidAmount : "₹ 0",
             transactionId: typeof wo.transactionId === "string" ? wo.transactionId : undefined,
+            serviceSchedules: Array.isArray(wo.serviceSchedules) ? wo.serviceSchedules : undefined,
             nextService: typeof wo.nextService === "string" ? wo.nextService : "Unassigned",
             assignedTech: typeof wo.assignedTech === "string" ? wo.assignedTech : "Unassigned",
             notes: typeof wo.notes === "string" ? wo.notes : "",
