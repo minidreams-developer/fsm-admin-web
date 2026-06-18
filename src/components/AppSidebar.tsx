@@ -10,29 +10,25 @@ import { logout } from "@/lib/auth";
 
 const menuItems = [
   { label: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
-  { label: "Customers", icon: UserCircle, path: "/customers" },
-  { label: "Employees", icon: UserCog, path: "/employees" },
   { label: "Leads", icon: Users, path: "/leads" },
-  { label: " Service appointment", icon: CalendarDays, path: "/quant-calendar" },
-  // { label: "Service Appointments", icon: Wrench, path: "/services" },
-  
+  { label: "Customers", icon: UserCircle, path: "/customers" },
+  { label: "Service Appointments", icon: CalendarDays, path: "/quant-calendar" },
   { label: "Work Orders", icon: FolderKanban, path: "/projects" },
   { label: "Task Management", icon: FileText, path: "/task-management" },
+  { label: "Employees", icon: UserCog, path: "/employees" },
   { label: "Payments", icon: CreditCard, path: "/payments" },
-  // { label: "Role", icon: Shield, path: "/roles" },
-  // { label: "Reports", icon: FileText, path: "/reports" },
 ];
 
 const settingsMenuItems = [
-  { label: "Travel Expense", path: "/settings" },
+  { label: "Service List", path: "/service-management" },
   { label: "Branches", path: "/branches" },
-  { label: "Service list", icon: Wrench, path: "/service-management" },
+  { label: "Travel Expense", path: "/settings" },
 ];
 
 const inventoryMenuItems = [
+  { label: "Products", path: "/products" },
   { label: "Inventory", path: "/inventory" },
   { label: "Allocate Stock", path: "/inventory/allocate" },
-  { label: "Products", path: "/products" },
 ];
 
 type AppSidebarProps = {
