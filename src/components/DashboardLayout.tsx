@@ -11,15 +11,25 @@ export function DashboardLayout() {
   return (
     <div className="flex h-svh w-full bg-background overflow-hidden">
       <div className="hidden md:flex relative">
-        <AppSidebar collapsed={sidebarCollapsed} />
+        <AppSidebar
+          collapsed={sidebarCollapsed}
+          onExpand={() => setSidebarCollapsed(false)}
+        />
       </div>
       <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
-        <SheetContent side="left" className="p-0">
-          <AppSidebar className="w-full border-r-0" onNavigate={() => setMobileNavOpen(false)} />
+        <SheetContent side="left" className="p-0 h-svh overflow-hidden">
+          <AppSidebar
+            className="w-full h-full border-r-0"
+            onNavigate={() => setMobileNavOpen(false)}
+            onExpand={() => setSidebarCollapsed(false)}
+          />
         </SheetContent>
       </Sheet>
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <AppHeader onMenuClick={() => setMobileNavOpen(true)} onSidebarToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
+        <AppHeader
+          onMenuClick={() => setMobileNavOpen(true)}
+          onSidebarToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+        />
         <main className="flex-1 overflow-auto p-4 sm:p-6 bg-transparent">
           <Outlet />
         </main>

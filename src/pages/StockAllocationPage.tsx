@@ -6,6 +6,7 @@ import { useEmployeesStore } from "@/store/employeesStore";
 import { useBranchesStore } from "@/store/branchesStore";
 import { toast } from "sonner";
 import { StatusBadge } from "@/components/StatusBadge";
+import { DataTable } from "@/components/table/Datatable";
 
 const StockAllocationPage = () => {
   const navigate = useNavigate();
@@ -20,6 +21,8 @@ const StockAllocationPage = () => {
   const [allocations, setAllocations] = useState<Record<number, number>>({});
   const [editingAllocationId, setEditingAllocationId] = useState<string | null>(null);
   const [editingQuantity, setEditingQuantity] = useState<number>(0);
+  const [detailsItem, setDetailsItem] = useState<any>(null);
+  const [showDetails, setShowDetails] = useState(false);
 
   const activeEmployees = employees.filter(e => e.isActive !== false);
   const branchNames = Array.from(new Set(inventory.map(i => i.branch)));
@@ -185,6 +188,140 @@ const StockAllocationPage = () => {
 
     toast.success(`Allocation removed for ${employees.find(e => e.id === employeeId)?.name}`);
   };
+
+  const inventoryTableData = filteredInventory.map((item, index) => ({
+  ...item,
+  serialNumber: index + 1,
+}));
+
+const inventoryColumns = [
+  {
+    key: "serialNumber",
+    header: "#",
+    render: (item: any) => (
+      <span className="text-xs text-muted-foreground font-medium">
+        {item.serialNumber}
+      </span>
+    ),
+  },
+  {
+    key: "product",
+    header: "Product",
+    render: (item: any) => {
+      const product = products.find((p) => p.name === item.name);
+
+      return (
+        <span className="font-medium text-card-foreground text-xs">
+          {product?.name || item.name}
+        </span>
+      );
+    },
+  },
+  {
+    key: "branch",
+    header: "Branch",
+    render: (item: any) => (
+      <span className="text-muted-foreground text-xs">
+        {item.branch}
+      </span>
+    ),
+  },
+  {
+    key: "previousQuantity",
+    header: "Previous Qty",
+    render: (item: any) => (
+      <span className="font-semibold text-card-foreground text-xs">
+        {item.previousQuantity || "-"}
+      </span>
+    ),
+  },
+  {
+    key: "stock",
+    header: "Stock",
+    render: (item: any) => (
+      <span className="font-bold text-card-foreground text-xs">
+        {item.stock}
+      </span>
+    ),
+  },
+  {
+    key: "unit",
+    header: "Unit",
+    render: (item: any) => (
+      <span className="text-muted-foreground text-xs">
+        {item.unit}
+      </span>
+    ),
+  },
+  {
+    key: "reorder",
+    header: "Reorder Level",
+    render: (item: any) => (
+      <span className="text-muted-foreground text-xs">
+        {item.reorder}
+      </span>
+    ),
+  },
+  {
+    key: "supplierName",
+    header: "Supplier",
+    render: (item: any) => (
+      <span className="text-muted-foreground text-xs">
+        {item.supplierName || "-"}
+      </span>
+    ),
+  },
+  {
+    key: "supplierContact",
+    header: "Supplier Contact",
+    render: (item: any) => (
+      <span className="text-muted-foreground text-xs">
+        {item.supplierContact || "-"}
+      </span>
+    ),
+  },
+  {
+    key: "status",
+    header: "Status",
+    render: (item: any) => (
+      <StatusBadge
+        label={item.status}
+        variant={
+          statusMap[item.status as keyof typeof statusMap] || "neutral"
+        }
+      />
+    ),
+  },
+  {
+    key: "actions",
+    header: "Actions",
+    render: (item: any) => (
+      <div
+        className="flex items-center gap-1"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button
+          onClick={() => handleEdit(item)}
+          className="p-1 hover:bg-secondary rounded-lg transition-colors text-muted-foreground hover:text-primary"
+          title="Edit"
+        >
+          <Edit2 className="w-4 h-4" />
+        </button>
+
+        <button
+          onClick={() => {
+            deleteItem(item.id);
+            toast.success("Inventory item deleted");
+          }}
+          className="p-1 hover:bg-secondary rounded-lg transition-colors text-muted-foreground hover:text-destructive"
+          title="Delete"
+        >
+          <Trash2 className="w-4 h-4" />
+        </button>
+      </div>
+    ),
+  },
+];
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -353,6 +490,7 @@ const StockAllocationPage = () => {
 
       {/* Inventory Table */}
       <div className="bg-card rounded-xl card-shadow overflow-hidden">
+
         <div className="p-4 border-b border-border flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Package className="w-5 h-5 text-primary" />
@@ -364,90 +502,24 @@ const StockAllocationPage = () => {
               <span className="font-bold text-primary">{totalAllocating}</span>
             </div>
           )}
+
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border bg-secondary/30">
-                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase">Product</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase">Branch</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase">Available</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase">Unit</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase">Status</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase">Allocate Qty</th>
-              </tr>
-            </thead>
-            <tbody>
-              {!selectedBranch ? (
-                <tr>
-                  <td colSpan={6} className="px-4 py-12 text-center">
-                    <div className="flex flex-col items-center gap-3">
-                      <div className="p-3 bg-secondary/30 rounded-full">
-                        <Package className="w-8 h-8 text-muted-foreground" />
-                      </div>
-                      <p className="text-sm text-muted-foreground">Please select a branch to view available stock</p>
-                    </div>
-                  </td>
-                </tr>
-              ) : !selectedEmployee ? (
-                <tr>
-                  <td colSpan={6} className="px-4 py-12 text-center">
-                    <div className="flex flex-col items-center gap-3">
-                      <div className="p-3 bg-secondary/30 rounded-full">
-                        <UserCheck className="w-8 h-8 text-muted-foreground" />
-                      </div>
-                      <p className="text-sm text-muted-foreground">Please select an employee to start allocation</p>
-                    </div>
-                  </td>
-                </tr>
-              ) : filteredInventory.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="px-4 py-12 text-center">
-                    <p className="text-sm text-muted-foreground">No inventory items available in {selectedBranch}</p>
-                  </td>
-                </tr>
-              ) : (
-                filteredInventory.map(item => {
-                  const isEmployeeBranch = employeeBranches.includes(item.branch);
-                  return (
-                    <tr 
-                      key={item.id} 
-                      className="border-b border-border last:border-0 hover:bg-secondary/20 transition-colors"
-                    >
-                      <td className="px-4 py-3">
-                        <p className="font-medium text-card-foreground">{item.name}</p>
-                      </td>
-                      <td className="px-4 py-3 text-muted-foreground">{item.branch}</td>
-                      <td className="px-4 py-3">
-                        <span className="font-bold text-card-foreground">{item.stock}</span>
-                      </td>
-                      <td className="px-4 py-3 text-muted-foreground">{item.unit}</td>
-                      <td className="px-4 py-3">
-                        <StatusBadge 
-                          label={item.status} 
-                          variant={item.status === "OK" ? "success" : item.status === "Low" ? "warning" : "error"} 
-                        />
-                      </td>
-                      <td className="px-4 py-3">
-                        <input
-                          type="number"
-                          min="0"
-                          max={item.stock}
-                          value={allocations[item.id] || ""}
-                          onChange={(e) => handleAllocationChange(item.id, Number(e.target.value))}
-                          placeholder="0"
-                          className="w-24 px-3 py-1.5 rounded-lg bg-background text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-card-foreground"
-                        />
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+        
+
+      <div className="bg-card rounded-xl card-shadow overflow-hidden">
+  <DataTable
+    columns={inventoryColumns}
+    data={inventoryTableData}
+    getRowKey={(item) => item.id}
+    onRowClick={(item) => {
+      setDetailsItem(item);
+      setShowDetails(true);
+    }}
+    emptyMessage="No inventory items found."
+  />
+    </div>
+</div>
 
       {/* Action Button */}
       {selectedBranch && selectedEmployee && filteredInventory.length > 0 && (

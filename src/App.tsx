@@ -17,7 +17,8 @@ import StockAllocationPage from "./pages/StockAllocationPage";
 import EmployeesPage from "./pages/EmployeesPage";
 import { EmployeeDetailPage } from "./pages/EmployeeDetailPage";
 import EmployeeReassignPage from "./pages/EmployeeReassignPage";
-import CustomersPage, { CustomerDetailPage } from "./pages/CustomersPage";
+import CustomersPage from "./pages/CustomersPage";
+import CustomerDetailPage from './pages/CustomerDetailPage'
 import LoginPage from "./pages/LoginPage";
 import NotFound from "./pages/NotFound";
 import ProjectsPage from "./pages/ProjectsPage";

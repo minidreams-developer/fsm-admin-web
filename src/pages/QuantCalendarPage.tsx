@@ -40,6 +40,8 @@ import {
   DragOverEvent,
 } from '@dnd-kit/core';
 import { useDraggable, useDroppable } from '@dnd-kit/core';
+import { DraggableScheduledJobCard } from "@/components/calendar/DraggableScheduledJobCard";
+import { DroppableTimeSlot } from "@/components/calendar/DroppableTimeSlot";
 
 // Types
 type Priority = "LOW" | "MEDIUM" | "HIGH" | "URGENT";
@@ -63,51 +65,6 @@ type DragData = {
   scheduledJob?: ScheduledJob;
 };
 
-// Draggable Scheduled Job for Week/Month View
-const DraggableScheduledJobCard = ({ job, workOrder, service, getPriority, priorityBgColors, onRemoveJob }: any) => {
-  const dragData: DragData = {
-    type: 'scheduledJob',
-    workOrder,
-    service: service || undefined,
-    scheduledJob: job,
-  };
-
-  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
-    id: `scheduled-day-${job.id}`,
-    data: dragData,
-  });
-
-  return (
-    <div
-      ref={setNodeRef}
-      {...listeners}
-      {...attributes}
-      onClick={(e) => e.stopPropagation()}
-      className={`group relative mt-1 rounded p-1 border text-[10px] cursor-move hover:shadow-md transition-all ${priorityBgColors[getPriority(workOrder)]} ${isDragging ? 'opacity-50' : ''}`}
-    >
-      {/* Remove button */}
-      {onRemoveJob && (
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onRemoveJob(job.id);
-          }}
-          className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-md z-20"
-          title="Remove service"
-        >
-          <X className="w-2.5 h-2.5" />
-        </button>
-      )}
-      
-      <p className="font-bold truncate">{workOrder.id}</p>
-      {service ? (
-        <p className="truncate font-semibold">{service.title}</p>
-      ) : (
-        <p className="truncate">{formatTimeSlot(job.startTime)}</p>
-      )}
-    </div>
-  );
-};
 
 // Droppable Day Cell for Week/Month View
 const DroppableDayCell = ({ employeeId, date, dayJobs, workOrders, getTasksByWorkOrder, getPriority, priorityBgColors, activeDropZone, onRemoveJob }: any) => {
@@ -204,7 +161,7 @@ const DraggableWorkOrderCard = ({ wo, service, priority, hasServices, isSelected
     data: dragData,
     disabled: !isDraggable, // Disable dragging for work orders without services
   });
-
+  
   return (
     <div
       ref={isDraggable ? setNodeRef : undefined}
@@ -265,7 +222,7 @@ const DraggableServiceCard = ({ service, workOrder, onEdit, employeeNumber = 1, 
     const date = new Date(dateTimeStr);
     return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
   };
-
+  
   // Format time from HH:MM format
   const formatTimeFromHHMM = (timeStr: string) => {
     if (!timeStr) return null;
@@ -275,7 +232,7 @@ const DraggableServiceCard = ({ service, workOrder, onEdit, employeeNumber = 1, 
     const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
     return `${displayHour}:${minutes} ${ampm}`;
   };
-
+  
   // Find matching service schedule from work order serviceSchedules
   const serviceSchedule = workOrder.serviceSchedules?.find(
     (ss: any) => ss.service === service.title || ss.service === service.id
@@ -319,10 +276,10 @@ const DraggableServiceCard = ({ service, workOrder, onEdit, employeeNumber = 1, 
       : workOrderTime
       ? workOrderTime
       : "9:00 AM"; // Default fallback time
-  }
-
-  return (
-    <div
+    }
+    
+    return (
+      <div
       ref={setNodeRef}
       {...listeners}
       {...attributes}
@@ -362,7 +319,7 @@ const DraggableServiceCard = ({ service, workOrder, onEdit, employeeNumber = 1, 
             : service.status === "In Progress"
             ? "bg-blue-100 text-blue-800"
             : "bg-yellow-100 text-yellow-800"
-        }`}>
+          }`}>
           {service.status}
         </span>
       </div>
@@ -393,8 +350,8 @@ const DraggableServiceCard = ({ service, workOrder, onEdit, employeeNumber = 1, 
             <div className="flex items-center gap-1">
               <Users className="w-3 h-3 text-primary flex-shrink-0" />
               <span className="text-[9px] text-card-foreground">{serviceSchedule.requiredEmployees} employee{serviceSchedule.requiredEmployees !== 1 ? 's' : ''}</span>
-            </div>
-          )} */}
+              </div>
+              )} */}
         </div>
       )}
 
@@ -423,227 +380,6 @@ const DraggableServiceCard = ({ service, workOrder, onEdit, employeeNumber = 1, 
 };
 
 // Droppable Time Slot Component
-// Droppable Time Slot Component
-const DroppableTimeSlot = ({ 
-  employeeId, 
-  timeSlot, 
-  date, 
-  job, 
-  workOrder, 
-  service, 
-  priority,
-  isOver,
-  onRemoveJob,
-  onResizeStart,
-  onResizeMove,
-  onResizeEnd,
-  onResizeCancel,
-  resizingJobId,
-  resizePreview
-}: any) => {
-  const dropId = `drop-${employeeId}-${timeSlot}-${date}`;
-  const [isResizing, setIsResizing] = useState(false);
-  const [resizeStartX, setResizeStartX] = useState(0);
-  const [resizeStartWidth, setResizeStartWidth] = useState(0);
-  const cardRef = useRef<HTMLDivElement>(null);
-  
-  const { setNodeRef, isOver: isOverCurrent } = useDroppable({
-    id: dropId,
-    data: {
-      employeeId,
-      timeSlot,
-      date,
-    },
-  });
-
-  const dragData: DragData | undefined = job ? {
-    type: 'scheduledJob',
-    workOrder,
-    service: service || undefined,
-    scheduledJob: job,
-  } : undefined;
-
-  const { attributes, listeners, setNodeRef: setDragRef, isDragging } = useDraggable({
-    id: job ? `scheduled-${job.id}` : `empty-${dropId}`,
-    data: dragData,
-    disabled: !job || isResizing,
-  });
-
-  const showHighlight = isOverCurrent || isOver;
-  
-  // Calculate display duration (use preview if resizing this job)
-  const displayDuration = (resizingJobId === job?.id && resizePreview !== null) 
-    ? resizePreview 
-    : job?.duration || 2;
-
-  // Handle resize mouse down
-  const handleResizeMouseDown = (e: React.MouseEvent) => {
-    if (!job || !cardRef.current) return;
-    
-    e.preventDefault();
-    e.stopPropagation();
-    
-    // Disable dragging while resizing
-    setIsResizing(true);
-    setResizeStartX(e.clientX);
-    setResizeStartWidth(cardRef.current.offsetWidth);
-    
-    if (onResizeStart) {
-      onResizeStart(job.id, job.duration);
-    }
-    
-    // Add pointer-events-none to the card to prevent drag interference
-    if (cardRef.current) {
-      cardRef.current.style.pointerEvents = 'none';
-    }
-  };
-
-  // Handle resize mouse move
-  useEffect(() => {
-    if (!isResizing || !job) return;
-
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!cardRef.current) return;
-      
-      const deltaX = e.clientX - resizeStartX;
-      const parentWidth = cardRef.current.parentElement?.offsetWidth || 1;
-      const columnWidth = parentWidth; // Each column is one hour
-      
-      // Calculate new duration based on pixel change
-      const durationChange = deltaX / columnWidth;
-      const newDuration = Math.max(0.5, job.duration + durationChange);
-      
-      if (onResizeMove) {
-        onResizeMove(job.id, newDuration);
-      }
-    };
-
-    const handleMouseUp = () => {
-      if (!job) return;
-      
-      setIsResizing(false);
-      
-      // Re-enable pointer events on the card
-      if (cardRef.current) {
-        cardRef.current.style.pointerEvents = 'auto';
-      }
-      
-      if (onResizeEnd && resizePreview !== null) {
-        onResizeEnd(job.id, resizePreview);
-      }
-    };
-
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
-
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [isResizing, job, resizeStartX, resizePreview, onResizeMove, onResizeEnd]);
-
-  return (
-    <div
-      ref={setNodeRef}
-      className={`relative border-l border-border min-h-[70px] transition-all ${
-        showHighlight ? 'bg-primary/20 ring-2 ring-primary ring-inset' : 'hover:bg-primary/5'
-      } cursor-pointer`}
-    >
-      {/* Drop zone placeholder */}
-      {showHighlight && !job && (
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div className="bg-primary/10 border-2 border-dashed border-primary rounded-lg p-2 m-1 w-[calc(100%-8px)]">
-            <p className="text-xs font-semibold text-primary text-center">
-              {formatTimeSlot(timeSlot)}
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* Scheduled job card */}
-      {workOrder && job && (
-        <div
-          ref={(node) => {
-            setDragRef(node);
-            if (node) cardRef.current = node;
-          }}
-          {...(isResizing ? {} : listeners)}
-          {...(isResizing ? {} : attributes)}
-          onClick={(e) => e.stopPropagation()}
-          onPointerDown={(e) => {
-            // If clicking on the resize handle area, don't start dragging
-            const target = e.target as HTMLElement;
-            if (target.closest('[data-resize-handle]')) {
-              e.stopPropagation();
-            }
-          }}
-          className={`group absolute rounded-lg p-2 border-2 shadow-md transition-all ${
-            isResizing ? 'cursor-ew-resize select-none' : 'cursor-move hover:shadow-lg'
-          } ${priorityBgColors[priority]} ${isDragging ? 'opacity-50' : ''}`}
-          style={{ 
-            width: `calc(${displayDuration * 100}% - 4px)`,
-            left: '2px',
-            top: '4px',
-            bottom: '4px',
-            zIndex: isDragging || isResizing ? 50 : 10,
-            userSelect: isResizing ? 'none' : 'auto'
-          }}
-        >
-          {/* Remove button */}
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onRemoveJob(job.id);
-            }}
-            className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-md z-20"
-            title="Remove service"
-          >
-            <X className="w-3 h-3" />
-          </button>
-          
-          {/* Resize handle */}
-          <div
-            data-resize-handle="true"
-            onMouseDown={handleResizeMouseDown}
-            onPointerDown={(e) => {
-              e.stopPropagation();
-            }}
-            onClick={(e) => {
-              e.stopPropagation();
-            }}
-            className="absolute right-0 top-0 bottom-0 w-3 cursor-ew-resize hover:bg-primary/40 transition-colors z-30 flex items-center justify-center"
-            style={{ touchAction: 'none' }}
-            title="Drag to resize duration"
-          >
-            <div className="w-1 h-12 bg-primary/60 rounded group-hover:bg-primary/80 transition-colors pointer-events-none" />
-          </div>
-          
-          <p className="text-xs font-bold truncate pr-2">{workOrder.id}</p>
-          {service ? (
-            <p className="text-[10px] truncate font-semibold text-primary pr-2">{service.title}</p>
-          ) : (
-            <p className="text-[10px] truncate pr-2">{workOrder.customer}</p>
-          )}
-          <div className="flex items-center justify-between mt-1 pr-2">
-            <p className="text-[10px] flex items-center gap-1">
-              <Clock className="w-3 h-3" />
-              {formatTimeSlot(timeSlot)}
-              {displayDuration !== 2 && (
-                <span className="text-[9px] text-primary font-semibold">
-                  +{displayDuration}h
-                </span>
-              )}
-            </p>
-            <div className="flex items-center gap-1">
-              <Users className="w-3 h-3" />
-              <span className="text-[10px]">2</span>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
 
 const getPriority = (wo: any): Priority => {
   if (wo.status === "Open") return "URGENT";
@@ -694,6 +430,18 @@ const QuantCalendarPage = () => {
   const { employees } = useEmployeesStore();
   const { getTasksByWorkOrder } = useTasksStore();
   
+  // Schedule state
+  const [schedule, setSchedule] = useState<ScheduledJob[]>([]);
+  
+  // Drag state
+  const [activeDragData, setActiveDragData] = useState<DragData | null>(null);
+  const [activeDropZone, setActiveDropZone] = useState<{ employeeId: string; timeSlot: number; date: string } | null>(null);
+  
+  // Resize state
+  const [resizingJob, setResizingJob] = useState<{ jobId: string; originalDuration: number } | null>(null);
+  const [resizePreview, setResizePreview] = useState<number | null>(null);
+
+  const [resizingJobId, setResizingJobId] = useState<string | null>(null);
   // Filter states
   const [selectedBranch, setSelectedBranch] = useState<string>("all");
   const [fromDate, setFromDate] = useState(new Date());
@@ -729,16 +477,6 @@ const QuantCalendarPage = () => {
     setAppliedTo("");
   };
   
-  // Schedule state
-  const [schedule, setSchedule] = useState<ScheduledJob[]>([]);
-  
-  // Drag state
-  const [activeDragData, setActiveDragData] = useState<DragData | null>(null);
-  const [activeDropZone, setActiveDropZone] = useState<{ employeeId: string; timeSlot: number; date: string } | null>(null);
-  
-  // Resize state
-  const [resizingJob, setResizingJob] = useState<{ jobId: string; originalDuration: number } | null>(null);
-  const [resizePreview, setResizePreview] = useState<number | null>(null);
   
   // DnD sensors
   const sensors = useSensors(
@@ -1427,9 +1165,9 @@ const QuantCalendarPage = () => {
       </div>
 
       {/* Main Content */}
-      <div className="grid grid-cols-12 gap-4">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
         {/* Left Panel - Services Only */}
-        <div className="col-span-3 bg-card rounded-xl border border-border transition-all">
+        <div className="col-span-1 lg:col-span-3 w-full bg-card rounded-xl border border-border transition-all">
           <div className="p-4 border-b border-border">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-sm font-bold">All Services</h3>
@@ -1487,7 +1225,7 @@ const QuantCalendarPage = () => {
         </div>
 
         {/* Right Panel - Calendar */}
-        <div className="col-span-9 bg-card rounded-xl border border-border transition-all">
+        <div className="col-span-1 lg:col-span-9 min-w-0 w-full bg-card rounded-xl border border-border transition-all">
           {/* View Tabs */}
           <div className="border-b border-border">
             <div className="flex items-center gap-4 px-4">
@@ -1516,16 +1254,24 @@ const QuantCalendarPage = () => {
           </div>
 
           {/* Timeline */}
-          <div className="overflow-auto" style={{ maxHeight: '600px' }}>
-            <div className="min-w-[1200px]">
+          <div
+  className="w-full overflow-x-auto overflow-y-auto"
+  style={{ maxHeight: "600px" }}
+>
+  <div className="min-w-[1000px] lg:min-w-[1200px]">
               {/* Time Header for Day View */}
               {viewMode === "day" && (
                 <>
                   <div className="sticky top-0 bg-card z-10 border-b border-border">
-                    <div className="grid" style={{ gridTemplateColumns: "200px repeat(15, 1fr)" }}>
+                    <div className="grid" style={{
+  gridTemplateColumns: "160px repeat(15, minmax(56px, 1fr))",
+}}>
                       <div className="p-2"></div>
                       {timeSlots.map(hour => (
-                        <div key={hour} className="p-2 text-center border-l border-border">
+                        <div
+  key={hour}
+  className="p-1.5 sm:p-2 text-center border-l border-border min-w-[56px]"
+>
                           <p className="text-xs font-semibold">
                             {hour === 12 ? "12 PM" : hour > 12 ? `${hour - 12} PM` : hour === 0 ? "12 AM" : `${hour} AM`}
                           </p>
@@ -1556,7 +1302,9 @@ const QuantCalendarPage = () => {
                           const currentDate = dateRange[0].toISOString().split('T')[0];
                           const empJobs = getEmployeeJobs(emp.id, currentDate);
                           return (
-                            <div key={emp.id} className="grid border-b border-border hover:bg-secondary/10" style={{ gridTemplateColumns: "200px repeat(15, 1fr)" }}>
+                            <div key={emp.id} className="grid border-b border-border hover:bg-secondary/10" style={{
+  gridTemplateColumns: "160px repeat(15, minmax(56px, 1fr))",
+}}>
                               {/* Employee Info */}
                               <div className="p-3 border-r border-border flex items-center gap-3">
                                 <img 
@@ -1585,24 +1333,24 @@ const QuantCalendarPage = () => {
                                               activeDropZone?.date === currentDate;
 
                                 return (
-                                  <DroppableTimeSlot
-                                    key={hour}
-                                    employeeId={emp.id}
-                                    timeSlot={hour}
-                                    date={currentDate}
-                                    job={job}
-                                    workOrder={wo}
-                                    service={service}
-                                    priority={wo ? getPriority(wo) : null}
-                                    isOver={isOver}
-                                    onRemoveJob={handleRemoveJob}
-                                    onResizeStart={handleResizeStart}
-                                    onResizeMove={handleResizeMove}
-                                    onResizeEnd={handleResizeEnd}
-                                    onResizeCancel={handleResizeCancel}
-                                    resizingJobId={resizingJob?.jobId}
-                                    resizePreview={resizePreview}
-                                  />
+                                <DroppableTimeSlot
+  employeeId={emp.id}
+  timeSlot={hour}
+  date={currentDate}
+  job={job}
+  workOrder={wo}
+  service={service}
+  priority={job && wo ? getPriority(wo) : "MEDIUM"}
+  isOver={isOver}
+  onRemoveJob={handleRemoveJob}
+  onResizeStart={handleResizeStart}
+  onResizeMove={handleResizeMove}
+  onResizeEnd={handleResizeEnd}
+  resizingJobId={resizingJobId}
+  resizePreview={resizePreview}
+  priorityBgColors={priorityBgColors}
+  formatTimeSlot={formatTimeSlot}
+/>
                                 );
                               })}
                             </div>
@@ -1617,7 +1365,9 @@ const QuantCalendarPage = () => {
               {(viewMode === "week" || viewMode === "month") && (
                 <>
                   <div className="sticky top-0 bg-card z-10 border-b border-border">
-                    <div className="grid" style={{ gridTemplateColumns: `200px repeat(${dateRange.length}, 1fr)` }}>
+                    <div className="grid" style={{
+  gridTemplateColumns: "160px repeat(15, minmax(56px, 1fr))",
+}}>
                       <div className="p-2"></div>
                       {dateRange.map(date => (
                         <div key={date.toISOString()} className="p-2 text-center border-l border-border">
@@ -1646,14 +1396,14 @@ const QuantCalendarPage = () => {
                         .filter(emp => emp.name.toLowerCase().includes(searchEmployee.toLowerCase()))
                         .map(emp => (
                           <div key={emp.id} className="grid border-b border-border hover:bg-secondary/10" style={{ gridTemplateColumns: `200px repeat(${dateRange.length}, 1fr)` }}>
-                            <div className="p-3 border-r border-border flex items-center gap-3">
+                           <div className="p-2 sm:p-3 border-r border-border flex items-center gap-2 sm:gap-3">
                               <img 
                                 src={emp.profilePhoto || "/placeholder.svg"} 
                                 alt={emp.name}
-                                className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-purple-600"
+                                className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-primary to-purple-600"
                               />
                               <div className="flex-1 min-w-0">
-                                <p className="text-sm font-semibold truncate">{emp.name}</p>
+                                <p className="text-xs sm:text-sm font-semibold truncate">{emp.name}</p>
                                 <p className="text-xs text-muted-foreground">{emp.role}</p>
                                 {emp.captain && (
                                   <p className="text-[10px] text-muted-foreground">Captain: {emp.captain}</p>
@@ -1692,7 +1442,7 @@ const QuantCalendarPage = () => {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-5 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
         <div className="bg-card rounded-lg border border-border p-3 flex items-center gap-3">
           <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center text-2xl">📋</div>
           <div>

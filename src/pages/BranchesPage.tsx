@@ -7,6 +7,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { PaginationControls } from "@/components/PaginationControls";
 import { usePagination } from "@/hooks/usePagination";
+import { DataTable } from "@/components/table/Datatable";
 
 const BranchesPage = () => {
   const { branches, deleteBranch, updateBranch } = useBranchesStore();
@@ -55,6 +56,127 @@ const BranchesPage = () => {
     setShowForm(false);
     setSelectedBranch(undefined);
   };
+
+  const branchTableData = pagination.paginatedItems.map((branch, index) => ({
+  ...branch,
+  serialNumber: pagination.startIndex + index + 1,
+}));
+
+const branchColumns = [
+  {
+    key: "serialNumber",
+    header: "#",
+    render: (branch: any) => (
+      <span className="text-xs text-muted-foreground font-medium">
+        {branch.serialNumber}
+      </span>
+    ),
+  },
+  {
+    key: "id",
+    header: "Branch ID",
+    render: (branch: any) => (
+      <span className="font-medium text-card-foreground text-xs">
+        {branch.id}
+      </span>
+    ),
+  },
+  {
+    key: "name",
+    header: "Name",
+    render: (branch: any) => (
+      <div className="flex items-center gap-2">
+        <MapPin className="w-4 h-4 text-muted-foreground" />
+        <span className="text-card-foreground text-xs">
+          {branch.name}
+        </span>
+      </div>
+    ),
+  },
+  {
+    key: "type",
+    header: "Type",
+    render: (branch: any) => (
+      <span className="text-muted-foreground text-xs">
+        {branch.type}
+      </span>
+    ),
+  },
+  {
+    key: "city",
+    header: "Location",
+    render: (branch: any) => (
+      <span className="text-muted-foreground text-xs">
+        {branch.city}
+      </span>
+    ),
+  },
+  {
+    key: "managerName",
+    header: "Manager",
+    render: (branch: any) => (
+      <span className="text-muted-foreground text-xs">
+        {branch.managerName}
+      </span>
+    ),
+  },
+  {
+    key: "status",
+    header: "Active/Inactive",
+    render: (branch: any) => (
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+
+          updateBranch(branch.id, {
+            status:
+              branch.status === "Active" ? "Inactive" : "Active",
+          });
+        }}
+        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+          branch.status === "Active"
+            ? "bg-green-500"
+            : "bg-muted"
+        }`}
+        title={branch.status}
+      >
+        <span
+          className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${
+            branch.status === "Active"
+              ? "translate-x-4"
+              : "translate-x-1"
+          }`}
+        />
+      </button>
+    ),
+  },
+  {
+    key: "actions",
+    header: "Actions",
+    render: (branch: any) => (
+      <div
+        className="flex items-center gap-1"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button
+          onClick={() => handleEdit(branch)}
+          className="p-1 rounded-lg text-muted-foreground hover:bg-secondary hover:text-primary transition-colors"
+          title="Edit"
+        >
+          <Edit2 className="w-4 h-4" />
+        </button>
+
+        <button
+          onClick={() => handleDelete(branch.id, branch.name)}
+          className="p-1 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+          title="Delete"
+        >
+          <Trash2 className="w-4 h-4" />
+        </button>
+      </div>
+    ),
+  },
+];
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -105,70 +227,17 @@ const BranchesPage = () => {
 
       {/* Table */}
       <div className="bg-card rounded-xl card-shadow overflow-hidden">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-border">
-              {["#", "Branch ID", "Name", "Type", "Location", "Manager", "Active/Inactive", "Actions"].map((h) => (
-                <th key={h} className="text-left px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.length > 0 ? (
-              pagination.paginatedItems.map((branch, index) => (
-                <tr key={branch.id} onClick={() => { setDetailsBranch(branch); setShowDetails(true); }} className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors cursor-pointer">
-                  <td className="px-3 py-3 text-xs text-muted-foreground font-medium">{pagination.startIndex + index + 1}</td>
-                  <td className="px-3 py-3 font-medium text-card-foreground text-xs">{branch.id}</td>
-                  <td className="px-3 py-3">
-                    <div className="flex items-center gap-2">
-                      <MapPin className="w-4 h-4 text-muted-foreground" />
-                      <span className="text-card-foreground text-xs">{branch.name}</span>
-                    </div>
-                  </td>
-                  <td className="px-3 py-3 text-muted-foreground text-xs">{branch.type}</td>
-                  <td className="px-3 py-3 text-muted-foreground text-xs">{branch.city}</td>
-                  <td className="px-3 py-3 text-muted-foreground text-xs">{branch.managerName}</td>
-                  <td className="px-3 py-3">
-                    <button
-                      onClick={(e) => { e.stopPropagation(); updateBranch(branch.id, { status: branch.status === "Active" ? "Inactive" : "Active" }); }}
-                      className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${branch.status === "Active" ? "bg-green-500" : "bg-muted"}`}
-                      title={branch.status}
-                    >
-                      <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${branch.status === "Active" ? "translate-x-4" : "translate-x-1"}`} />
-                    </button>
-                  </td>
-                  <td className="px-3 py-3">
-                    <div className="flex items-center gap-1">
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleEdit(branch); }}
-                        className="p-1 rounded-lg text-muted-foreground hover:bg-secondary hover:text-primary transition-colors"
-                        title="Edit"
-                      >
-                        <Edit2 className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleDelete(branch.id, branch.name); }}
-                        className="p-1 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
-                        title="Delete"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan={8} className="px-3 py-8 text-center text-muted-foreground">
-                  No branches found
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+  <DataTable
+    columns={branchColumns}
+    data={branchTableData}
+    getRowKey={(branch) => branch.id}
+    onRowClick={(branch) => {
+      setDetailsBranch(branch);
+      setShowDetails(true);
+    }}
+    emptyMessage="No branches found"
+  />
+</div>
 
       <PaginationControls
         currentPage={pagination.currentPage}

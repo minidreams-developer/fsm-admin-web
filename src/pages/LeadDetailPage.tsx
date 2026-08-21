@@ -52,18 +52,31 @@ export const LeadDetailPage = () => {
     );
   }
 
-  const saveReminder = () => {
-    if (!reminderDate || !reminderText.trim()) {
-      toast.error("Please select a date and enter reminder text");
-      return;
-    }
-    const newReminder = { id: `REM-${Date.now()}`, date: reminderDate, time: reminderTime, text: reminderText.trim(), createdAt: new Date().toISOString() };
-    updateLead(lead.id, { reminders: [...(lead.reminders ?? []), newReminder] });
-    setReminderDate("");
-    setReminderTime("");
-    setReminderText("");
-    toast.success("Comment saved");
+const saveReminder = () => {
+  if (!reminderDate || !reminderText.trim()) {
+    toast.error("Please select a date and enter reminder text");
+    return;
+  }
+
+  const newReminder = {
+    id: `REM-${Date.now()}`,
+    date: reminderDate,
+    time: reminderTime,
+    text: reminderText.trim(),
+    createdAt: new Date().toISOString(),
   };
+
+  updateLead(lead.id, {
+    reminders: [...(lead.reminders ?? []), newReminder],
+  });
+
+  setReminderDate("");
+  setReminderTime("");
+  setReminderText("");
+  setShowReminders(false);
+
+  toast.success("Reminder added successfully");
+};
 
   const saveComment = () => {
     if (!commentText.trim()) {
@@ -100,7 +113,8 @@ export const LeadDetailPage = () => {
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
-      <div className="flex items-center gap-3">
+      {/* <div className="flex items-center gap-3"> */}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
         <button type="button" onClick={() => navigate("/leads")} className="inline-flex items-center gap-2 h-10 px-4 rounded-lg border border-border bg-card hover:bg-secondary transition-colors text-sm font-semibold text-card-foreground">
           <ArrowLeft className="w-4 h-4" /> Back
         </button>
@@ -108,7 +122,7 @@ export const LeadDetailPage = () => {
           <h2 className="text-lg sm:text-xl font-bold text-card-foreground">{lead.name}</h2>
           <p className="text-sm text-muted-foreground">{formatLeadId(lead.id)}</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
           {/* Sales Executive Info */}
           {!lead.isViewed && (lead.salesExecutive || lead.assignedOwner) && (
             <div className="">
@@ -128,14 +142,17 @@ export const LeadDetailPage = () => {
           )}
           {/* Actions dropdown */}
           <div className="relative">
-            <button
-              onClick={() => setShowActions(v => !v)}
-              className="h-10 px-4 inline-flex items-center gap-2 rounded-lg text-white text-sm font-semibold hover:opacity-90 transition-all shadow-[0px_5px_12px_rgba(39,47,158,0.2)]"
-              style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}
-            >
-              Actions
-              <ChevronDown className={`w-4 h-4 transition-transform ${showActions ? "rotate-180" : ""}`} />
-            </button>
+           <button
+  onClick={() => setShowActions((v) => !v)}
+  className="h-10 px-4 inline-flex items-center gap-2 rounded-lg border border-border bg-card text-card-foreground text-sm font-semibold hover:bg-secondary transition-colors"
+>
+  Actions
+  <ChevronDown
+    className={`w-4 h-4 transition-transform ${
+      showActions ? "rotate-180" : ""
+    }`}
+  />
+</button>
             {showActions && (
               <>
                 <div className="fixed inset-0 z-10" onClick={() => setShowActions(false)} />
@@ -223,7 +240,7 @@ export const LeadDetailPage = () => {
                     Cancel
                   </button>
                   <button
-                    onClick={() => { saveReminder(); setShowReminders(false); }}
+                    onClick={saveReminder}
                     className="flex-1 h-10 text-sm font-semibold hover:opacity-90 text-white rounded-lg transition-all shadow-[0px_5px_12px_rgba(39,47,158,0.2)]"
                     style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}
                   >

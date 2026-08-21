@@ -11,6 +11,9 @@ import { useProjectsStore } from "@/store/projectsStore";
 import { useInventoryStore } from "@/store/inventoryStore";
 import { useBranchesStore } from "@/store/branchesStore";
 import type { WorkOrder } from "@/store/projectsStore";
+import { ReportSummaryCard } from "@/components/ReportSummaryCard";
+import { DataTable, type DataTableColumn } from "@/components/table/Datatable";
+import { LeadTableActions } from "@/components/table/LeadTableActions";
 
 const allDummyCustomers = Array.from({ length: 50 }, (_, i) => ({
   name: ["Praveen Kumar", "Hotel Grand", "Lakshmi Stores", "Suresh Nair", "Ramesh Singh", "Anitha Raj", "Vijay Enterprises", "Meena Textiles", "Ravi & Sons", "Deepa Clinic"][i % 10] + (i >= 10 ? ` ${Math.floor(i / 10) + 1}` : ""),
@@ -21,7 +24,7 @@ function WorkOrderReports({ workOrders }: { workOrders: WorkOrder[] }) {
   const [showAllCustomers, setShowAllCustomers] = useState(false);
 
   const total = workOrders.length;
-  const open = workOrders.filter(w => w.status === "Ongoing").length;
+  const   open = workOrders.filter(w => w.status === "Ongoing").length;
   const scheduled = workOrders.filter(w => w.status === "Upcoming").length;
   const completed = workOrders.filter(w => w.status === "Completed").length;
 
@@ -47,6 +50,33 @@ function WorkOrderReports({ workOrders }: { workOrders: WorkOrder[] }) {
     .slice(0, 5)
     .map(([name, value]) => ({ name, value }));
 
+const reportCards = [
+  {
+    title: "Total Orders",
+    value: total,
+    icon: FolderKanban,
+    color: "primary",
+  },
+  {
+    title: "Completed",
+    value: completed,
+    icon: CheckCircle2,
+    color: "success",
+  },
+  {
+    title: "Scheduled",
+    value: scheduled,
+    icon: Clock,
+    color: "warning",
+  },
+  {
+    title: "Open",
+    value: open,
+    icon: AlertCircle,
+    color: "destructive",
+  },
+] as const;
+
   return (
     <div className="space-y-4">
       <div>
@@ -55,36 +85,18 @@ function WorkOrderReports({ workOrders }: { workOrders: WorkOrder[] }) {
       </div>
 
       {/* Summary Cards */}
+
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-card rounded-xl p-4 card-shadow border border-border">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="p-2 bg-primary/10 rounded-lg"><FolderKanban className="w-4 h-4 text-primary" /></div>
-            <p className="text-xs text-muted-foreground">Total Orders</p>
-          </div>
-          <p className="text-2xl font-bold text-card-foreground">{total}</p>
-        </div>
-        <div className="bg-card rounded-xl p-4 card-shadow border border-border">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="p-2 bg-success/10 rounded-lg"><CheckCircle2 className="w-4 h-4 text-success" /></div>
-            <p className="text-xs text-muted-foreground">Billing</p>
-          </div>
-          <p className="text-2xl font-bold text-success">{completed}</p>
-        </div>
-        <div className="bg-card rounded-xl p-4 card-shadow border border-border">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="p-2 bg-warning/10 rounded-lg"><Clock className="w-4 h-4 text-warning" /></div>
-            <p className="text-xs text-muted-foreground">Scheduled</p>
-          </div>
-          <p className="text-2xl font-bold text-warning">{scheduled}</p>
-        </div>
-        <div className="bg-card rounded-xl p-4 card-shadow border border-border">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="p-2 bg-destructive/10 rounded-lg"><AlertCircle className="w-4 h-4 text-destructive" /></div>
-            <p className="text-xs text-muted-foreground">Open</p>
-          </div>
-          <p className="text-2xl font-bold text-destructive">{open}</p>
-        </div>
-      </div>
+  {reportCards.map((card) => (
+    <ReportSummaryCard
+      key={card.title}
+      title={card.title}
+      value={card.value}
+      icon={card.icon}
+      color={card.color}
+    />
+  ))}
+</div>
 
       {/* Revenue + Status Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -214,6 +226,50 @@ const recentServices = [
   { id: "#SV-1038", customer: "Suresh Nair", tech: "Safeeq", mode: "Cash", amount: "₹ 450", status: "Cash with Tech", badge: "info" as const, action: "Settle Cash" },
 ];
 
+const transactionColumns: DataTableColumn<(typeof recentServices)[number]>[] = [
+  {
+    key: "id",
+    header: "Service ID",
+    render: (transaction) => (
+      <span className="font-semibold text-primary">
+        {transaction.id}
+      </span>
+    ),
+  },
+  {
+    key: "customer",
+    header: "Customer",
+  },
+  {
+    key: "tech",
+    header: "Technician",
+  },
+  {
+    key: "mode",
+    header: "Payment Mode",
+  },
+  {
+    key: "amount",
+    header: "Amount",
+    render: (transaction) => (
+      <span className="font-semibold">
+        {transaction.amount}
+      </span>
+    ),
+  },
+  {
+    key: "status",
+    header: "Status",
+    render: (transaction) => (
+      <StatusBadge
+        label={transaction.status}
+        variant={transaction.badge}
+      />
+    ),
+  },
+];
+
+
 const quickActions = [
   { label: "Add New Leads", icon: Plus, path: "/leads/new", color: "text-white hover:opacity-90 shadow-[0px_5px_12px_rgba(39,47,158,0.2)]", style: { background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" } },
   { label: "Pending Payments", icon: Eye, path: "/payments", color: "text-white hover:opacity-90 shadow-[0px_5px_12px_rgba(39,47,158,0.2)]", style: { background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" } },
@@ -247,14 +303,112 @@ function DashboardLeadsSection() {
     return matchStatus && matchSearch && matchBranch;
   });
 
-  const saveReminder = (leadId: number) => {
-    if (!reminderDate || !reminderText.trim()) return;
-    const lead = leads.find(l => l.id === leadId);
-    if (!lead) return;
-    const newReminder = { id: `REM-${Date.now()}`, date: reminderDate, text: reminderText.trim(), createdAt: new Date().toISOString() };
-    updateLead(leadId, { reminders: [...(lead.reminders ?? []), newReminder] });
-    setReminderDate(""); setReminderText(""); setReminderLeadId(null);
+  const leadColumns: DataTableColumn<(typeof filtered)[number]>[] = [
+  {
+    key: "id",
+    header: "Lead ID",
+    render: (lead) => (
+      <span className="font-semibold text-primary text-xs">
+        {formatLeadId(lead.id)}
+      </span>
+    ),
+  },
+  {
+    key: "name",
+    header: "Customer Name",
+    render: (lead) => (
+      <span className="font-medium text-card-foreground text-xs">
+        {lead.name}
+      </span>
+    ),
+  },
+  {
+    key: "services",
+    header: "Services",
+    render: (lead) => (
+      <div className="flex items-center gap-1.5">
+        <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-primary/10 text-primary text-xs font-bold">
+          {lead.services.length}
+        </span>
+
+        <span className="text-xs text-muted-foreground">
+          {lead.services.length === 1 ? "Service" : "Services"}
+        </span>
+      </div>
+    ),
+  },
+  {
+    key: "urgencyLevel",
+    header: "Urgency",
+    render: (lead) => (
+      <span className="text-xs text-muted-foreground">
+        {lead.urgencyLevel}
+      </span>
+    ),
+  },
+  {
+    key: "assignedOwner",
+    header: "Leads Incharge",
+    render: (lead) => (
+      <span className="text-xs text-muted-foreground">
+        {lead.assignedOwner || "—"}
+      </span>
+    ),
+  },
+  {
+    key: "nextFollowUpDate",
+    header: "Next Follow-Up Date",
+    render: (lead) => (
+      <span className="text-xs text-muted-foreground">
+        {lead.nextFollowUpDate || "—"}
+      </span>
+    ),
+  },
+  {
+    key: "status",
+    header: "Status",
+    render: (lead) => (
+      <StatusBadge
+        label={lead.status}
+        variant={statusBadgeMap[lead.status]}
+      />
+    ),
+  },
+ {
+  key: "actions",
+  header: "Actions",
+  render: (lead) => (
+    <LeadTableActions
+      lead={lead}
+      onEdit={() => navigate(`/leads/${lead.id}`)}
+      onSaveReminder={saveReminder}
+    />
+  ),
+},
+];
+
+  const saveReminder = (
+  leadId: number,
+  date: string,
+  text: string
+) => {
+  const lead = leads.find((l) => l.id === leadId);
+
+  if (!lead) return;
+
+  const newReminder = {
+    id: `REM-${Date.now()}`,
+    date,
+    text,
+    createdAt: new Date().toISOString(),
   };
+
+  updateLead(leadId, {
+    reminders: [...(lead.reminders ?? []), newReminder],
+  });
+
+  toast.success("Reminder added successfully!");
+};
 
   return (
     <div className="bg-card rounded-xl card-shadow overflow-hidden">
@@ -297,73 +451,13 @@ function DashboardLeadsSection() {
         </div>
       </div>
       <div className="w-full overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-border">
-              {["Leads ID", "Customer Name", "Services", "Urgency", "Leads Incharge", "Next Follow-Up Date", "Status", "Actions"].map(h => (
-                <th key={h} className="text-left px-3 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.length === 0 ? (
-              <tr><td colSpan={8} className="px-3 py-6 text-center text-xs text-muted-foreground">No Leads found.</td></tr>
-            ) : filtered.map(l => (
-              <tr
-                key={l.id}
-                onClick={() => navigate(`/leads/${l.id}`)}
-                className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors cursor-pointer"
-              >
-                <td className="px-3 py-2.5 font-semibold text-primary text-xs">{formatLeadId(l.id)}</td>
-                <td className="px-3 py-2.5 font-medium text-card-foreground text-xs">{l.name}</td>
-                <td className="px-3 py-2.5">
-                  <div className="flex items-center gap-1.5">
-                    <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-primary/10 text-primary text-xs font-bold">{l.services.length}</span>
-                    <span className="text-xs text-muted-foreground">{l.services.length === 1 ? "Service" : "Services"}</span>
-                  </div>
-                </td>
-                <td className="px-3 py-2.5 text-muted-foreground text-xs">{l.urgencyLevel}</td>
-                <td className="px-3 py-2.5 text-muted-foreground text-xs">{l.assignedOwner || "—"}</td>
-                <td className="px-3 py-2.5 text-muted-foreground text-xs">{l.nextFollowUpDate || "—"}</td>
-                <td className="px-3 py-2.5"><StatusBadge label={l.status} variant={statusBadgeMap[l.status]} /></td>
-                <td className="px-3 py-2.5">
-                  <div className="flex items-center gap-1">
-                    <button
-                      onClick={(e) => { e.stopPropagation(); navigate(`/leads/${l.id}`); }}
-                      className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-border bg-card hover:bg-secondary transition-colors"
-                      title="Edit Leads"
-                    >
-                      <Edit2 className="w-4 h-4 text-muted-foreground" />
-                    </button>
-                    <div className="relative">
-                      <button
-                        onClick={(e) => { e.stopPropagation(); setReminderLeadId(reminderLeadId === l.id ? null : l.id); setReminderDate(""); setReminderText(""); }}
-                        className="relative inline-flex items-center justify-center w-8 h-8 rounded-lg border border-border bg-card hover:bg-secondary transition-colors"
-                        title=""
-                      >
-                        <Bell className="w-4 h-4 text-muted-foreground" />
-                        {(l.reminders?.length ?? 0) > 0 && (
-                          <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-primary text-white text-[9px] flex items-center justify-center">{l.reminders?.length}</span>
-                        )}
-                      </button>
-                      {reminderLeadId === l.id && (
-                        <div className="absolute right-0 top-10 z-50 w-72 bg-card border border-border rounded-xl shadow-2xl p-4 space-y-2">
-                          <p className="text-xs font-semibold text-card-foreground"></p>
-                          <input type="date" value={reminderDate} onChange={e => setReminderDate(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20" />
-                          <input value={reminderText} onChange={e => setReminderText(e.target.value)} placeholder="Reminder text..." className="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20" />
-                          <div className="flex gap-2">
-                            <button onClick={() => saveReminder(l.id)} className="flex-1 h-8 text-xs font-semibold hover:opacity-90 text-white rounded-lg transition-all" style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}>Save</button>
-                            <button onClick={() => setReminderLeadId(null)} className="flex-1 h-8 text-xs font-medium border border-border rounded-lg hover:bg-secondary transition-colors">Cancel</button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+       <DataTable
+  columns={leadColumns}
+  data={filtered}
+  getRowKey={(lead) => lead.id}
+  onRowClick={(lead) => navigate(`/leads/${lead.id}`)}
+  emptyMessage="No Leads found."
+/>
       </div>
     </div>
   );
@@ -497,6 +591,11 @@ const Dashboard = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  const totalServices = taskData.reduce(
+  (sum, item) => sum + item.value,
+  0
+);
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
@@ -505,7 +604,7 @@ const Dashboard = () => {
           <p className="text-sm text-muted-foreground">Overview of today's activities and key metrics</p>
         </div>
         {/* Global Date Range Filter */}
-        <div className="flex items-center gap-2 bg-card border border-border rounded-xl px-3 py-2 shadow-sm">
+        {/* <div className="flex items-center gap-2 bg-card border border-border rounded-xl px-3 py-2 shadow-sm">
           
            <span className="text-xs text-muted-foreground">From :</span>
            <input
@@ -538,7 +637,50 @@ const Dashboard = () => {
               Reset
             </button>
           </div>
-        </div>
+        </div> */}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 bg-card border border-border rounded-xl p-3 shadow-sm">
+  <div className="flex items-center gap-2 w-full sm:w-auto">
+    <span className="text-xs text-muted-foreground shrink-0">From :</span>
+    <input
+      type="date"
+      value={dateFrom}
+      onChange={(e) => setDateFrom(e.target.value)}
+      className="bg-transparent text-xs text-card-foreground focus:outline-none flex-1 sm:w-[120px] sm:flex-none min-w-0"
+    />
+  </div>
+
+  <div className="flex items-center gap-2 w-full sm:w-auto">
+    <span className="text-xs text-muted-foreground shrink-0">To :</span>
+    <input
+      type="date"
+      value={dateTo}
+      min={dateFrom}
+      onChange={(e) => setDateTo(e.target.value)}
+      className="bg-transparent text-xs text-card-foreground focus:outline-none flex-1 sm:w-[120px] sm:flex-none min-w-0"
+    />
+  </div>
+
+  <div className="flex items-center gap-1.5 w-full sm:w-auto sm:ml-1 sm:pl-2 sm:border-l sm:border-border">
+    <button
+      onClick={applyDateFilter}
+      disabled={!dateFrom && !dateTo}
+      className="flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-semibold text-white transition-all hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
+      style={{
+        background:
+          "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)",
+      }}
+    >
+      Apply
+    </button>
+
+    <button
+      onClick={resetDateFilter}
+      className="flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-semibold border border-border text-muted-foreground hover:text-card-foreground hover:bg-secondary transition-colors"
+    >
+      Reset
+    </button>
+  </div>
+</div>
       </div>
 
       {/* KPIs */}
@@ -594,11 +736,12 @@ const Dashboard = () => {
 
       {/* Charts Row 1 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="bg-card rounded-xl p-5 card-shadow">
+        {/* <div className="bg-card rounded-xl p-5 card-shadow"> */}
+          <div className="bg-card rounded-xl p-5 card-shadow border border-border">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-semibold text-card-foreground">Weekly Revenue</h3>
           </div>
-          <ResponsiveContainer width="100%" height={220}>
+          <ResponsiveContainer width="100%" height={240}>
             <AreaChart data={revenueData}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(214, 40%, 90%)" />
               <XAxis dataKey="day" tick={{ fontSize: 12 }} stroke="hsl(220, 10%, 50%)" />
@@ -614,12 +757,12 @@ const Dashboard = () => {
           </div>
         </div>
 
-        <div className="bg-card rounded-xl p-5 card-shadow">
+        <div className="bg-card rounded-xl p-5 card-shadow border border-border">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-semibold text-card-foreground">Service Breakdown</h3>
           </div>
           <div className="flex items-center justify-center">
-            <ResponsiveContainer width={200} height={200}>
+            <ResponsiveContainer width={200} height={180}>
               <PieChart>
                 <Pie data={taskData} cx="50%" cy="50%" innerRadius={60} outerRadius={85} dataKey="value" strokeWidth={0}>
                   {taskData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
@@ -634,7 +777,7 @@ const Dashboard = () => {
                   <span className="font-bold text-card-foreground ml-1">{t.value}</span>
                 </div>
               ))}
-              <div className="pt-1 border-t border-border text-sm font-bold text-card-foreground">33 Total Services</div>
+              <div className="pt-1 border-t border-border text-sm font-bold text-card-foreground">{totalServices} Total Services</div>
             </div>
           </div>
         </div>
@@ -642,7 +785,7 @@ const Dashboard = () => {
 
       {/* Charts Row 2 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="bg-card rounded-xl p-5 card-shadow">
+        <div className="bg-card rounded-xl p-5 card-shadow border border-border">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-semibold text-card-foreground">Service Performance</h3>
           </div>
@@ -662,7 +805,7 @@ const Dashboard = () => {
           </div>
         </div>
 
-        <div className="bg-card rounded-xl p-5 card-shadow">
+        <div className="bg-card rounded-xl p-5 card-shadow border border-border">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-semibold text-card-foreground">Stock Levels</h3>
             <div className="relative" ref={stockBranchDropdownRef}>
@@ -689,7 +832,7 @@ const Dashboard = () => {
               )}
             </div>
           </div>
-          <ResponsiveContainer width="100%" height={220}>
+          <ResponsiveContainer width="100%" height={240}>
             <BarChart
               data={(stockBranchFilter === "All" ? inventory : inventory.filter(i => i.branch === stockBranchFilter)).map(i => ({ name: i.name, stock: i.stock, reorder: i.reorder }))}
               layout="vertical"
@@ -961,38 +1104,26 @@ const Dashboard = () => {
       <WorkOrderReports workOrders={filteredWorkOrders} />
 
       {/* Recent Transactions */}
-      <div className="bg-card rounded-xl card-shadow">
+      <div className="bg-card rounded-xl card-shadow overflow-x-auto">
         <div className="p-5 border-b border-border flex items-center justify-between">
           <h3 className="text-sm font-semibold text-card-foreground">Recent Transactions</h3>
         </div>
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-border">
-              {["Service ID", "Customer", "Technician", "Payment Mode", "Amount", "Status"].map((h) => (
-                <th key={h} className="text-left px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {recentServices.map((s, i) => {
-              const wo = workOrders.find((w) => w.customer.toLowerCase().includes(s.customer.split(" ")[0].toLowerCase()));
-              return (
-                <tr
-                  key={i}
-                  onClick={() => navigate("/payments", { state: { workOrderId: wo?.id } })}
-                  className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors cursor-pointer"
-                >
-                  <td className="px-3 py-3 font-semibold text-primary text-xs">{s.id}</td>
-                  <td className="px-3 py-3 text-card-foreground text-xs">{s.customer}</td>
-                  <td className="px-3 py-3 text-muted-foreground text-xs">{s.tech}</td>
-                  <td className="px-3 py-3 text-muted-foreground text-xs">{s.mode}</td>
-                  <td className="px-3 py-3 font-semibold text-card-foreground text-xs">{s.amount}</td>
-                  <td className="px-3 py-3"><StatusBadge label={s.status} variant={s.badge} /></td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+       <DataTable
+  columns={transactionColumns}
+  data={recentServices}
+  getRowKey={(transaction) => transaction.id}
+  onRowClick={(transaction) => {
+    const wo = workOrders.find((w) =>
+      w.customer
+        .toLowerCase()
+        .includes(transaction.customer.split(" ")[0].toLowerCase())
+    );
+
+    navigate("/payments", {
+      state: { workOrderId: wo?.id },
+    });
+  }}
+/>
       </div>
 
       {/* Leads Table */}

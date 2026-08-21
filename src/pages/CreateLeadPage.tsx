@@ -10,6 +10,7 @@ import { useProductsStore } from "@/store/productsStore";
 import { useCustomersStore } from "@/store/customersStore";
 import { useServicesStore } from "@/store/servicesStore";
 import { TimePickerUnified } from "@/components/TimePickerUnified";
+import { DataTable } from "@/components/table/Datatable";
 
 const urgencyLevels: UrgencyLevel[] = ["Low", "Medium", "High"];
           
@@ -164,8 +165,12 @@ const CreateLeadPage = () => {
     }
   };
 
+  const generateId = () => {
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+};
+
   const [addresses, setAddresses] = useState<AddressEntry[]>([
-    { id: crypto.randomUUID(), address: prefillCustomer?.address || "", city: "", pincode: "" }
+    { id: generateId(), address: prefillCustomer?.address || "", city: "", pincode: "" }
   ]);
 
   const [customerAddressOptions, setCustomerAddressOptions] = useState<AddressOption[]>(
@@ -293,20 +298,167 @@ const CreateLeadPage = () => {
     navigate("/leads");
   };
 
+  const serviceColumns: DataTableColumn<ServiceItem>[] = [
+  {
+    key: "number",
+    header: "#",
+    render: (row) => serviceItems.findIndex((item) => item.id === row.id) + 1,
+  },
+  {
+    key: "service",
+    header: "Service",
+    render: (row) => (
+      <span className="font-medium text-card-foreground">
+        {row.title}
+      </span>
+    ),
+  },
+  {
+    key: "description",
+    header: "Description",
+    render: (row) => (
+      <span className="text-muted-foreground max-w-xs block truncate">
+        {row.description || "—"}
+      </span>
+    ),
+  },
+  {
+    key: "unitPrice",
+    header: "Unit Price",
+    render: (row) => (
+      <div className="text-right font-semibold">
+        ₹ {row.unitPrice?.toLocaleString() || 0}
+      </div>
+    ),
+  },
+  {
+    key: "quantity",
+    header: "Qty",
+    render: (row) => (
+      <div className="flex items-center justify-center gap-2">
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+
+            const q = Math.max(1, row.quantity - 1);
+
+            setServiceItems((prev) =>
+              prev.map((item) =>
+                item.id === row.id
+                  ? {
+                      ...item,
+                      quantity: q,
+                      amount: item.unitPrice * q,
+                    }
+                  : item
+              )
+            );
+          }}
+          className="w-6 h-6 flex items-center justify-center rounded border border-border hover:bg-secondary transition-colors"
+        >
+          <span className="text-xs">−</span>
+        </button>
+
+        <span className="text-xs font-semibold text-card-foreground min-w-[2rem] text-center">
+          {row.quantity}
+        </span>
+
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+
+            const q = row.quantity + 1;
+
+            setServiceItems((prev) =>
+              prev.map((item) =>
+                item.id === row.id
+                  ? {
+                      ...item,
+                      quantity: q,
+                      amount: item.unitPrice * q,
+                    }
+                  : item
+              )
+            );
+          }}
+          className="w-6 h-6 flex items-center justify-center rounded border border-border hover:bg-secondary transition-colors"
+        >
+          <span className="text-xs">+</span>
+        </button>
+      </div>
+    ),
+  },
+  {
+    key: "amount",
+    header: "Amount",
+    render: (row) => (
+      <div className="text-right font-bold">
+        ₹ {row.amount?.toLocaleString() || 0}
+      </div>
+    ),
+  },
+  {
+    key: "action",
+    header: "Action",
+    render: (row) => (
+      <div
+        className="flex items-center justify-center gap-1"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button
+          type="button"
+          onClick={() => setEditingItem({ ...row })}
+          className="p-1.5 rounded-md border border-border hover:bg-secondary transition-colors"
+        >
+          <Edit2 className="w-3.5 h-3.5 text-muted-foreground" />
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            const index = serviceItems.findIndex(
+              (item) => item.id === row.id
+            );
+
+            if (index !== -1) {
+              removeService(index);
+            }
+          }}
+          className="p-1.5 rounded-md border border-border hover:bg-destructive/10 transition-colors"
+        >
+          <X className="w-3.5 h-3.5 text-destructive" />
+        </button>
+      </div>
+    ),
+  },
+];
+
+
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex items-center gap-3">
-        <button type="button" onClick={() => navigate("/leads")} className="inline-flex items-center gap-2 h-10 px-4 rounded-lg border border-border bg-card hover:bg-secondary transition-colors text-sm font-semibold text-card-foreground">
-          <ArrowLeft className="w-4 h-4" />
-          Back
-        </button>
-        <div>
-          <h2 className="text-lg sm:text-xl font-bold text-card-foreground">Add New Leads</h2>
-          <p className="text-sm text-muted-foreground">Fill in the details to create a new Leads</p>
-        </div>
-      </div>
+  <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+    <button
+      type="button"
+      onClick={() => navigate("/leads")}
+      className="inline-flex items-center justify-center gap-2 h-10 px-4 rounded-lg border border-border bg-card hover:bg-secondary transition-colors text-sm font-semibold text-card-foreground"
+    >
+      <ArrowLeft className="w-4 h-4" />
+      Back
+    </button>
 
-      <div className="bg-card rounded-xl p-8 card-shadow border border-border">
+    <div>
+      <h2 className="text-lg sm:text-xl font-bold text-card-foreground">
+        Add New Leads
+      </h2>
+      <p className="text-sm text-muted-foreground">
+        Fill in the details to create a new Leads
+      </p>
+    </div>
+  </div>
+
+  <div className="bg-card rounded-xl p-4 sm:p-6 md:p-8 card-shadow border border-border">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
           <div>
@@ -389,7 +541,7 @@ const CreateLeadPage = () => {
                       Address {index + 1} *
                     </label>
                     {customerAddressOptions.length > 0 ? (
-                      <>
+                      <>  
                         <select
                           value={customerAddressOptions.findIndex(o => o.address === addr.address && o.city === addr.city && o.pincode === addr.pincode)}
                           onChange={(e) => {
@@ -552,68 +704,58 @@ const CreateLeadPage = () => {
 
       {/* Services Section — inside main card */}
       {serviceItems.length > 0 && (() => {
-        const subtotal = serviceItems.reduce((sum, t) => sum + (t.amount || 0), 0);
-        return (
-          <div className="mt-8 pt-8 border-t border-border">
-            <div className="mb-4">
-              <h2 className="text-base font-bold text-card-foreground">Services</h2>
-              <p className="text-xs text-muted-foreground mt-0.5">Services added</p>
-            </div>
-            <div className="overflow-x-auto rounded-xl border border-border">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border bg-secondary/30">
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">#</th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Service</th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Description</th>
-                    <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Unit Price</th>
-                    <th className="text-center px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Qty</th>
-                    <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Amount</th>
-                    <th className="text-center px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {serviceItems.map((item, index) => (
-                    <tr key={item.id} className="border-b border-border last:border-0 hover:bg-secondary/10 transition-colors">
-                      <td className="px-4 py-3 text-xs text-muted-foreground">{index + 1}</td>
-                      <td className="px-4 py-3 font-medium text-card-foreground text-xs">{item.title}</td>
-                      <td className="px-4 py-3 text-muted-foreground text-xs max-w-xs truncate">{item.description || "—"}</td>
-                      <td className="px-4 py-3 text-right text-card-foreground text-xs font-semibold">₹ {item.unitPrice?.toLocaleString() || 0}</td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center justify-center gap-2">
-                          <button type="button" onClick={() => { const q = Math.max(1, item.quantity - 1); setServiceItems(prev => prev.map(t => t.id === item.id ? { ...t, quantity: q, amount: item.unitPrice * q } : t)); }} className="w-6 h-6 flex items-center justify-center rounded border border-border hover:bg-secondary transition-colors"><span className="text-xs">−</span></button>
-                          <span className="text-xs font-semibold text-card-foreground min-w-[2rem] text-center">{item.quantity || 1}</span>
-                          <button type="button" onClick={() => { const q = item.quantity + 1; setServiceItems(prev => prev.map(t => t.id === item.id ? { ...t, quantity: q, amount: item.unitPrice * q } : t)); }} className="w-6 h-6 flex items-center justify-center rounded border border-border hover:bg-secondary transition-colors"><span className="text-xs">+</span></button>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-right text-card-foreground text-xs font-bold">₹ {item.amount?.toLocaleString() || 0}</td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center justify-center gap-1">
-                          <button type="button" onClick={() => setEditingItem({ ...item })} className="p-1.5 rounded-md border border-border hover:bg-secondary transition-colors"><Edit2 className="w-3.5 h-3.5 text-muted-foreground" /></button>
-                          <button type="button" onClick={() => removeService(index)} className="p-1.5 rounded-md border border-border hover:bg-destructive/10 transition-colors"><X className="w-3.5 h-3.5 text-destructive" /></button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <div className="mt-3 flex justify-end">
-              <div className="w-full max-w-xs space-y-2 bg-secondary/10 rounded-xl border border-border px-4 py-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-xs font-medium text-muted-foreground">Subtotal</span>
-                  <span className="text-sm font-semibold text-card-foreground">₹ {Math.round(subtotal).toLocaleString()}</span>
-                </div>
-                <div className="pt-2 border-t border-border flex justify-between items-center">
-                  <span className="text-sm font-bold text-card-foreground">Total Amount</span>
-                  <span className="text-lg font-bold text-primary">₹ {Math.round(subtotal).toLocaleString()}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        );
-      })()}
+  const subtotal = serviceItems.reduce(
+    (sum, item) => sum + (item.amount || 0),
+    0
+  );
 
+  return (
+    <div className="mt-8 pt-8 border-t border-border">
+      <div className="mb-4">
+        <h2 className="text-base font-bold text-card-foreground">
+          Services
+        </h2>
+
+        <p className="text-xs text-muted-foreground mt-0.5">
+          Services added
+        </p>
+      </div>
+
+      <div className="rounded-xl border border-border overflow-hidden">
+        <DataTable<ServiceItem>
+          columns={serviceColumns}
+          data={serviceItems}
+          getRowKey={(row) => row.id}
+          emptyMessage="No services added."
+        />
+      </div>
+
+      <div className="mt-3 flex justify-end">
+        <div className="w-full max-w-xs space-y-2 bg-secondary/10 rounded-xl border border-border px-4 py-3">
+          <div className="flex justify-between items-center">
+            <span className="text-xs font-medium text-muted-foreground">
+              Subtotal
+            </span>
+
+            <span className="text-sm font-semibold text-card-foreground">
+              ₹ {Math.round(subtotal).toLocaleString()}
+            </span>
+          </div>
+
+          <div className="pt-2 border-t border-border flex justify-between items-center">
+            <span className="text-sm font-bold text-card-foreground">
+              Total Amount
+            </span>
+
+            <span className="text-lg font-bold text-primary">
+              ₹ {Math.round(subtotal).toLocaleString()}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+})()}
       {/* Service Appointments Schedule — inside main card */}
       {serviceItems.length > 0 && (
         <div className="mt-8 pt-8 border-t border-border">
@@ -686,8 +828,7 @@ const CreateLeadPage = () => {
               </div>
             </div>
           </div>
-        </div>,
-        document.body
+        </div>
       )}
     </div>
   );

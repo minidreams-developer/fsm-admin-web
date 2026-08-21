@@ -7,6 +7,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { PaginationControls } from "@/components/PaginationControls";
 import { usePagination } from "@/hooks/usePagination";
+import { DataTable } from "@/components/table/Datatable";
 
 const CATEGORIES: ProductCategory[] = ["Chemicals", "Equipment", "Supplies", "Services", "Other"];
 
@@ -62,6 +63,131 @@ const ProductsPage = () => {
     setShowForm(false);
     setSelectedProduct(undefined);
   };
+
+  const productTableData = pagination.paginatedItems.map((product, index) => ({
+  ...product,
+  serialNumber: pagination.startIndex + index + 1,
+}));
+
+const productColumns = [
+  {
+    key: "serialNumber",
+    header: "#",
+    render: (product: any) => (
+      <span className="text-xs text-muted-foreground font-medium">
+        {product.serialNumber}
+      </span>
+    ),
+  },
+  {
+    key: "id",
+    header: "Product ID",
+    render: (product: any) => (
+      <span className="font-medium text-card-foreground text-xs">
+        {product.id}
+      </span>
+    ),
+  },
+  {
+    key: "name",
+    header: "Name",
+    render: (product: any) => (
+      <div className="flex items-center gap-2">
+        <Package className="w-4 h-4 text-muted-foreground" />
+        <span className="text-card-foreground text-xs">
+          {product.name}
+        </span>
+      </div>
+    ),
+  },
+  {
+    key: "category",
+    header: "Category",
+    render: (product: any) => (
+      <span className="text-muted-foreground text-xs">
+        {product.category}
+      </span>
+    ),
+  },
+  {
+    key: "unitOfMeasurement",
+    header: "Unit",
+    render: (product: any) => (
+      <span className="text-muted-foreground text-xs">
+        {product.unitOfMeasurement}
+      </span>
+    ),
+  },
+  {
+    key: "unitPrice",
+    header: "Price",
+    render: (product: any) => (
+      <span className="font-semibold text-card-foreground text-xs">
+        ₹{product.unitPrice}
+      </span>
+    ),
+  },
+  {
+    key: "status",
+    header: "Active/Inactive",
+    render: (product: any) => (
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+
+          updateProduct(product.id, {
+            status:
+              product.status === "Active"
+                ? "Inactive"
+                : "Active",
+          });
+        }}
+        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+          product.status === "Active"
+            ? "bg-green-500"
+            : "bg-muted"
+        }`}
+        title={product.status}
+      >
+        <span
+          className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${
+            product.status === "Active"
+              ? "translate-x-4"
+              : "translate-x-1"
+          }`}
+        />
+      </button>
+    ),
+  },
+  {
+    key: "actions",
+    header: "Actions",
+    render: (product: any) => (
+      <div
+        className="flex items-center gap-1"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button
+          onClick={() => handleEdit(product)}
+          className="p-1 rounded-lg text-muted-foreground hover:bg-secondary hover:text-primary transition-colors"
+          title="Edit"
+        >
+          <Edit2 className="w-4 h-4" />
+        </button>
+
+        <button
+          onClick={() =>
+            handleDelete(product.id, product.name)
+          }
+          className="p-1.5 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+          title="Delete"
+        >
+          <Trash2 className="w-4 h-4" />
+        </button>
+      </div>
+    ),
+  },
+];
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -139,70 +265,17 @@ const ProductsPage = () => {
 
       {/* Table */}
       <div className="bg-card rounded-xl card-shadow overflow-hidden">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-border">
-              {["#", "Product ID", "Name", "Category", "Unit", "Price", "Active/Inactive", "Actions"].map((h) => (
-                <th key={h} className="text-left px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {pagination.paginatedItems.length > 0 ? (
-              pagination.paginatedItems.map((product, index) => (
-                <tr key={product.id} onClick={() => { setDetailsProduct(product); setShowDetails(true); }} className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors cursor-pointer">
-                  <td className="px-3 py-3 text-xs text-muted-foreground font-medium">{pagination.startIndex + index + 1}</td>
-                  <td className="px-3 py-3 font-medium text-card-foreground text-xs">{product.id}</td>
-                  <td className="px-3 py-3">
-                    <div className="flex items-center gap-2">
-                      <Package className="w-4 h-4 text-muted-foreground" />
-                      <span className="text-card-foreground text-xs">{product.name}</span>
-                    </div>
-                  </td>
-                  <td className="px-3 py-3 text-muted-foreground text-xs">{product.category}</td>
-                  <td className="px-3 py-3 text-muted-foreground text-xs">{product.unitOfMeasurement}</td>
-                  <td className="px-3 py-3 font-semibold text-card-foreground text-xs">₹{product.unitPrice}</td>
-                  <td className="px-3 py-3">
-                    <button
-                      onClick={(e) => { e.stopPropagation(); updateProduct(product.id, { status: product.status === "Active" ? "Inactive" : "Active" }); }}
-                      className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${product.status === "Active" ? "bg-green-500" : "bg-muted"}`}
-                      title={product.status}
-                    >
-                      <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${product.status === "Active" ? "translate-x-4" : "translate-x-1"}`} />
-                    </button>
-                  </td>
-                  <td className="px-3 py-3">
-                    <div className="flex items-center gap-1">
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleEdit(product); }}
-                        className="p-1 rounded-lg text-muted-foreground hover:bg-secondary hover:text-primary transition-colors"
-                        title="Edit"
-                      >
-                        <Edit2 className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleDelete(product.id, product.name); }}
-                        className="p-1.5 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
-                        title="Delete"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={8} className="px-5 py-8 text-center text-muted-foreground">
-                    No products found
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-      </div>
+  <DataTable
+    columns={productColumns}
+    data={productTableData}
+    getRowKey={(product) => product.id}
+    onRowClick={(product) => {
+      setDetailsProduct(product);
+      setShowDetails(true);
+    }}
+    emptyMessage="No products found"
+  />
+</div>
 
       <PaginationControls
         currentPage={pagination.currentPage}

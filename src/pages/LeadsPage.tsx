@@ -12,6 +12,9 @@ import { useEmployeesStore } from "@/store/employeesStore";
 import { TimeInput12Hour } from "@/components/TimeInput12Hour";
 import { PaginationControls } from "@/components/PaginationControls";
 import { usePagination } from "@/hooks/usePagination";
+import { ReportSummaryCard } from "@/components/ReportSummaryCard";
+import { LeadSummaryCard } from "@/components/card/LeadSummaryCard";
+import {DataTable,type DataTableColumn} from "@/components/table/DataTable";
 
 const statusBadge: Record<LeadStatus, "info" | "warning" | "success" | "error" | "neutral"> = {
   New: "info", Contacted: "warning", "Follow Up": "info", Converted: "success", Lost: "error",
@@ -84,6 +87,8 @@ const LeadsPage = () => {
     const matchSearch = l.name.toLowerCase().includes(search.toLowerCase()) || l.phone.includes(search);
     const matchBranch = branchFilter === "All" || l.branch === branchFilter;
     const matchEmployee = employeeFilter === "All" || l.assignedOwner === employeeFilter;
+
+
     
     // Date filter logic
     let matchDate = true;
@@ -111,9 +116,9 @@ const LeadsPage = () => {
     };
     return statusOrder[a.status] - statusOrder[b.status];
   });
-
+  
   const closeModal = () => setSelectedLead(null);
-
+  
   const saveReminder = (leadId: number) => {
     if (!reminderDate || !reminderText.trim()) {
       toast.error("Please select a date and enter reminder text");
@@ -129,23 +134,119 @@ const LeadsPage = () => {
     setReminderLeadId(null);
     toast.success("Reminder saved");
   };
+  
+  const leadColumns: DataTableColumn<Lead>[] = [
+{
+  key: "id",
+  header: "Leads ID",
+  render: (lead) => (
+    <span className="font-semibold text-primary text-xs">
+      {formatLeadId(lead.id)}
+    </span>
+  ),
+},
 
+{
+  key: "name",
+  header: "Customer Name",
+  render: (lead) => (
+    <div className="flex items-center gap-1.5">
+      <span className="font-medium text-card-foreground text-xs">
+        {lead.name}
+      </span>
+
+      <Eye
+        className={`w-3.5 h-3.5 ${
+          lead.isViewed
+            ? "text-success"
+            : "text-muted-foreground"
+        }`}
+      />
+    </div>
+  ),
+},
+
+{
+  key: "services",
+  header: "Services",
+  render: (lead) => (
+    <div className="flex items-center gap-2">
+      <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-primary/10 text-primary text-xs font-bold">
+        {lead.services.length}
+      </span>
+
+      <span className="text-xs text-muted-foreground">
+        {lead.services.length === 1
+          ? "Service"
+          : "Services"}
+      </span>
+    </div>
+  ),
+},
+
+{
+  key: "urgencyLevel",
+  header: "Urgency",
+  render: (lead) => lead.urgencyLevel,
+},
+
+{
+  key: "assignedOwner",
+  header: "Sales Executive",
+  render: (lead) => lead.assignedOwner || "—",
+},
+
+{
+  key: "nextFollowUpDate",
+  header: "Next Follow-Up-Date",
+  render: (lead) => lead.nextFollowUpDate || "—",
+},
+
+{
+  key: "status",
+  header: "Status",
+  render: (lead) => (
+    <StatusBadge
+      label={lead.status}
+      variant={statusBadge[lead.status]}
+    />
+  ),
+},
+
+{
+  key: "actions",
+  header: "Actions",
+  render: (lead) => (
+    <button
+      onClick={(e) => {
+        e.stopPropagation();
+        setEditingLead(lead);
+        setShowDetailsModal(true);
+      }}
+      className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-border bg-card hover:bg-secondary transition-colors"
+      title="Edit Leads"
+    >
+      <Edit2 className="w-4 h-4 text-muted-foreground" />
+    </button>
+  ),
+},
+];
   const getServiceCount = (lead: Lead) => lead.services.length;
-
+  
   const formatViewedAt = (value: string | null) => {
     if (!value) return "—";
     const ts = Date.parse(value);
     if (Number.isNaN(ts)) return value;
     return new Date(ts).toLocaleString();
   };
-
+  
   const setQuoteViewed = (leadId: number, nextViewed: boolean) => {
     const nextViewedAt = nextViewed ? new Date().toISOString() : null;
     updateLead(leadId, { quoteIsViewed: nextViewed, quoteViewedAt: nextViewedAt });
     setSelectedLead((prev) => (prev && prev.id === leadId ? { ...prev, quoteIsViewed: nextViewed, quoteViewedAt: nextViewedAt } : prev));
     toast.success(nextViewed ? "Marked as viewed" : "Marked as not viewed");
   };
-
+  
   const handleSendQuote = () => {
     if (selectedLeadForQuote && quoteFormData.amount && quoteFormData.contract) {
       updateLead(selectedLeadForQuote.id, {
@@ -174,7 +275,35 @@ const LeadsPage = () => {
       setNewService("");
     }
   };
-
+  
+  
+      // cards
+   const leadSummaryCards = [
+  {
+    title: "Total Leads",
+    value: leads.length,
+    icon: Users,
+    color: "primary" as const,
+  },
+  {
+    title: "New",
+    value: leads.filter((l) => l.status === "New").length,
+    icon: TrendingUp,
+    color: "warning" as const,
+  },
+  {
+    title: "Converted",
+    value: leads.filter((l) => l.status === "Converted").length,
+    icon: CheckCircle,
+    color: "success" as const,
+  },
+  {
+    title: "Lost",
+    value: leads.filter((l) => l.status === "Lost").length,
+    icon: XCircle,
+    color: "destructive" as const,
+  },
+];
   const handleRemoveService = (index: number) => {
     setFormData(prev => ({
       ...prev,
@@ -285,52 +414,14 @@ const LeadsPage = () => {
       </div>
 
       {/* Overview Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-card rounded-xl p-5 card-shadow border border-border">
-          <div className="flex items-start gap-3">
-            <div className="p-2.5 bg-primary/10 rounded-lg flex-shrink-0">
-              <Users className="w-5 h-5 text-primary" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-medium text-muted-foreground mb-1">Total Leads</p>
-              <p className="text-2xl font-bold text-card-foreground">{leads.length}</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-card rounded-xl p-5 card-shadow border border-border">
-          <div className="flex items-start gap-3">
-            <div className="p-2.5 bg-warning/10 rounded-lg flex-shrink-0">
-              <TrendingUp className="w-5 h-5 text-warning" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-medium text-muted-foreground mb-1">New</p>
-              <p className="text-2xl font-bold text-card-foreground">{leads.filter(l => l.status === "New").length}</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-card rounded-xl p-5 card-shadow border border-border">
-          <div className="flex items-start gap-3">
-            <div className="p-2.5 bg-success/10 rounded-lg flex-shrink-0">
-              <CheckCircle className="w-5 h-5 text-success" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-medium text-muted-foreground mb-1">Converted</p>
-              <p className="text-2xl font-bold text-card-foreground">{leads.filter(l => l.status === "Converted").length}</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-card rounded-xl p-5 card-shadow border border-border">
-          <div className="flex items-start gap-3">
-            <div className="p-2.5 bg-destructive/10 rounded-lg flex-shrink-0">
-              <XCircle className="w-5 h-5 text-destructive" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-medium text-muted-foreground mb-1">Lost</p>
-              <p className="text-2xl font-bold text-card-foreground">{leads.filter(l => l.status === "Lost").length}</p>
-            </div>
-          </div>
-        </div>
-      </div>
+     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+  {leadSummaryCards.map((card) => (
+    <LeadSummaryCard
+      key={card.title}
+      {...card}
+    />
+  ))}
+</div>
 
       {showForm && (
         <div className="bg-card rounded-xl p-6 card-shadow space-y-4">
@@ -506,70 +597,130 @@ const LeadsPage = () => {
       )}
 
       {/* Filters Section */}
+
+
       <div className="space-y-3">
-        {/* First Row: Dropdowns and Date Filters */}
-        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-          <select
-            value={branchFilter}
-            onChange={(e) => setBranchFilter(e.target.value)}
-            className="px-3 py-2 rounded-lg bg-card border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
-          >
-            <option value="All">All Branches</option>
-            {branchList.filter(b => b.status === "Active").map(b => (
-              <option key={b.id} value={b.name}>{b.name}</option>
-            ))}
-          </select>
+  {/* First Row */}
+  <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3">
+    <select
+      value={branchFilter}
+      onChange={(e) => setBranchFilter(e.target.value)}
+      className="w-full sm:w-auto h-10 px-3 rounded-lg bg-card border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+    >
+      <option value="All">All Branches</option>
+      {branchList.filter(b => b.status === "Active").map(b => (
+        <option key={b.id} value={b.name}>{b.name}</option>
+      ))}
+    </select>
 
-          <select
-            value={employeeFilter}
-            onChange={(e) => setEmployeeFilter(e.target.value)}
-            className="px-3 py-2 rounded-lg bg-card border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
-          >
-            <option value="All">All Employees</option>
-            {activeEmployees.map(emp => (
-              <option key={emp.id} value={emp.name}>{emp.name} — {emp.role}</option>
-            ))}
-          </select>
+    <select
+      value={employeeFilter}
+      onChange={(e) => setEmployeeFilter(e.target.value)}
+      className="w-full sm:w-auto h-10 px-3 rounded-lg bg-card border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+    >
+      <option value="All">All Employees</option>
+      {activeEmployees.map(emp => (
+        <option key={emp.id} value={emp.name}>
+          {emp.name} — {emp.role}
+        </option>
+      ))}
+    </select>
 
-          <input
-            type="date"
-            value={dateFilter.startDate}
-            onChange={(e) => setDateFilter(prev => ({ ...prev, startDate: e.target.value }))}
-            placeholder="Start Date"
-            className="px-3 py-2 rounded-lg bg-card border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
-          />
+ <div className="w-full sm:w-auto flex flex-col gap-1">
+  <label className="text-xs text-muted-foreground sm:hidden">Start Date</label>
+  <input
+    type="date"
+    value={dateFilter.startDate}
+    onChange={(e) =>
+      setDateFilter(prev => ({
+        ...prev,
+        startDate: e.target.value,
+      }))
+    }
+    className="w-full sm:w-auto h-10 px-3 rounded-lg bg-card border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+  />
+</div>
 
-          <input
-            type="date"
-            value={dateFilter.endDate}
-            onChange={(e) => setDateFilter(prev => ({ ...prev, endDate: e.target.value }))}
-            placeholder="End Date"
-            className="px-3 py-2 rounded-lg bg-card border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
-          />
+<div className="w-full sm:w-auto flex flex-col gap-1">
+  <label className="text-xs text-muted-foreground sm:hidden">End Date</label>
+  <input
+    type="date"
+    value={dateFilter.endDate}
+    onChange={(e) =>
+      setDateFilter(prev => ({
+        ...prev,
+        endDate: e.target.value,
+      }))
+    }
+    className="w-full sm:w-auto h-10 px-3 rounded-lg bg-card border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+  />
+</div>
 
-          {(dateFilter.startDate || dateFilter.endDate) && (
-            <button
-              onClick={() => setDateFilter({ startDate: "", endDate: "" })}
-              className="px-3 py-2 rounded-lg bg-secondary/30 border border-border text-sm text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
-            >
-              Clear Dates
-            </button>
-          )}
+    {(dateFilter.startDate || dateFilter.endDate) && (
+      <button
+        onClick={() => setDateFilter({ startDate: "", endDate: "" })}
+        className="w-full sm:w-auto px-3 py-2 rounded-lg bg-secondary/30 border border-border text-sm text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
+      >
+        Clear Dates
+      </button>
+    )}
 
-          <div className="relative w-full sm:flex-1 sm:max-w-xs">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search Leads..." className="w-full pl-9 pr-4 py-2 rounded-lg bg-card text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20" />
-          </div>
-        </div>
+    <div className="relative w-full sm:flex-1 sm:min-w-[200px] sm:max-w-xs">
+      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
 
-        {/* Second Row: Status Filter Buttons */}
-        <div className="flex flex-wrap gap-2">
-          <button onClick={() => handleFilterChange("All")} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap ${filter === "All" ? "text-white shadow-[0px_5px_12px_rgba(39,47,158,0.2)]" : "bg-card text-muted-foreground border border-border hover:bg-secondary"}`} style={filter === "All" ? { background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" } : {}}>All</button>
-          {statuses.map((s) => (
-            <button key={s} onClick={() => handleFilterChange(s)} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap ${filter === s ? "text-white shadow-[0px_5px_12px_rgba(39,47,158,0.2)]" : "bg-card text-muted-foreground border border-border hover:bg-secondary"}`} style={filter === s ? { background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" } : {}}>{s}</button>
-          ))}
-        </div>
-      </div>
+      <input
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        placeholder="Search Leads..."
+        className="w-full h-10 pl-9 pr-4 rounded-lg bg-card text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20"
+      />
+    </div>
+  </div>
+
+  {/* Second Row */}
+  <div className="flex flex-wrap gap-2">
+    <button
+      onClick={() => handleFilterChange("All")}
+      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap ${
+        filter === "All"
+          ? "text-white shadow-[0px_5px_12px_rgba(39,47,158,0.2)]"
+          : "bg-card text-muted-foreground border border-border hover:bg-secondary"
+      }`}
+      style={
+        filter === "All"
+          ? {
+              background:
+                "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)",
+            }
+          : {}
+      }
+    >
+      All
+    </button>
+
+    {statuses.map((s) => (
+      <button
+        key={s}
+        onClick={() => handleFilterChange(s)}
+        className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap ${
+          filter === s
+            ? "text-white shadow-[0px_5px_12px_rgba(39,47,158,0.2)]"
+            : "bg-card text-muted-foreground border border-border hover:bg-secondary"
+        }`}
+        style={
+          filter === s
+            ? {
+                background:
+                  "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)",
+              }
+            : {}
+        }
+      >
+        {s}
+      </button>
+    ))}
+  </div>
+</div>
 
       <div className="bg-card rounded-xl card-shadow overflow-hidden">
         {/* Bulk transfer bar */}
@@ -595,83 +746,29 @@ const LeadsPage = () => {
           </div>
         )}
         <div className="w-full">
-          <table className="w-full text-sm">
-            <thead><tr className="border-b border-border">
-              <th className="px-3 py-2.5 w-10">
-                <input
-                  type="checkbox"
-                  checked={filtered.length > 0 && selectedLeadIds.size === filtered.length}
-                  onChange={toggleSelectAll}
-                  className="w-4 h-4 rounded border-border accent-primary cursor-pointer"
-                />
-              </th>
-              {["Leads ID", "Customer Name", "Services", "Urgency", "sales executive", "Next Follow-Up-date", "Status", "Actions"].map((h) => (
-                <th key={h} className="text-left px-3 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">{h}</th>
-              ))}
-            </tr></thead>
-            <tbody>
-              {pagination.paginatedItems.map((l) => {
-                const serviceCount = getServiceCount(l);
-                return (
-                  <tr key={l.id} onClick={() => navigate(`/leads/${l.id}`)} className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors cursor-pointer">
-                    <td className="px-3 py-2.5" onClick={e => toggleSelectLead(l.id, e)}>
-                      <input
-                        type="checkbox"
-                        checked={selectedLeadIds.has(l.id)}
-                        onChange={() => {}}
-                        className="w-4 h-4 rounded border-border accent-primary cursor-pointer"
-                      />
-                    </td>
-                    <td className="px-3 py-2.5 font-semibold text-primary text-xs">{formatLeadId(l.id)}</td>
-                  <td className="px-3 py-2.5">
-                    <div className="flex items-center gap-1.5">
-                      <span className="font-medium text-card-foreground text-xs">{l.name}</span>
-                      <div
-                        className="inline-flex items-center justify-center w-5 h-5 rounded flex-shrink-0"
-                        title={l.isViewed ? "Viewed" : "Not viewed"}
-                      >
-                        <Eye className={`w-3.5 h-3.5 ${l.isViewed ? "text-success" : "text-muted-foreground"}`} />
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-3 py-2.5">
-                    <div className="flex items-center gap-2">
-                      <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-primary/10 text-primary text-xs font-bold">{serviceCount}</span>
-                      <span className="text-xs text-muted-foreground">{serviceCount === 1 ? "Service" : "Services"}</span>
-                    </div>
-                  </td>
-                  <td className="px-3 py-2.5 text-muted-foreground text-xs">{l.urgencyLevel}</td>
-                  <td className="px-3 py-2.5 text-muted-foreground text-xs">{l.assignedOwner || "—"}</td>
-                  <td className="px-3 py-2.5 text-muted-foreground text-xs">{l.nextFollowUpDate || "—"}</td>
-                  <td className="px-3 py-2.5"><StatusBadge label={l.status} variant={statusBadge[l.status]} /></td>
-                  <td className="px-3 py-2.5">
-                    <div className="flex items-center gap-1">
-                      <button
-                        onClick={(e) => { e.stopPropagation(); setEditingLead(l); setShowDetailsModal(true); }}
-                        className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-border bg-card hover:bg-secondary transition-colors"
-                        title="Edit Leads"
-                      >
-                        <Edit2 className="w-4 h-4 text-muted-foreground" />
-                      </button>
-                      <div className="relative">
-                        {/* <button
-                          onClick={(e) => { e.stopPropagation(); setReminderLeadId(reminderLeadId === l.id ? null : l.id); setReminderDate(""); setReminderTime(""); setReminderText(""); }}
-                          className="relative inline-flex items-center justify-center w-8 h-8 rounded-lg border border-border bg-card hover:bg-secondary transition-colors"
-                          title=""
-                        >
-                          <Bell className="w-4 h-4 text-muted-foreground" />
-                          {(l.reminders?.length ?? 0) > 0 && (
-                            <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-primary text-white text-[9px] flex items-center justify-center">{l.reminders?.length}</span>
-                          )}
-                        </button> */}
-                      </div>
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
-            </tbody>
-          </table>
+         <DataTable
+  columns={leadColumns}
+  data={pagination.paginatedItems}
+  getRowKey={(lead) => lead.id}
+  selectable
+  selectedIds={selectedLeadIds}
+  onSelectRow={(lead) => {
+    setSelectedLeadIds((prev) => {
+      const next = new Set(prev);
+
+      if (next.has(lead.id)) {
+        next.delete(lead.id);
+      } else {
+        next.add(lead.id);
+      }
+
+      return next;
+    });
+  }}
+  onSelectAll={toggleSelectAll}
+  onRowClick={(lead) => navigate(`/leads/${lead.id}`)}
+  emptyMessage="No Leads found."
+/>
         </div>
       </div>
 
@@ -881,7 +978,7 @@ const LeadsPage = () => {
 
               {/* Services Overview Card */}
               <div>
-                <h4 className="text-sm font-semibold text-card-foreground mb-4 uppercase tracking-wider text-xs">Services</h4>
+                <h4 className="text-sm font-semibold text-card-foreground mb-4 uppercase tracking-wider">Services</h4>
                 <div className="space-y-2">
                   {selectedLead.services.map((service, idx) => (
                     <div key={idx} className="flex items-center gap-3 p-3 rounded-lg hover:bg-secondary/20 transition-colors">

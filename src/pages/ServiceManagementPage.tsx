@@ -11,6 +11,7 @@ import { useEmployeesStore } from "@/store/employeesStore";
 import { useBranchesStore } from "@/store/branchesStore";
 import type { ServiceAppointment } from "@/store/servicesStore";
 import * as XLSX from 'xlsx';
+import { DataTable } from "@/components/table/Datatable";
 
 const statusMap = { Scheduled: "info", Unscheduled: "neutral", Completed: "success", Cancelled: "error" } as const;
 
@@ -144,6 +145,100 @@ const ServiceManagementPage = () => {
     }
   };
 
+  const serviceTableData = pagination.paginatedItems.map((apt, index) => ({
+  ...apt,
+  serialNumber: pagination.startIndex + index + 1,
+}));
+
+const serviceColumns = [
+  {
+    key: "serialNumber",
+    header: "#",
+    render: (apt: any) => (
+      <span className="text-xs text-muted-foreground font-medium">
+        {apt.serialNumber}
+      </span>
+    ),
+  },
+  {
+    key: "subject",
+    header: "Subject",
+    render: (apt: any) => (
+      <div className="space-y-0.5">
+        <p className="font-semibold text-card-foreground text-xs">
+          {apt.subject || "—"}
+        </p>
+        <p className="text-xs text-muted-foreground">
+          {apt.serviceDescription || "—"}
+        </p>
+      </div>
+    ),
+  },
+  {
+    key: "status",
+    header: "Active/Inactive",
+    render: (apt: any) => (
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+
+          const next =
+            apt.status === "Completed"
+              ? "Scheduled"
+              : "Completed";
+
+          updateAppointment(apt.id, { status: next });
+        }}
+        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+          apt.status === "Completed"
+            ? "bg-green-500"
+            : "bg-muted"
+        }`}
+        title={apt.status}
+      >
+        <span
+          className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${
+            apt.status === "Completed"
+              ? "translate-x-4"
+              : "translate-x-1"
+          }`}
+        />
+      </button>
+    ),
+  },
+  {
+    key: "actions",
+    header: "Action",
+    render: (apt: any) => (
+      <div
+        className="flex items-center gap-2"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button
+          onClick={() => {
+            setEditingService(apt);
+            setShowForm(true);
+          }}
+          className="p-1.5 rounded-lg border border-border hover:bg-secondary transition-colors"
+          title="Edit"
+        >
+          <Pencil className="w-4 h-4 text-muted-foreground" />
+        </button>
+
+        <button
+          onClick={() =>
+            toast.error("Delete functionality coming soon")
+          }
+          className="p-1.5 rounded-lg border border-border hover:bg-destructive/10 transition-colors"
+          title="Delete"
+        >
+          <Trash2 className="w-4 h-4 text-destructive" />
+        </button>
+      </div>
+    ),
+  },
+];
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -191,149 +286,140 @@ const ServiceManagementPage = () => {
       </div>
 
       {/* Search and Filter */}
-      <div className="space-y-3">
-        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-          <select
-            value={branchFilter}
-            onChange={(e) => setBranchFilter(e.target.value)}
-            className="px-3 py-2 rounded-lg bg-card border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
-          >
-            <option value="All">All Branches</option>
-            {branchList.filter(b => b.status === "Active").map(b => (
-              <option key={b.id} value={b.name}>{b.name}</option>
-            ))}
-          </select>
+  <div className="space-y-3">
+  <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-end gap-3">
+    
+    <select
+      value={branchFilter}
+      onChange={(e) => setBranchFilter(e.target.value)}
+      className="w-full sm:w-auto px-3 py-2 rounded-lg bg-card border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+    >
+      <option value="All">All Branches</option>
+      {branchList.filter(b => b.status === "Active").map(b => (
+        <option key={b.id} value={b.name}>{b.name}</option>
+      ))}
+    </select>
 
-          <select
-            value={employeeFilter}
-            onChange={(e) => setEmployeeFilter(e.target.value)}
-            className="px-3 py-2 rounded-lg bg-card border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
-          >
-            <option value="All">All Employees</option>
-            {activeEmployees.map(emp => (
-              <option key={emp.id} value={emp.name}>{emp.name} — {emp.role}</option>
-            ))}
-          </select>
+    <select
+      value={employeeFilter}
+      onChange={(e) => setEmployeeFilter(e.target.value)}
+      className="w-full sm:w-auto px-3 py-2 rounded-lg bg-card border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+    >
+      <option value="All">All Employees</option>
+      {activeEmployees.map(emp => (
+        <option key={emp.id} value={emp.name}>
+          {emp.name} — {emp.role}
+        </option>
+      ))}
+    </select>
 
-          <input
-            type="date"
-            value={dateFilter.startDate}
-            onChange={(e) => setDateFilter(prev => ({ ...prev, startDate: e.target.value }))}
-            placeholder="Start Date"
-            className="px-3 py-2 rounded-lg bg-card border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
-          />
+    {/* Start Date */}
+    <div className="w-full sm:w-auto">
+      <label className="mb-1 block text-xs font-medium text-muted-foreground sm:hidden">
+        Start Date
+      </label>
+      <input
+        type="date"
+        value={dateFilter.startDate}
+        onChange={(e) =>
+          setDateFilter(prev => ({
+            ...prev,
+            startDate: e.target.value,
+          }))
+        }
+        className="w-full sm:w-auto px-3 py-2 rounded-lg bg-card border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+      />
+    </div>
 
-          <input
-            type="date"
-            value={dateFilter.endDate}
-            onChange={(e) => setDateFilter(prev => ({ ...prev, endDate: e.target.value }))}
-            placeholder="End Date"
-            className="px-3 py-2 rounded-lg bg-card border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
-          />
+    {/* End Date */}
+    <div className="w-full sm:w-auto">
+      <label className="mb-1 block text-xs font-medium text-muted-foreground sm:hidden">
+        End Date
+      </label>
+      <input
+        type="date"
+        value={dateFilter.endDate}
+        onChange={(e) =>
+          setDateFilter(prev => ({
+            ...prev,
+            endDate: e.target.value,
+          }))
+        }
+        className="w-full sm:w-auto px-3 py-2 rounded-lg bg-card border border-border text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+      />
+    </div>
 
-          {(dateFilter.startDate || dateFilter.endDate) && (
-            <button
-              onClick={() => setDateFilter({ startDate: "", endDate: "" })}
-              className="px-3 py-2 rounded-lg bg-secondary/30 border border-border text-sm text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
-            >
-              Clear Dates
-            </button>
-          )}
+    {(dateFilter.startDate || dateFilter.endDate) && (
+      <button
+        onClick={() =>
+          setDateFilter({
+            startDate: "",
+            endDate: "",
+          })
+        }
+        className="w-full sm:w-auto px-3 py-2 rounded-lg bg-secondary/30 border border-border text-sm text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
+      >
+        Clear Dates
+      </button>
+    )}
 
-          <div className="relative w-full sm:flex-1 sm:max-w-xs">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <input 
-              value={search} 
-              onChange={(e) => setSearch(e.target.value)} 
-              placeholder="Search services..." 
-              className="w-full pl-9 pr-4 py-2 rounded-lg bg-card text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20" 
-            />
-          </div>
-        </div>
+    <div className="relative w-full sm:flex-1 sm:min-w-[200px] sm:max-w-xs">
+      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
 
-        <div className="flex flex-wrap gap-2">
-          {(["All", "Active", "Inactive"] as const).map((status) => {
-            const count = status === "All" ? appointments.length : status === "Active" ? appointments.filter(a => a.status === "Completed").length : appointments.filter(a => a.status !== "Completed").length;
-            return (
-              <button 
-                key={status}
-                onClick={() => setStatusFilter(status)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap ${
-                  statusFilter === status 
-                    ? "text-white shadow-[0px_5px_12px_rgba(39,47,158,0.2)]" 
-                    : "bg-card text-muted-foreground border border-border hover:bg-secondary"
-                }`}
-                style={statusFilter === status ? { background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" } : {}}
-              >
-                {status} ({count})
-              </button>
-            );
-          })}
-        </div>
-      </div>
+      <input
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        placeholder="Search services..."
+        className="w-full h-10 pl-9 pr-4 rounded-lg bg-card text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20"
+      />
+    </div>
+  </div>
+
+  {/* Status Filter */}
+  <div className="flex flex-wrap gap-2">
+    {(["All", "Active", "Inactive"] as const).map((status) => {
+      const count =
+        status === "All"
+          ? appointments.length
+          : status === "Active"
+          ? appointments.filter(a => a.status === "Completed").length
+          : appointments.filter(a => a.status !== "Completed").length;
+
+      return (
+        <button
+          key={status}
+          onClick={() => setStatusFilter(status)}
+          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap ${
+            statusFilter === status
+              ? "text-white shadow-[0px_5px_12px_rgba(39,47,158,0.2)]"
+              : "bg-card text-muted-foreground border border-border hover:bg-secondary"
+          }`}
+          style={
+            statusFilter === status
+              ? {
+                  background:
+                    "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)",
+                }
+              : {}
+          }
+        >
+          {status} ({count})
+        </button>
+      );
+    })}
+  </div>
+</div>
 
       {/* Table */}
       <div className="bg-card rounded-xl card-shadow overflow-hidden">
-        <div className="w-full">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border">
-                {["#", "Subject", "Active/Inactive", "Action"].map((h) => (
-                  <th key={h} className="text-left px-3 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {pagination.paginatedItems.map((apt, index) => (
-                <tr
-                  key={apt.id}
-                  onClick={() => navigate(`/service/${apt.id}`)}
-                  className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors cursor-pointer"
-                >
-                  <td className="px-3 py-2.5 text-xs text-muted-foreground font-medium">{pagination.startIndex + index + 1}</td>
-                  <td className="px-3 py-2.5">
-                    <div className="space-y-0.5">
-                      <p className="font-semibold text-card-foreground text-xs">{apt.subject || "—"}</p>
-                      <p className="text-xs text-muted-foreground">{apt.serviceDescription || "—"}</p>
-                    </div>
-                  </td>
-                  <td className="px-3 py-2.5">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        const next = apt.status === "Completed" ? "Scheduled" : "Completed";
-                        updateAppointment(apt.id, { status: next });
-                      }}
-                      className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${apt.status === "Completed" ? "bg-green-500" : "bg-muted"}`}
-                      title={apt.status}
-                    >
-                      <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${apt.status === "Completed" ? "translate-x-4" : "translate-x-1"}`} />
-                    </button>
-                  </td>
-                  <td className="px-3 py-2.5">
-                    <div className="flex items-center gap-2">
-                      <button 
-                        onClick={(e) => { e.stopPropagation(); setEditingService(apt); setShowForm(true); }}
-                        className="p-1.5 rounded-lg border border-border hover:bg-secondary transition-colors"
-                        title="Edit"
-                      >
-                        <Pencil className="w-4 h-4 text-muted-foreground" />
-                      </button>
-                      <button 
-                        className="p-1.5 rounded-lg border border-border hover:bg-destructive/10 transition-colors"
-                        title="Delete"
-                        onClick={(e) => { e.stopPropagation(); toast.error("Delete functionality coming soon"); }}
-                      >
-                        <Trash2 className="w-4 h-4 text-destructive" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+  <DataTable
+    columns={serviceColumns}
+    data={serviceTableData}
+    getRowKey={(apt) => apt.id}
+    onRowClick={(apt) => navigate(`/service/${apt.id}`)}
+    emptyMessage="No services found."
+  />
+</div>
 
       <PaginationControls
         currentPage={pagination.currentPage}

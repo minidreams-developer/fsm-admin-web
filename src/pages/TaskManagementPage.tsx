@@ -9,6 +9,7 @@ import { useBranchesStore } from "@/store/branchesStore";
 import { StatusBadge } from "@/components/StatusBadge";
 import { PaginationControls } from "@/components/PaginationControls";
 import { usePagination } from "@/hooks/usePagination";
+import { DataTable } from "@/components/table/Datatable";
 
 const PAGE_SIZE = 10;
 const STATUSES = ["Pending", "In Progress", "Completed", "Overdue", "Verified"] as const;
@@ -135,37 +136,42 @@ const TaskManagementPage = () => {
     ? employees.filter(e => e.branch.includes(bulkAssignData.branch)).map(e => e.name)
     : employeeNames;
 
-  // Toggle individual task selection
-  const toggleSelectTask = (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setSelectedTaskIds(prev => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
-  };
-
-  // Toggle select all on current page
-  const toggleSelectAll = () => {
-    if (selectedTaskIds.size === paginated.length) {
-      setSelectedTaskIds(new Set());
+    // Toggle individual task selection
+    const toggleSelectTask = (id: string) => {
+      setSelectedTaskIds((prev) => {
+        const next = new Set(prev);
+        
+        next.has(id) ? next.delete(id) : next.add(id);
+        
+        return next;
+      });
+    };
+    // Toggle select all on current page
+    const toggleSelectAll = () => {
+      const currentPageTasks = pagination.paginatedItems;
+      if (currentPageTasks.length > 0 && currentPageTasks.every(t => selectedTaskIds.has(t.id))) {
+        setSelectedTaskIds(new Set());
     } else {
-      setSelectedTaskIds(new Set(paginated.map(t => t.id)));
+      setSelectedTaskIds(prev => {
+        const next = new Set(prev);
+        currentPageTasks.forEach(t => next.add(t.id));
+        return next;
+      });
     }
   };
-
+  
   // Get selected tasks
   const getSelectedTasks = () => {
-    return paginated.filter(t => selectedTaskIds.has(t.id));
+    return pagination.paginatedItems.filter(t => selectedTaskIds.has(t.id));
   };
-
+  
   // Bulk assign handler
   const handleBulkAssign = () => {
     if (bulkAssignData.assignedEmployees.length === 0) {
       toast.error("Select at least one employee");
       return;
     }
-
+    
     selectedTaskIds.forEach(id => {
       updateTask(id, {
         assignedEmployees: bulkAssignData.assignedEmployees,
@@ -173,7 +179,7 @@ const TaskManagementPage = () => {
         branch: bulkAssignData.branch || undefined,
       });
     });
-
+    
     toast.success(`${selectedTaskIds.size} task${selectedTaskIds.size === 1 ? "" : "s"} assigned`);
     setSelectedTaskIds(new Set());
     setShowBulkAssign(false);
@@ -189,7 +195,7 @@ const TaskManagementPage = () => {
     const matchEmployee = employeeFilter === "All" || assignees.includes(employeeFilter);
     return matchSearch && matchStatus && matchBranch && matchEmployee;
   });
-
+  
   const pagination = usePagination({
     items: filtered,
     itemsPerPage: 10,
@@ -261,6 +267,100 @@ const TaskManagementPage = () => {
     deleteTask(id);
     toast.success("Task deleted");
   };
+
+const taskColumns = [
+  {
+    key: "id",
+    header: "Task ID",
+    render: (t: any) => (
+      <span className="font-semibold text-primary text-xs">{t.id}</span>
+    ),
+  },
+  {
+    key: "title",
+    header: "Title",
+    render: (t: any) => (
+      <div>
+        <p className="font-medium text-card-foreground text-xs">{t.title}</p>
+        {t.description && (
+          <p className="text-xs text-muted-foreground truncate max-w-[180px]">
+            {t.description}
+          </p>
+        )}
+      </div>
+    ),
+  },
+  {
+    key: "assignedEmployees",
+    header: "Assigned Employees",
+    render: (t: any) => (
+      <div className="flex flex-wrap gap-1">
+        {(t.assignedEmployees || [t.assignedTo]).map((emp: string) => (
+          <span
+            key={emp}
+            className="inline-flex items-center px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-semibold"
+          >
+            {emp}
+          </span>
+        ))}
+      </div>
+    ),
+  },
+  {
+    key: "startDate",
+    header: "Start Date",
+    render: (t: any) => (
+      <span className="text-xs text-muted-foreground">{t.startDate}</span>
+    ),
+  },
+  {
+    key: "endDate",
+    header: "End Date",
+    render: (t: any) => (
+      <span className="text-xs text-muted-foreground">{t.endDate}</span>
+    ),
+  },
+  {
+    key: "status",
+    header: "Status",
+    render: (t: any) => {
+      const taskStatus = getTaskStatus(t);
+
+      return (
+        <StatusBadge
+          label={taskStatus}
+          variant={statusVariant[taskStatus]}
+        />
+      );
+    },
+  },
+  {
+    key: "actions",
+    header: "Actions",
+    render: (t: any) => (
+      <div
+        className="flex items-center gap-1.5"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button
+          onClick={() => openEdit(t)}
+          className="p-1.5 rounded-lg border border-border hover:bg-secondary transition-colors"
+          title="Edit"
+        >
+          <Edit2 className="w-3.5 h-3.5 text-muted-foreground" />
+        </button>
+
+        <button
+          onClick={() => handleDelete(t.id)}
+          className="p-1.5 rounded-lg border border-border hover:bg-destructive/10 transition-colors"
+          title="Delete"
+        >
+          <Trash2 className="w-3.5 h-3.5 text-destructive" />
+        </button>
+      </div>
+    ),
+  },
+];
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -350,69 +450,18 @@ const TaskManagementPage = () => {
 
       {/* Table */}
       <div className="bg-card rounded-xl card-shadow overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border">
-                <th className="px-3 py-2.5 w-10">
-                  <input
-                    type="checkbox"
-                    checked={pagination.paginatedItems.length > 0 && selectedTaskIds.size === pagination.paginatedItems.length}
-                    onChange={toggleSelectAll}
-                    className="w-4 h-4 rounded border-border accent-primary cursor-pointer"
-                  />
-                </th>
-                {["Task ID", "Title", "Assigned Employees", "Start Date", "End Date", "Status", "Actions"].map(h => (
-                  <th key={h} className="text-left px-3 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {pagination.paginatedItems.length === 0 ? (
-                <tr><td colSpan={8} className="px-3 py-8 text-center text-xs text-muted-foreground">No tasks found.</td></tr>
-              ) : pagination.paginatedItems.map(t => {
-                const taskStatus = getTaskStatus(t);
-                return (
-                <tr key={t.id} onClick={() => navigate(`/task-management/${t.id}`)} className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors cursor-pointer">
-                  <td className="px-3 py-2.5" onClick={e => toggleSelectTask(t.id, e)}>
-                    <input
-                      type="checkbox"
-                      checked={selectedTaskIds.has(t.id)}
-                      onChange={() => {}}
-                      className="w-4 h-4 rounded border-border accent-primary cursor-pointer"
-                    />
-                  </td>
-                  <td className="px-3 py-2.5 font-semibold text-primary text-xs">{t.id}</td>
-                  <td className="px-3 py-2.5">
-                    <p className="font-medium text-card-foreground text-xs">{t.title}</p>
-                    {t.description && <p className="text-xs text-muted-foreground truncate max-w-[180px]">{t.description}</p>}
-                  </td>
-                  <td className="px-3 py-2.5">
-                    <div className="flex flex-wrap gap-1">
-                      {(t.assignedEmployees || [t.assignedTo]).map(emp => (
-                        <span key={emp} className="inline-flex items-center px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-semibold">{emp}</span>
-                      ))}
-                    </div>
-                  </td>
-                  <td className="px-3 py-2.5 text-xs text-muted-foreground">{t.startDate}</td>
-                  <td className="px-3 py-2.5 text-xs text-muted-foreground">{t.endDate}</td>
-                  <td className="px-3 py-2.5"><StatusBadge label={taskStatus} variant={statusVariant[taskStatus]} /></td>
-                  <td className="px-3 py-2.5">
-                    <div className="flex items-center gap-1.5">
-                      <button onClick={(e) => { e.stopPropagation(); openEdit(t); }} className="p-1.5 rounded-lg border border-border hover:bg-secondary transition-colors" title="Edit">
-                        <Edit2 className="w-3.5 h-3.5 text-muted-foreground" />
-                      </button>
-                      <button onClick={(e) => { e.stopPropagation(); handleDelete(t.id); }} className="p-1.5 rounded-lg border border-border hover:bg-destructive/10 transition-colors" title="Delete">
-                        <Trash2 className="w-3.5 h-3.5 text-destructive" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              )})}
-            </tbody>
-          </table>
-        </div>
-      </div>
+  <DataTable
+    columns={taskColumns}
+    data={pagination.paginatedItems}
+    getRowKey={(task) => task.id}
+    selectable
+    selectedIds={selectedTaskIds}
+    onSelectRow={(task) => toggleSelectTask(task.id)}
+    onSelectAll={toggleSelectAll}
+    onRowClick={(task) => navigate(`/task-management/${task.id}`)}
+    emptyMessage="No tasks found."
+  />
+</div>
 
       <PaginationControls
         currentPage={pagination.currentPage}

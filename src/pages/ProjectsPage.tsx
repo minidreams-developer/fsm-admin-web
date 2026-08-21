@@ -9,6 +9,7 @@ import { useBranchesStore } from "@/store/branchesStore";
 import { PaginationControls } from "@/components/PaginationControls";
 import { usePagination } from "@/hooks/usePagination";
 import { toast } from "sonner";
+import { DataTable } from "@/components/table/Datatable";
 
 const statusMap = {
   "Authorization Pending": "warning",
@@ -84,6 +85,112 @@ const ProjectsPage = () => {
     itemsPerPage: 10,
   });
 
+  const workOrderColumns = [
+  {
+    key: "id",
+    header: "Work Order ID",
+    render: (project: any) => (
+      <div className="font-semibold text-primary text-xs">
+        {project.id}
+      </div>
+    ),
+  },
+  {
+    key: "customer",
+    header: "Customer",
+    render: (project: any) => (
+      <div>
+        <div className="font-semibold text-card-foreground text-xs">
+          {project.customer}
+        </div>
+        <div className="text-xs text-muted-foreground truncate">
+          {project.address}
+        </div>
+      </div>
+    ),
+  },
+  {
+    key: "services",
+    header: "Services",
+    render: (project: any) => {
+      const services = project.serviceTypes?.length
+        ? project.serviceTypes
+        : project.serviceType?.trim()
+          ? [project.serviceType]
+          : [];
+
+      const count = services.length;
+
+      const serviceNames = services.map((svc: string) => {
+        const match = svc.match(/^([^(]+)/);
+        return match ? match[1].trim() : svc;
+      });
+
+      return (
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-primary/10 text-primary text-xs font-bold">
+              {count}
+            </span>
+            <span className="text-xs text-muted-foreground">
+              {count === 1 ? "Service" : "Services"}
+            </span>
+          </div>
+
+          <div className="flex flex-col gap-0.5">
+            {serviceNames.slice(0, 2).map((name: string, idx: number) => (
+              <div
+                key={idx}
+                className="text-xs bg-primary/5 text-primary px-2 py-1 rounded whitespace-nowrap truncate"
+              >
+                📦 {name}
+              </div>
+            ))}
+
+            {count > 2 && (
+              <div className="text-xs text-muted-foreground px-2 py-0.5">
+                +{count - 2} more
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    },
+  },
+  {
+    key: "start",
+    header: "Start Date",
+    render: (project: any) => (
+      <span className="text-xs text-muted-foreground">
+        {project.start || "—"}
+      </span>
+    ),
+  },
+  {
+    key: "end",
+    header: "End Date",
+    render: (project: any) => (
+      <span className="text-xs text-muted-foreground">
+        {project.end || "—"}
+      </span>
+    ),
+  },
+  {
+    key: "status",
+    header: "Status",
+    render: (project: any) => (
+      <StatusBadge
+        label={project.status}
+        variant={
+          (statusMap[
+            project.status as keyof typeof statusMap
+          ] as any) || "neutral"
+        }
+      />
+    ),
+  },
+];
+
   return (
     <div className="space-y-6 animate-fade-in">
       {showSuccessMessage && (
@@ -111,6 +218,7 @@ const ProjectsPage = () => {
         </div>
       </div>
 
+{/* card */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-card rounded-xl p-5 card-shadow border border-border">
           <div className="flex items-start gap-3">
@@ -258,24 +366,56 @@ const ProjectsPage = () => {
           </div>
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
-          <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="px-3 py-2 rounded-lg border border-border bg-card text-xs text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20" />
-          <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="px-3 py-2 rounded-lg border border-border bg-card text-xs text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20" />
-          <button
-            onClick={() => { setAppliedStart(startDate); setAppliedEnd(endDate); }}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold text-white transition-all hover:opacity-90 shadow-[0px_5px_12px_rgba(39,47,158,0.2)]"
-            style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}
-          >
-            <Calendar className="w-3.5 h-3.5" />
-            Filter
-          </button>
-          <button
-            onClick={() => { setStartDate(""); setEndDate(""); setAppliedStart(""); setAppliedEnd(""); }}
-            className="px-4 py-2 rounded-lg text-xs font-semibold border border-border bg-card text-muted-foreground hover:text-destructive hover:border-destructive/30 transition-colors"
-          >
-            Reset
-          </button>
-        </div>
+       <div className="flex flex-col sm:flex-row sm:items-end gap-3">
+  <div className="w-full sm:w-auto flex flex-col gap-1">
+    <label className="text-xs text-muted-foreground sm:hidden">Start Date</label>
+    <input
+      type="date"
+      value={startDate}
+      onChange={(e) => setStartDate(e.target.value)}
+      className="w-full sm:w-auto px-3 py-2 rounded-lg border border-border bg-card text-xs text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+    />
+  </div>
+
+  <div className="w-full sm:w-auto flex flex-col gap-1">
+    <label className="text-xs text-muted-foreground sm:hidden">End Date</label>
+    <input
+      type="date"
+      value={endDate}
+      onChange={(e) => setEndDate(e.target.value)}
+      className="w-full sm:w-auto px-3 py-2 rounded-lg border border-border bg-card text-xs text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+    />
+  </div>
+
+  <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+    <button
+      onClick={() => {
+        setAppliedStart(startDate);
+        setAppliedEnd(endDate);
+      }}
+      className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold text-white transition-all hover:opacity-90 shadow-[0px_5px_12px_rgba(39,47,158,0.2)]"
+      style={{
+        background:
+          "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)",
+      }}
+    >
+      <Calendar className="w-3.5 h-3.5" />
+      Filter
+    </button>
+
+    <button
+      onClick={() => {
+        setStartDate("");
+        setEndDate("");
+        setAppliedStart("");
+        setAppliedEnd("");
+      }}
+      className="w-full sm:w-auto px-4 py-2 rounded-lg text-xs font-semibold border border-border bg-card text-muted-foreground hover:text-destructive hover:border-destructive/30 transition-colors"
+    >
+      Reset
+    </button>
+  </div>
+</div>
 
         <div className="flex items-center gap-2 flex-wrap">
           {(["All", "Authorization Pending", "Ongoing", "Upcoming", "Overdue", "Missed", "Cancelled", "Completed", "Converted"] as const).map((s) => (
@@ -290,70 +430,15 @@ const ProjectsPage = () => {
       </div>
 
       {/* Work Orders Table */}
-      <div className="bg-card rounded-xl card-shadow overflow-hidden">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-border">
-              {["Work Order ID", "Customer", "Services", "Start Date", "End Date", "Status"].map((h) => (
-                <th key={h} className="text-left px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {pagination.paginatedItems.map((project) => (
-              <tr key={project.id} className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors">
-                <td className="px-3 py-3 cursor-pointer" onClick={() => navigate(`/work-order/${project.id}`)}>
-                  <div className="font-semibold text-primary text-xs">{project.id}</div>
-                </td>
-                <td className="px-3 py-3 cursor-pointer" onClick={() => navigate(`/work-order/${project.id}`)}>
-                  <div className="font-semibold text-card-foreground text-xs">{project.customer}</div>
-                  <div className="text-xs text-muted-foreground truncate">{project.address}</div>
-                </td>
-                <td className="px-3 py-3 cursor-pointer" onClick={() => navigate(`/work-order/${project.id}`)}>
-                  {(() => {
-                    const services = project.serviceTypes?.length 
-                      ? project.serviceTypes 
-                      : project.serviceType?.trim() ? [project.serviceType] : [];
-                    const count = services.length;
-                    
-                    // Extract service names (remove AMC/One-Time/frequency info for cleaner display)
-                    const serviceNames = services.map(svc => {
-                      const match = svc.match(/^([^(]+)/);
-                      return match ? match[1].trim() : svc;
-                    });
-                    
-                    return (
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-primary/10 text-primary text-xs font-bold">{count}</span>
-                          <span className="text-xs text-muted-foreground">{count === 1 ? "Service" : "Services"}</span>
-                        </div>
-                        <div className="flex flex-col gap-0.5">
-                          {serviceNames.slice(0, 2).map((name, idx) => (
-                            <div key={idx} className="text-xs bg-primary/5 text-primary px-2 py-1 rounded whitespace-nowrap truncate">
-                              📦 {name}
-                            </div>
-                          ))}
-                          {count > 2 && (
-                            <div className="text-xs text-muted-foreground px-2 py-0.5">
-                              +{count - 2} more
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })()}
-                </td>
-                <td className="px-3 py-3 text-xs text-muted-foreground cursor-pointer" onClick={() => navigate(`/work-order/${project.id}`)}>{project.start || "—"}</td>
-                <td className="px-3 py-3 text-xs text-muted-foreground cursor-pointer" onClick={() => navigate(`/work-order/${project.id}`)}>{project.end || "—"}</td>
-                <td className="px-3 py-3 cursor-pointer" onClick={() => navigate(`/work-order/${project.id}`)}>
-                  <StatusBadge label={project.status} variant={statusMap[project.status as keyof typeof statusMap] as any || "neutral"} />
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+<div className="bg-card rounded-xl card-shadow overflow-hidden">
+  <DataTable
+    columns={workOrderColumns}
+    data={pagination.paginatedItems}
+    getRowKey={(project) => project.id}
+    onRowClick={(project) => navigate(`/work-order/${project.id}`)}
+    emptyMessage="No work orders found."
+  />
+</div>
 
       <PaginationControls
         currentPage={pagination.currentPage}
