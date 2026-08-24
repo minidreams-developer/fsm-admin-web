@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
-import { toast } from "sonner";
+import { showToast } from "@/lib/toast";
 import { useInventoryStore, type InventoryItem } from "@/store/inventoryStore";
 import { useBranchesStore } from "@/store/branchesStore";
 import { useProductsStore } from "@/store/productsStore";
@@ -102,19 +102,19 @@ export function InventoryFormModal({ open, mode, item, onClose, onSaved }: Props
 
   const save = () => {
     if (!form.name.trim()) {
-      toast.error(`${LABELS.product} is required`);
+      showToast.error(`${LABELS.product} is required`);
       return;
     }
     if (!form.branch.trim()) {
-      toast.error(`${LABELS.branch} is required`);
+      showToast.error(`${LABELS.branch} is required`);
       return;
     }
     if (form.stock < 0) {
-      toast.error(`${LABELS.stock} cannot be negative`);
+      showToast.error(`${LABELS.stock} cannot be negative`);
       return;
     }
     if (form.reorder < 0) {
-      toast.error(`${LABELS.reorder} cannot be negative`);
+      showToast.error(`${LABELS.reorder} cannot be negative`);
       return;
     }
 
@@ -126,9 +126,9 @@ export function InventoryFormModal({ open, mode, item, onClose, onSaved }: Props
       updateItem(form.id, updatedForm, restockQuantity);
       
       if (restockQuantity > 0) {
-        toast.success(`Restocked ${form.name}: +${restockQuantity} ${form.unit}. New stock: ${finalStock} ${form.unit}`);
+        showToast.success(`Restocked ${form.name}: +${restockQuantity} ${form.unit}. New stock: ${finalStock} ${form.unit}`);
       } else {
-        toast.success(`Inventory updated: ${form.name}`);
+        showToast.success(`Inventory updated: ${form.name}`);
       }
       
       onSaved?.(updatedForm);
@@ -138,7 +138,7 @@ export function InventoryFormModal({ open, mode, item, onClose, onSaved }: Props
     }
 
     addItem(form);
-    toast.success(`Inventory added: ${form.name}`);
+    showToast.success(`Inventory added: ${form.name}`);
     onSaved?.(form);
     setIsSaveDisabled(true);
     setFormChanged(false);

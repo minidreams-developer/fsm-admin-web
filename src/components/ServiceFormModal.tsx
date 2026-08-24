@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { createPortal } from "react-dom";
 import { X, Camera } from "lucide-react";
-import { toast } from "sonner";
+import { showToast } from "@/lib/toast";
 import { useServicesStore, type ServiceAppointment } from "@/store/servicesStore";
 import { format24to12 } from "@/utils/timeFormat";
 
@@ -80,13 +80,13 @@ export function ServiceFormModal({ open, onClose, onSaved, appointment, mode = "
 
   const save = () => {
     if (!form.subject?.trim()) {
-      toast.error("Service Name is required");
+      showToast.error("Service Name is required");
       return;
     }
 
     if (mode === "edit" && appointment) {
       updateAppointment(appointment.id, { ...form });
-      toast.success("Service updated successfully!");
+      showToast.success("Service updated successfully!");
       onSaved?.({ ...appointment, ...form } as ServiceAppointment);
       onClose();
       return;
@@ -116,7 +116,7 @@ export function ServiceFormModal({ open, onClose, onSaved, appointment, mode = "
     };
 
     addAppointment(newService);
-    toast.success("Service added successfully!");
+    showToast.success("Service added successfully!");
     onSaved?.(newService);
     onClose();
   };

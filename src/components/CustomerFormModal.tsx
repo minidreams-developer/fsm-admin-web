@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { X, Plus, Upload, Copy } from "lucide-react";
-import { toast } from "sonner";
+import { showToast } from "@/lib/toast";
 import { useCustomersStore, type Customer, type CustomerDocument, type CustomerType, type ContactPerson, type AddressFields, type CompanyDocument } from "@/store/customersStore";
 
 type Mode = "create" | "edit";
@@ -274,7 +274,7 @@ export function CustomerFormModal({ open, mode, customer, prefill, onClose, onSa
     }
     
     if (errors.length > 0) {
-      errors.forEach(error => toast.error(error));
+      errors.forEach(error => showToast.error(error));
       console.warn("Validation errors:", errors);
       return;
     }
@@ -320,11 +320,11 @@ export function CustomerFormModal({ open, mode, customer, prefill, onClose, onSa
       if (mode === "edit") {
         updateCustomer(normalized.id, normalized);
         console.log("Customer updated successfully");
-        toast.success(`Customer updated: ${buildDisplayName(normalized.firstName, normalized.lastName)}`);
+        showToast.success(`Customer updated: ${buildDisplayName(normalized.firstName, normalized.lastName)}`);
       } else {
         addCustomer(normalized);
         console.log("Customer added successfully");
-        toast.success(`Customer added: ${buildDisplayName(normalized.firstName, normalized.lastName)}`);
+        showToast.success(`Customer added: ${buildDisplayName(normalized.firstName, normalized.lastName)}`);
       }
       
       // Call onSaved callback and close modal
@@ -332,7 +332,7 @@ export function CustomerFormModal({ open, mode, customer, prefill, onClose, onSa
       onClose();
     } catch (error) {
       console.error("Error saving customer:", error);
-      toast.error("Failed to save customer. Please try again.");
+      showToast.error("Failed to save customer. Please try again.");
     }
   };
 
@@ -795,7 +795,7 @@ export function CustomerFormModal({ open, mode, customer, prefill, onClose, onSa
                   };
                   const removeContact = () => {
                     if (form.contactPersonsDetails.length === 1) {
-                      toast.error("At least one contact person is required");
+                      showToast.error("At least one contact person is required");
                       return;
                     }
                     const updated = form.contactPersonsDetails.filter((_, i) => i !== idx);

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
-import { toast } from "sonner";
+import { showToast } from "@/lib/toast";
 import { useBranchesStore, type Branch } from "@/store/branchesStore";
 import { useEmployeesStore } from "@/store/employeesStore";
 import { TimeInput12Hour } from "@/components/TimeInput12Hour";
@@ -101,15 +101,15 @@ export function BranchFormModal({ open, mode, branch, onClose, onSaved }: Props)
 
   const save = () => {
     if (!form.name.trim()) {
-      toast.error(`${LABELS.name} is required`);
+      showToast.error(`${LABELS.name} is required`);
       return;
     }
     if (!form.address.trim()) {
-      toast.error(`${LABELS.address} is required`);
+      showToast.error(`${LABELS.address} is required`);
       return;
     }
     if (!form.contactNumber.trim()) {
-      toast.error(`${LABELS.contactNumber} is required`);
+      showToast.error(`${LABELS.contactNumber} is required`);
       return;
     }
 
@@ -122,14 +122,14 @@ export function BranchFormModal({ open, mode, branch, onClose, onSaved }: Props)
 
     if (mode === "edit") {
       updateBranch(normalized.id, normalized);
-      toast.success(`Branch updated: ${normalized.name}`);
+      showToast.success(`Branch updated: ${normalized.name}`);
       onSaved?.(normalized);
       onClose();
       return;
     }
 
     addBranch(normalized);
-    toast.success(`Branch added: ${normalized.name}`);
+    showToast.success(`Branch added: ${normalized.name}`);
     onSaved?.(normalized);
     onClose();
   };

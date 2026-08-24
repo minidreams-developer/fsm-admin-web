@@ -18,7 +18,7 @@ import EmployeesPage from "./pages/EmployeesPage";
 import { EmployeeDetailPage } from "./pages/EmployeeDetailPage";
 import EmployeeReassignPage from "./pages/EmployeeReassignPage";
 import CustomersPage from "./pages/CustomersPage";
-import CustomerDetailPage from './pages/CustomerDetailPage'
+import CustomerDetailPage from './pages/CustomerDetailPage';
 import LoginPage from "./pages/LoginPage";
 import NotFound from "./pages/NotFound";
 import ProjectsPage from "./pages/ProjectsPage";
@@ -44,7 +44,7 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
-      <Sonner />
+      <Sonner position="top-right" />
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<LoginPage />} />

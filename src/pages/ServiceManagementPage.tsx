@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Plus, Search, Pencil, Trash2, Download, X } from "lucide-react";
-import { toast } from "sonner";
+import { showToast } from "@/lib/toast";
 import { useNavigate } from "react-router-dom";
 import { useServicesStore } from "@/store/servicesStore";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -11,7 +11,7 @@ import { useEmployeesStore } from "@/store/employeesStore";
 import { useBranchesStore } from "@/store/branchesStore";
 import type { ServiceAppointment } from "@/store/servicesStore";
 import * as XLSX from 'xlsx';
-import { DataTable } from "@/components/table/Datatable";
+import { DataTable } from "@/components/table/DataTable";
 
 const statusMap = { Scheduled: "info", Unscheduled: "neutral", Completed: "success", Cancelled: "error" } as const;
 
@@ -138,10 +138,10 @@ const ServiceManagementPage = () => {
       // Download file
       XLSX.writeFile(wb, filename);
 
-      toast.success(`Exported ${filtered.length} service appointment${filtered.length !== 1 ? 's' : ''} to Excel`);
+      showToast.success(`Exported ${filtered.length} service appointment${filtered.length !== 1 ? 's' : ''} to Excel`);
     } catch (error) {
       console.error('Export error:', error);
-      toast.error('Failed to export data');
+      showToast.error('Failed to export data');
     }
   };
 
@@ -227,7 +227,7 @@ const serviceColumns = [
 
         <button
           onClick={() =>
-            toast.error("Delete functionality coming soon")
+            showToast.error("Delete functionality coming soon")
           }
           className="p-1.5 rounded-lg border border-border hover:bg-destructive/10 transition-colors"
           title="Delete"

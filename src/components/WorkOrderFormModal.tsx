@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
-import { toast } from "sonner";
+import { showToast } from "@/lib/toast";
 import { useProjectsStore, type WorkOrder } from "@/store/projectsStore";
 
 type Props = {
@@ -27,7 +27,7 @@ export function WorkOrderFormModal({ open, onClose, onSaved }: Props) {
     paidAmount: "",
     start: "",
     end: "",
-    status: "Open",
+    status: "Open" as WorkOrder["status"],
     assignedTech: "",
     notes: "",
   });
@@ -46,7 +46,7 @@ export function WorkOrderFormModal({ open, onClose, onSaved }: Props) {
       paidAmount: "",
       start: "",
       end: "",
-      status: "Open",
+      status: "Open" as WorkOrder["status"],
       assignedTech: "",
       notes: "",
     });
@@ -58,23 +58,23 @@ export function WorkOrderFormModal({ open, onClose, onSaved }: Props) {
 
   const save = () => {
     if (!form.customer?.trim()) {
-      toast.error("Customer name is required");
+      showToast.error("Customer name is required");
       return;
     }
     if (!form.address?.trim()) {
-      toast.error("Address is required");
+      showToast.error("Address is required");
       return;
     }
     if (!form.phone?.trim()) {
-      toast.error("Phone is required");
+      showToast.error("Phone is required");
       return;
     }
     if (!form.subject?.trim()) {
-      toast.error("Subject is required");
+      showToast.error("Subject is required");
       return;
     }
     if (!form.start) {
-      toast.error("Start date is required");
+      showToast.error("Start date is required");
       return;
     }
 
@@ -100,7 +100,7 @@ export function WorkOrderFormModal({ open, onClose, onSaved }: Props) {
     };
 
     addWorkOrder(newWorkOrder);
-    toast.success("Work order added successfully!");
+    showToast.success("Work order added successfully!");
     onSaved?.(newWorkOrder);
     onClose();
   };

@@ -2,14 +2,14 @@ import { useState } from "react";
 import { Plus, Search, Edit2, Trash2, ChevronLeft, ChevronRight, ChevronDown, X, Upload, File, Users } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { createPortal } from "react-dom";
-import { toast } from "sonner";
+import { showToast } from "@/lib/toast";
 import { useTasksStore, type Task } from "@/store/tasksStore";
 import { useEmployeesStore } from "@/store/employeesStore";
 import { useBranchesStore } from "@/store/branchesStore";
 import { StatusBadge } from "@/components/StatusBadge";
 import { PaginationControls } from "@/components/PaginationControls";
 import { usePagination } from "@/hooks/usePagination";
-import { DataTable } from "@/components/table/Datatable";
+import { DataTable } from "@/components/table/DataTable";
 
 const PAGE_SIZE = 10;
 const STATUSES = ["Pending", "In Progress", "Completed", "Overdue", "Verified"] as const;
@@ -168,7 +168,7 @@ const TaskManagementPage = () => {
   // Bulk assign handler
   const handleBulkAssign = () => {
     if (bulkAssignData.assignedEmployees.length === 0) {
-      toast.error("Select at least one employee");
+      showToast.error("Select at least one employee");
       return;
     }
     
@@ -180,7 +180,7 @@ const TaskManagementPage = () => {
       });
     });
     
-    toast.success(`${selectedTaskIds.size} task${selectedTaskIds.size === 1 ? "" : "s"} assigned`);
+    showToast.success(`${selectedTaskIds.size} task${selectedTaskIds.size === 1 ? "" : "s"} assigned`);
     setSelectedTaskIds(new Set());
     setShowBulkAssign(false);
     setBulkAssignData({ assignedEmployees: [], branch: "" });
@@ -212,24 +212,24 @@ const TaskManagementPage = () => {
     const maxSize = 10 * 1024 * 1024;
     const invalidFiles = files.filter(f => f.size > maxSize);
     if (invalidFiles.length > 0) {
-      toast.error(`Some files exceed 10MB limit: ${invalidFiles.map(f => f.name).join(", ")}`);
+      showToast.error(`Some files exceed 10MB limit: ${invalidFiles.map(f => f.name).join(", ")}`);
       return;
     }
 
     setForm(f => ({ ...f, attachments: [...f.attachments, ...files] }));
-    toast.success(`Added ${files.length} file${files.length !== 1 ? 's' : ''}`);
+    showToast.success(`Added ${files.length} file${files.length !== 1 ? 's' : ''}`);
   };
 
   const removeFile = (index: number) => {
     setForm(f => ({ ...f, attachments: f.attachments.filter((_, i) => i !== index) }));
-    toast.info("File removed");
+    showToast.info("File removed");
   };
 
   const handleSave = () => {
-    if (!form.title.trim()) { toast.error("Title is required"); return; }
-    if (!form.startDate) { toast.error("Start date is required"); return; }
-    if (!form.endDate) { toast.error("End date is required"); return; }
-    if (form.assignedEmployees.length === 0) { toast.error("Assign at least one employee"); return; }
+    if (!form.title.trim()) { showToast.error("Title is required"); return; }
+    if (!form.startDate) { showToast.error("Start date is required"); return; }
+    if (!form.endDate) { showToast.error("End date is required"); return; }
+    if (form.assignedEmployees.length === 0) { showToast.error("Assign at least one employee"); return; }
 
     // Convert File objects to base64 for storage
     const convertFilesToBase64 = async () => {
@@ -254,10 +254,10 @@ const TaskManagementPage = () => {
     convertFilesToBase64().then(attachments => {
       if (editingTask) {
         updateTask(editingTask.id, { ...form, assignedTo: form.assignedEmployees[0], attachments });
-        toast.success("Task updated");
+        showToast.success("Task updated");
       } else {
         addTask({ id: getNextTaskId(), ...form, assignedTo: form.assignedEmployees[0], attachments });
-        toast.success("Task created");
+        showToast.success("Task created");
       }
       setShowModal(false);
     });
@@ -265,7 +265,7 @@ const TaskManagementPage = () => {
 
   const handleDelete = (id: string) => {
     deleteTask(id);
-    toast.success("Task deleted");
+    showToast.success("Task deleted");
   };
 
 const taskColumns = [

@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, User, CheckCircle } from "lucide-react";
-import { toast } from "sonner";
 import { useProjectsStore } from "@/store/projectsStore";
 import { useEmployeesStore } from "@/store/employeesStore";
+import { showToast } from "@/lib/toast";
 
 const BulkAssignPage = () => {
   const navigate = useNavigate();
@@ -28,7 +28,7 @@ const BulkAssignPage = () => {
 
   const handleAssign = () => {
     if (!selectedEmployee) {
-      toast.error("Please select an employee");
+      showToast.error("Please select an employee");
       return;
     }
 
@@ -37,7 +37,7 @@ const BulkAssignPage = () => {
       updateWorkOrder(wo.id, { assignedTech: selectedEmployee });
     });
 
-    toast.success(`Successfully assigned ${workOrdersToAssign.length} work order${workOrdersToAssign.length !== 1 ? 's' : ''} to ${selectedEmployee}`);
+    showToast.success(`Successfully assigned ${workOrdersToAssign.length} work order${workOrdersToAssign.length !== 1 ? 's' : ''} to ${selectedEmployee}`);
     navigate("/projects");
   };
 

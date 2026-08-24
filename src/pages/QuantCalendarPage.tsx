@@ -27,7 +27,7 @@ import {
 } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
-import { toast } from "sonner";
+import { showToast } from "@/lib/toast";
 import {
   DndContext,
   DragOverlay,
@@ -842,7 +842,7 @@ const QuantCalendarPage = () => {
 
   const handleRemoveJob = (jobId: string) => {
     setSchedule(prev => prev.filter(job => job.id !== jobId));
-    toast.success("Service removed from schedule");
+    showToast.success("Service removed from schedule");
   };
 
   const handleResizeStart = (jobId: string, originalDuration: number) => {
@@ -871,7 +871,7 @@ const QuantCalendarPage = () => {
     
     setResizingJob(null);
     setResizePreview(null);
-    toast.success(`Duration updated to ${snappedDuration} hour${snappedDuration !== 1 ? 's' : ''}`);
+    showToast.success(`Duration updated to ${snappedDuration} hour${snappedDuration !== 1 ? 's' : ''}`);
   };
 
   const handleResizeCancel = () => {

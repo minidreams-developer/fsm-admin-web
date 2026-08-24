@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Plus, Edit2, Trash2, Shield } from "lucide-react";
-import { toast } from "sonner";
+import { showToast } from "@/lib/toast";
 import { useRolesStore } from "@/store/rolesStore";
 
 const PERMISSIONS = ["Dashboard", "Leads", "Customers", "Employees", "Work Orders", "Payments", "Inventory", "Service Management", "Branches", "Products"];
@@ -31,20 +31,20 @@ const RolesPage = () => {
   };
 
   const save = () => {
-    if (!form.name.trim()) { toast.error("Role name is required"); return; }
+    if (!form.name.trim()) { showToast.error("Role name is required"); return; }
     if (editingRole) {
       updateRole(editingRole.id, form);
-      toast.success("Role updated");
+      showToast.success("Role updated");
     } else {
       addRole({ id: `ROLE-${Date.now()}`, ...form });
-      toast.success("Role created");
+      showToast.success("Role created");
     }
     setShowForm(false);
   };
 
   const deleteRoleHandler = (id: string) => {
     deleteRole(id);
-    toast.success("Role deleted");
+    showToast.success("Role deleted");
   };
 
   const toggleActive = (id: string) => {

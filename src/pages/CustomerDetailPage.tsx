@@ -6,8 +6,8 @@ import { ArrowLeft, Briefcase, ChevronDown, ClipboardList, Edit2, FileText, Fold
 import { useState } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { DetailField } from "@/components/DetailField";
-import {buildDisplayName,parseRupee,formatRupee,getCustomerWorkOrders,getLedger} from "@/utils/CustomerUtils";
-import { DataTable, type DataTableColumn} from "@/components/table/Datatable";
+import {buildDisplayName,parseRupee,formatRupee,getCustomerWorkOrders,getLedger} from "@/utils/customerUtils";
+import { DataTable, type DataTableColumn} from "@/components/table/DataTable";
 import { ActionDropdown } from "@/components/ActionDropdown";
 
 

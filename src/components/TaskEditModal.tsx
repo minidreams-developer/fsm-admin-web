@@ -3,11 +3,11 @@ import { createPortal } from "react-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { toast } from "sonner";
 import { useTasksStore, type Task } from "@/store/tasksStore";
 import { useEmployeesStore } from "@/store/employeesStore";
 import { useState } from "react";
 import { TimeInput12Hour } from "@/components/TimeInput12Hour";
+import { showToast } from "@/lib/toast";
 
 const taskSchema = z.object({
   title: z.string().min(1, "Task title is required"),
@@ -68,11 +68,11 @@ export function TaskEditModal({ task, isOpen, onClose, onSave }: TaskEditModalPr
         assignedEmployees: data.assignedEmployees,
         status: data.status,
       });
-      toast.success("Service updated successfully!");
+      showToast.success("Service updated successfully!");
       onSave();
       onClose();
     } catch (error) {
-      toast.error("Failed to update service");
+      showToast.error("Failed to update service");
     }
   };
 

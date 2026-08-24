@@ -8,9 +8,9 @@ import { InventoryFormModal } from "@/components/InventoryFormModal";
 import { InventoryDetailsModal } from "@/components/InventoryDetailsModal";
 import { PaginationControls } from "@/components/PaginationControls";
 import { usePagination } from "@/hooks/usePagination";
-import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
-import { DataTable } from "@/components/table/Datatable";
+import { DataTable } from "@/components/table/DataTable";
+import { showToast } from "@/lib/toast";
 
 const statusMap = { OK: "success", Low: "warning", Critical: "error" } as const;
 
@@ -179,7 +179,7 @@ const inventoryColumns = [
         <button
           onClick={() => {
             deleteItem(item.id);
-            toast.success("Inventory item deleted");
+            showToast.success("Inventory item deleted");
           }}
           className="p-1 hover:bg-secondary rounded-lg transition-colors text-muted-foreground hover:text-destructive"
           title="Delete"

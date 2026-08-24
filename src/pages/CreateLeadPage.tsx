@@ -2,7 +2,7 @@ import { useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate, useLocation } from "react-router-dom";
 import { ArrowLeft, X, Plus, Edit2 } from "lucide-react";
-import { toast } from "sonner";
+import { showToast } from "@/lib/toast";
 import Select from "react-select";
 import { useLeadsStore, type UrgencyLevel } from "@/store/leadsStore";
 import { useEmployeesStore } from "@/store/employeesStore";
@@ -10,7 +10,7 @@ import { useProductsStore } from "@/store/productsStore";
 import { useCustomersStore } from "@/store/customersStore";
 import { useServicesStore } from "@/store/servicesStore";
 import { TimePickerUnified } from "@/components/TimePickerUnified";
-import { DataTable } from "@/components/table/Datatable";
+import { DataTable, type DataTableColumn } from "@/components/table/DataTable";
 
 const urgencyLevels: UrgencyLevel[] = ["Low", "Medium", "High"];
           
@@ -211,7 +211,7 @@ const CreateLeadPage = () => {
 
   const removeAddress = (id: string) => {
     if (addresses.length === 1) {
-      toast.error("At least one address is required");
+      showToast.error("At least one address is required");
       return;
     }
     setAddresses(addresses.filter(addr => addr.id !== id));
@@ -246,25 +246,25 @@ const CreateLeadPage = () => {
   const updateServiceItem = (updated: ServiceItem) => {
     setServiceItems(prev => prev.map(i => i.id === updated.id ? updated : i));
     setEditingItem(null);
-    toast.success("Service updated");
+    showToast.success("Service updated");
   };
 
   const handleSave = () => {
     if (!form.name.trim() || !form.phone.trim() || serviceItems.length === 0) {
-      toast.error("Please fill in all required fields and add at least one service");
+      showToast.error("Please fill in all required fields and add at least one service");
       return;
     }
 
     // Validate at least one address has content
     const hasValidAddress = addresses.some(addr => addr.address.trim());
     if (!hasValidAddress) {
-      toast.error("Please add at least one address");
+      showToast.error("Please add at least one address");
       return;
     }
 
     // Validate custom source if "Custom" is selected
     if (form.leadSource === "Custom" && !customLeadSource.trim()) {
-      toast.error("Please enter a custom source");
+      showToast.error("Please enter a custom source");
       return;
     }
 
@@ -294,7 +294,7 @@ const CreateLeadPage = () => {
       quoteIsViewed: false,
       quoteViewedAt: null,
     });
-    toast.success("Leads created successfully!");
+    showToast.success("Leads created successfully!");
     navigate("/leads");
   };
 
@@ -829,7 +829,7 @@ const CreateLeadPage = () => {
             </div>
           </div>
         </div>
-      )}
+      , document.body)}
     </div>
   );
 };

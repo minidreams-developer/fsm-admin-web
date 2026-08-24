@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { toast } from "sonner";
+import { showToast } from "@/lib/toast";
 import { useProjectsStore } from "@/store/projectsStore";
 import { useLeadsStore, type Lead } from "@/store/leadsStore";
 
@@ -59,7 +59,7 @@ export function ConvertLeadModal({ lead, isOpen, onClose, onSuccess }: ConvertLe
         paidAmount: data.paidAmount ? `₹ ${parseInt(data.paidAmount).toLocaleString()}` : "₹ 0",
         start: new Date().toISOString().split("T")[0],
         end: new Date().toISOString().split("T")[0],
-        status: "Open" as const,
+        status: "Open" as Parameters<typeof addWorkOrder>[0]["status"],
         assignedTech: data.assignedTech || "Unassigned",
         notes: data.notes || `Converted from leads: ${lead.name}`,
         siteAddress: lead.address,
@@ -70,12 +70,12 @@ export function ConvertLeadModal({ lead, isOpen, onClose, onSuccess }: ConvertLe
       addWorkOrder(newWorkOrder);
       updateLead(lead.id, { status: "Converted" });
 
-      toast.success(`Enquiry "${lead.name}" converted to Work Order ${newWorkOrder.id}!`);
+      showToast.success(`Enquiry "${lead.name}" converted to Work Order ${newWorkOrder.id}!`);
       reset();
       onSuccess();
       onClose();
     } catch (error) {
-      toast.error("Failed to convert leads");
+      showToast.error("Failed to convert leads");
     }
   };
 

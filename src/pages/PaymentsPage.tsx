@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Search, Download } from "lucide-react";
-import { toast } from "sonner";
+import { showToast } from "@/lib/toast";
 import { useProjectsStore, type WorkOrder } from "@/store/projectsStore";
 import { useTasksStore } from "@/store/tasksStore";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -426,7 +426,7 @@ const PaymentsPage = () => {
                                       key={attachmentId}
                                       onClick={() => {
                                         downloadFile(attachmentId)
-                                          .catch(() => toast.error("Failed to download file"));
+                                          .catch(() => showToast.error("Failed to download file"));
                                       }}
                                       className="flex items-center gap-1 px-2 py-1 rounded bg-primary/10 hover:bg-primary/20 text-primary font-semibold transition-colors whitespace-nowrap"
                                       title={`Download attachment`}

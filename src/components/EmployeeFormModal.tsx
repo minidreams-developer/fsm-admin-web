@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { createPortal } from "react-dom";
 import { X, Camera, Upload, ChevronDown } from "lucide-react";
-import { toast } from "sonner";
+import { showToast } from "@/lib/toast";
 import { useEmployeesStore, type Employee } from "@/store/employeesStore";
 import { useRolesStore } from "@/store/rolesStore";
 import { useBranchesStore } from "@/store/branchesStore";
@@ -132,15 +132,15 @@ export function EmployeeFormModal({ open, mode, employee, onClose, onSaved }: Pr
 
   const save = () => {
     if (!form.name.trim()) {
-      toast.error(`${LABELS.name} is required`);
+      showToast.error(`${LABELS.name} is required`);
       return;
     }
     if (!form.phone.trim()) {
-      toast.error(`${LABELS.phone} is required`);
+      showToast.error(`${LABELS.phone} is required`);
       return;
     }
     if (!form.role.trim()) {
-      toast.error(`${LABELS.role} is required`);
+      showToast.error(`${LABELS.role} is required`);
       return;
     }
 
@@ -153,14 +153,14 @@ export function EmployeeFormModal({ open, mode, employee, onClose, onSaved }: Pr
 
     if (mode === "edit") {
       updateEmployee(normalized.id, normalized);
-      toast.success(`Employee updated: ${normalized.name}`);
+      showToast.success(`Employee updated: ${normalized.name}`);
       onSaved?.(normalized);
       onClose();
       return;
     }
 
     addEmployee(normalized);
-    toast.success(`Employee added: ${normalized.name}`);
+    showToast.success(`Employee added: ${normalized.name}`);
     onSaved?.(normalized);
     onClose();
   };

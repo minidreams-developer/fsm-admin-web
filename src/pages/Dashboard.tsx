@@ -5,14 +5,14 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { Link, useNavigate } from "react-router-dom";
 import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
-import { toast } from "sonner";
+import { showToast } from "@/lib/toast";
 import { useLeadsStore, type UrgencyLevel, type LeadStatus } from "@/store/leadsStore";
 import { useProjectsStore } from "@/store/projectsStore";
 import { useInventoryStore } from "@/store/inventoryStore";
 import { useBranchesStore } from "@/store/branchesStore";
 import type { WorkOrder } from "@/store/projectsStore";
 import { ReportSummaryCard } from "@/components/ReportSummaryCard";
-import { DataTable, type DataTableColumn } from "@/components/table/Datatable";
+import { DataTable, type DataTableColumn } from "@/components/table/DataTable";
 import { LeadTableActions } from "@/components/table/LeadTableActions";
 
 const allDummyCustomers = Array.from({ length: 50 }, (_, i) => ({
@@ -407,7 +407,7 @@ function DashboardLeadsSection() {
     reminders: [...(lead.reminders ?? []), newReminder],
   });
 
-  toast.success("Reminder added successfully!");
+  showToast.success("Reminder added successfully!");
 };
 
   return (
@@ -604,40 +604,6 @@ const Dashboard = () => {
           <p className="text-sm text-muted-foreground">Overview of today's activities and key metrics</p>
         </div>
         {/* Global Date Range Filter */}
-        {/* <div className="flex items-center gap-2 bg-card border border-border rounded-xl px-3 py-2 shadow-sm">
-          
-           <span className="text-xs text-muted-foreground">From :</span>
-           <input
-            type="date"
-            value={dateFrom}
-            onChange={e => setDateFrom(e.target.value)}
-            className="bg-transparent text-xs text-card-foreground focus:outline-none w-[120px]"
-          />
-          <span className="text-xs text-muted-foreground">To :</span>
-          <input
-            type="date"
-            value={dateTo}
-            min={dateFrom}
-            onChange={e => setDateTo(e.target.value)}
-            className="bg-transparent text-xs text-card-foreground focus:outline-none w-[120px]"
-          />
-          <div className="flex items-center gap-1.5 ml-1 pl-2 border-l border-border">
-            <button
-              onClick={applyDateFilter}
-              disabled={!dateFrom && !dateTo}
-              className="px-3 py-1 rounded-lg text-xs font-semibold text-white transition-all hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
-              style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}
-            >
-              Apply
-            </button>
-            <button
-              onClick={resetDateFilter}
-              className="px-3 py-1 rounded-lg text-xs font-semibold border border-border text-muted-foreground hover:text-card-foreground hover:bg-secondary transition-colors"
-            >
-              Reset
-            </button>
-          </div>
-        </div> */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-3 bg-card border border-border rounded-xl p-3 shadow-sm">
   <div className="flex items-center gap-2 w-full sm:w-auto">
     <span className="text-xs text-muted-foreground shrink-0">From :</span>
@@ -1084,7 +1050,7 @@ const Dashboard = () => {
                     quoteIsViewed: false,
                     quoteViewedAt: null,
                   });
-                  toast.success("Lead created successfully!");
+                  showToast.success("Lead created successfully!");
                   setShowAddLeadModal(false);
                   resetLeadForm();
                   navigate("/leads");

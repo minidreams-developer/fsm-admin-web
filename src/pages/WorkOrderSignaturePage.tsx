@@ -2,7 +2,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useRef, useState, useEffect } from "react";
 import { useProjectsStore } from "@/store/projectsStore";
 import { useTasksStore } from "@/store/tasksStore";
-import { toast } from "sonner";
+import { showToast } from "@/lib/toast";
 import { CheckCircle } from "lucide-react";
 import SignatureCanvas from "react-signature-canvas";
 
@@ -39,7 +39,7 @@ const WorkOrderSignaturePage = () => {
 
   const handleSubmit = () => {
     if (signatureRef.current?.isEmpty()) {
-      toast.error("Please provide a signature");
+      showToast.error("rovide a signature");
       return;
     }
 
@@ -49,7 +49,7 @@ const WorkOrderSignaturePage = () => {
       status: "Upcoming"
     });
     setIsSigned(true);
-    toast.success("Signature submitted successfully! Status changed to Upcoming.");
+    showToast.success("ubmitted successfully! Status changed to Upcoming.");
   };
 
   return (

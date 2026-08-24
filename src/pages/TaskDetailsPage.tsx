@@ -1,7 +1,7 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Edit2, Trash2, X, Upload, File, Download, Eye, UserCheck } from "lucide-react";
 import { useState, useRef } from "react";
-import { toast } from "sonner";
+import { showToast } from "@/lib/toast";
 import { useTasksStore, type Task } from "@/store/tasksStore";
 import { useEmployeesStore } from "@/store/employeesStore";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -177,24 +177,24 @@ const TaskDetailsPage = () => {
     const maxSize = 10 * 1024 * 1024;
     const invalidFiles = files.filter(f => f.size > maxSize);
     if (invalidFiles.length > 0) {
-      toast.error(`Some files exceed 10MB limit: ${invalidFiles.map(f => f.name).join(", ")}`);
+      showToast.error(`Some files exceed 10MB limit: ${invalidFiles.map(f => f.name).join(", ")}`);
       return;
     }
 
     setForm(f => ({ ...f, attachments: [...(f.attachments || []), ...files] }));
-    toast.success(`Added ${files.length} file${files.length !== 1 ? 's' : ''}`);
+    showToast.success(`Added ${files.length} file${files.length !== 1 ? 's' : ''}`);
   };
 
   const removeFile = (index: number) => {
     setForm(f => ({ ...f, attachments: f.attachments.filter((_, i) => i !== index) }));
-    toast.info("File removed");
+    showToast.info("File removed");
   };
 
   const handleSave = () => {
-    if (!form.title.trim()) { toast.error("Title is required"); return; }
-    if (!form.startDate) { toast.error("Start date is required"); return; }
-    if (!form.endDate) { toast.error("End date is required"); return; }
-    if (form.assignedEmployees.length === 0) { toast.error("Assign at least one employee"); return; }
+    if (!form.title.trim()) { showToast.error("Title is required"); return; }
+    if (!form.startDate) { showToast.error("Start date is required"); return; }
+    if (!form.endDate) { showToast.error("End date is required"); return; }
+    if (form.assignedEmployees.length === 0) { showToast.error("Assign at least one employee"); return; }
 
     // Separate File objects from already stored attachments
     const newFiles = form.attachments.filter(a => a && typeof a === 'object' && 'slice' in a) as any[];
@@ -203,7 +203,7 @@ const TaskDetailsPage = () => {
     if (newFiles.length === 0) {
       // No new files, just update with existing attachments
       updateTask(task.id, { ...form, assignedTo: form.assignedEmployees[0], attachments: existingAttachments });
-      toast.success("Task updated");
+      showToast.success("Task updated");
       setIsEditing(false);
       return;
     }
@@ -230,14 +230,14 @@ const TaskDetailsPage = () => {
 
     convertFilesToBase64().then(attachments => {
       updateTask(task.id, { ...form, assignedTo: form.assignedEmployees[0], attachments });
-      toast.success("Task updated");
+      showToast.success("Task updated");
       setIsEditing(false);
     });
   };
 
   const handleDelete = () => {
     deleteTask(task.id);
-    toast.success("Task deleted");
+    showToast.success("Task deleted");
     navigate("/task-management");
   };
 
@@ -248,11 +248,11 @@ const TaskDetailsPage = () => {
     const maxSize = 10 * 1024 * 1024;
     const invalid = files.filter(f => f.size > maxSize);
     if (invalid.length > 0) {
-      toast.error(`File(s) exceed 10MB: ${invalid.map(f => f.name).join(", ")}`);
+      showToast.error(`File(s) exceed 10MB: ${invalid.map(f => f.name).join(", ")}`);
       return;
     }
     setUploadingFiles(prev => [...prev, ...files]);
-    toast.success(`Added ${files.length} file${files.length !== 1 ? 's' : ''}`);
+    showToast.success(`Added ${files.length} file${files.length !== 1 ? 's' : ''}`);
     // Reset input so same file can be re-selected
     if (uploadInputRef.current) uploadInputRef.current.value = "";
   };
@@ -270,11 +270,11 @@ const TaskDetailsPage = () => {
     const maxSize = 10 * 1024 * 1024;
     const invalid = files.filter(f => f.size > maxSize);
     if (invalid.length > 0) {
-      toast.error(`File(s) exceed 10MB: ${invalid.map(f => f.name).join(", ")}`);
+      showToast.error(`File(s) exceed 10MB: ${invalid.map(f => f.name).join(", ")}`);
       return;
     }
     setUploadingFiles(prev => [...prev, ...files]);
-    toast.success(`Added ${files.length} file${files.length !== 1 ? 's' : ''}`);
+    showToast.success(`Added ${files.length} file${files.length !== 1 ? 's' : ''}`);
   };
 
   const handleRemoveUploadingFile = (idx: number) => {
@@ -308,7 +308,7 @@ const TaskDetailsPage = () => {
                   });
                 } catch (error) {
                   console.error("Failed to save to IndexedDB:", error);
-                  toast.error(`Failed to save ${file.name} to storage`);
+                  showToast.error(`Failed to save ${file.name} to storage`);
                   resolve(null);
                 }
               } else {
@@ -332,7 +332,7 @@ const TaskDetailsPage = () => {
         updateTask(task.id, { attachments: [...(task.attachments || []), ...validAttachments] });
         setUploadingFiles([]);
         setUploadingAs("");
-        toast.success(`${validAttachments.length} document${validAttachments.length !== 1 ? "s" : ""} uploaded successfully`);
+        showToast.success(`${validAttachments.length} document${validAttachments.length !== 1 ? "s" : ""} uploaded successfully`);
       }
     } finally {
       setIsUploading(false);
@@ -342,7 +342,7 @@ const TaskDetailsPage = () => {
   const handleDeleteAttachment = (idx: number) => {
     const updated = (task.attachments || []).filter((_, i) => i !== idx);
     updateTask(task.id, { attachments: updated });
-    toast.success("Document removed");
+    showToast.success("Document removed");
   };
 
   return (
@@ -358,7 +358,7 @@ const TaskDetailsPage = () => {
               <button 
                 onClick={() => {
                   updateTask(task.id, { status: "Verified" });
-                  toast.success("Task marked as verified");
+                  showToast.success("Task marked as verified");
                 }}
                 className="inline-flex items-center gap-2 h-10 px-4 rounded-lg border border-primary/30 bg-primary/5 hover:bg-primary/10 transition-colors text-sm font-semibold text-primary"
               >
@@ -486,11 +486,11 @@ const TaskDetailsPage = () => {
                           if (data) {
                             setViewingAttachment({ name: attachment.name, data });
                           } else {
-                            toast.error("Could not load file");
+                            showToast.error("Could not load file");
                           }
                         } catch (error) {
                           console.error("Failed to load attachment:", error);
-                          toast.error("Failed to load file");
+                          showToast.error("Failed to load file");
                         }
                       }}
                       className="p-1.5 hover:bg-primary/10 rounded-lg transition-colors"
@@ -510,11 +510,11 @@ const TaskDetailsPage = () => {
                             link.click();
                             document.body.removeChild(link);
                           } else {
-                            toast.error("Could not download file");
+                            showToast.error("Could not download file");
                           }
                         } catch (error) {
                           console.error("Failed to download attachment:", error);
-                          toast.error("Failed to download file");
+                          showToast.error("Failed to download file");
                         }
                       }}
                       className="p-1.5 hover:bg-primary/10 rounded-lg transition-colors"
@@ -531,7 +531,7 @@ const TaskDetailsPage = () => {
                           handleDeleteAttachment(index);
                         } catch (error) {
                           console.error("Failed to delete attachment:", error);
-                          toast.error("Failed to delete file");
+                          showToast.error("Failed to delete file");
                         }
                       }}
                       className="p-1.5 hover:bg-destructive/10 rounded-lg transition-colors"
@@ -606,7 +606,7 @@ const TaskDetailsPage = () => {
                             reader.readAsDataURL(file);
                           } catch (error) {
                             console.error("Failed to load file:", error);
-                            toast.error("Failed to view file");
+                            showToast.error("Failed to view file");
                           }
                         }}
                         className="p-1 hover:bg-primary/10 rounded transition-colors"
@@ -629,7 +629,7 @@ const TaskDetailsPage = () => {
                             reader.readAsDataURL(file);
                           } catch (error) {
                             console.error("Failed to download file:", error);
-                            toast.error("Failed to download file");
+                            showToast.error("Failed to download file");
                           }
                         }}
                         className="p-1 hover:bg-primary/10 rounded transition-colors"

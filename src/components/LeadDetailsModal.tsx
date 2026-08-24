@@ -1,7 +1,7 @@
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { useState, useEffect } from "react";
-import { toast } from "sonner";
+import { showToast } from "@/lib/toast";
 import { useLeadsStore, type Lead, type LeadStatus, type UrgencyLevel } from "@/store/leadsStore";
 import { useEmployeesStore } from "@/store/employeesStore";
 import { useProductsStore } from "@/store/productsStore";
@@ -51,14 +51,14 @@ export function LeadDetailsModal({ open, lead, onClose, initialEdit = false }: P
 
   const saveReminder = () => {
     if (!reminderDate || !reminderText.trim()) {
-      toast.error("Please select a date and enter reminder text");
+      showToast.error("Please select a date and enter reminder text");
       return;
     }
     const newReminder = { id: `REM-${Date.now()}`, date: reminderDate, text: reminderText.trim(), createdAt: new Date().toISOString() };
     updateLead(lead.id, { reminders: [...(lead.reminders ?? []), newReminder] });
     setReminderDate("");
     setReminderText("");
-    toast.success("Reminder saved");
+    showToast.success("Reminder saved");
   };
 
   const deleteReminder = (id: string) => {
@@ -67,11 +67,11 @@ export function LeadDetailsModal({ open, lead, onClose, initialEdit = false }: P
 
   const save = () => {
     if (!form.name?.trim() || !form.phone?.trim()) {
-      toast.error("Name and phone are required");
+      showToast.error("Name and phone are required");
       return;
     }
     updateLead(lead.id, form);
-    toast.success("Leads updated");
+    showToast.success("Leads updated");
     setIsEditing(false);
     onClose();
   };

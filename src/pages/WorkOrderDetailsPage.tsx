@@ -8,7 +8,7 @@ import { useServicesStore } from "@/store/servicesStore";
 import { StatusBadge } from "@/components/StatusBadge";
 import { WorkOrderEditModal } from "@/components/WorkOrderEditModal";
 import { TaskEditModal } from "@/components/TaskEditModal";
-import { toast } from "sonner";
+import { showToast } from "@/lib/toast";
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
@@ -65,7 +65,7 @@ export const WorkOrderDetailsPage = () => {
     if (!contentRef.current || !workOrder) return;
 
     try {
-      toast.info("Generating PDF...");
+      showToast.info("Generating PDF...");
 
       // Create a clone of the content to modify for PDF
       const element = contentRef.current;
@@ -120,17 +120,17 @@ export const WorkOrderDetailsPage = () => {
       // Download PDF
       pdf.save(filename);
       
-      toast.success("PDF downloaded successfully!");
+      showToast.success("PDF downloaded successfully!");
     } catch (error) {
       console.error('PDF generation error:', error);
-      toast.error("Failed to generate PDF");
+      showToast.error("Failed to generate PDF");
     }
   };
 
   const handleDeleteTask = (taskId: string) => {
     if (window.confirm("Are you sure you want to delete this service?")) {
       deleteTask(taskId);
-      toast.success("Service deleted successfully!");
+      showToast.success("Service deleted successfully!");
       setRefreshKey(prev => prev + 1);
     }
   };
@@ -224,7 +224,7 @@ export const WorkOrderDetailsPage = () => {
                 workOrder.status === "Completed" ? "neutral" : 
                 workOrder.status === "Ongoing" ? "success" : 
                 workOrder.status === "Upcoming" ? "info" :
-                workOrder.status === "Missed" ? "destructive" :
+                workOrder.status === "Missed" ? "warning" :
                 workOrder.status === "Cancelled" ? "neutral" :
                 workOrder.status === "Converted" ? "info" :
                 "warning"

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
-import { toast } from "sonner";
+import { showToast } from "@/lib/toast";
 import { useProductsStore, type Product, type ProductCategory, type UnitType } from "@/store/productsStore";
 
 type Mode = "create" | "edit";
@@ -25,7 +25,7 @@ const LABELS = {
   // supplierName: "Supplier Name",
   // supplierContact: "Supplier Contact",
   // sku: "SKU/Code",
-  // status: "Status",
+  status: "Status",
   // notes: "Notes",
 } as const;
 
@@ -81,11 +81,11 @@ export function ProductFormModal({ open, mode, product, onClose, onSaved }: Prop
 
   const save = () => {
     if (!form.name.trim()) {
-      toast.error(`${LABELS.name} is required`);
+      showToast.error(`${LABELS.name} is required`);
       return;
     }
     if (form.unitPrice <= 0) {
-      toast.error(`${LABELS.unitPrice} must be greater than 0`);
+      showToast.error(`${LABELS.unitPrice} must be greater than 0`);
       return;
     }
 
@@ -100,14 +100,14 @@ export function ProductFormModal({ open, mode, product, onClose, onSaved }: Prop
 
     if (mode === "edit") {
       updateProduct(normalized.id, normalized);
-      toast.success(`Product updated: ${normalized.name}`);
+      showToast.success(`Product updated: ${normalized.name}`);
       onSaved?.(normalized);
       onClose();
       return;
     }
 
     addProduct(normalized);
-    toast.success(`Product added: ${normalized.name}`);
+    showToast.success(`Product added: ${normalized.name}`);
     onSaved?.(normalized);
     onClose();
   };

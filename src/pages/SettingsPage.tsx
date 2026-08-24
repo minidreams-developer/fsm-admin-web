@@ -1,8 +1,8 @@
 import { ArrowLeft, Settings as SettingsIcon } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { toast } from "sonner";
 import { useSettingsStore } from "@/store/settingsStore";
+import { showToast } from "@/lib/toast";
 
 export const SettingsPage = () => {
   const navigate = useNavigate();
@@ -14,17 +14,17 @@ export const SettingsPage = () => {
     const price = parseFloat(kmPrice);
     
     if (isNaN(price) || price <= 0) {
-      toast.error("Please enter a valid kilometer price");
+      showToast.error("Please enter a valid kilometer price");
       return;
     }
 
     setIsSaving(true);
     try {
       updateSettings({ kmPrice: price });
-      toast.success("Settings saved successfully");
+      showToast.success("Settings saved successfully");
       setIsSaving(false);
     } catch (error) {
-      toast.error("Failed to save settings");
+      showToast.error("Failed to save settings");
       setIsSaving(false);
     }
   };

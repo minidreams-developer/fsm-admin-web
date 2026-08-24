@@ -9,7 +9,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { ServiceFormModal } from "@/components/ServiceFormModal";
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
-import { toast } from "sonner";
+import { showToast } from "@/lib/toast";
 
 // Dummy odometer data with images
 const dummyOdometerReadings = [
@@ -185,7 +185,7 @@ export const ServiceDetailPage = () => {
     if (!contentRef.current || !service) return;
 
     try {
-      toast.info("Generating PDF...");
+      showToast.info("Generating PDF...");
 
       // Create a clone of the content to modify for PDF
       const element = contentRef.current;
@@ -240,10 +240,10 @@ export const ServiceDetailPage = () => {
       // Download PDF
       pdf.save(filename);
       
-      toast.success("PDF downloaded successfully!");
+      showToast.success("PDF downloaded successfully!");
     } catch (error) {
       console.error('PDF generation error:', error);
-      toast.error("Failed to generate PDF");
+      showToast.error("Failed to generate PDF");
     }
   };
 

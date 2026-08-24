@@ -4,10 +4,10 @@ import { BranchDetailsModal } from "@/components/BranchDetailsModal";
 import { useBranchesStore, type Branch } from "@/store/branchesStore";
 import { Plus, Search, Edit2, Trash2, MapPin, Eye } from "lucide-react";
 import { useState } from "react";
-import { toast } from "sonner";
 import { PaginationControls } from "@/components/PaginationControls";
 import { usePagination } from "@/hooks/usePagination";
-import { DataTable } from "@/components/table/Datatable";
+import { DataTable } from "@/components/table/DataTable";
+import { showToast } from "@/lib/toast";
 
 const BranchesPage = () => {
   const { branches, deleteBranch, updateBranch } = useBranchesStore();
@@ -42,7 +42,7 @@ const BranchesPage = () => {
   const handleDelete = (id: string, name: string) => {
     if (confirm(`Are you sure you want to delete ${name}?`)) {
       deleteBranch(id);
-      toast.success(`Branch deleted: ${name}`);
+      showToast.success(`Branch deleted: ${name}`);
     }
   };
 

@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { toast } from "sonner";
+import { showToast } from "@/lib/toast";
 import Select from "react-select";
 import SignatureCanvas from "react-signature-canvas";
 import { useProjectsStore } from "@/store/projectsStore";
@@ -287,14 +287,14 @@ const EditWorkOrderPage = () => {
   // Load existing work order data on mount
   useEffect(() => {
     if (!workOrderId) {
-      toast.error("Work Order ID not found");
+      showToast.error("Work Order ID not found");
       navigate("/projects");
       return;
     }
 
     const workOrder = getWorkOrder(workOrderId);
     if (!workOrder) {
-      toast.error("Work Order not found");
+      showToast.error("Work Order not found");
       navigate("/projects");
       return;
     }
@@ -441,7 +441,7 @@ const EditWorkOrderPage = () => {
   const updateTaskLocal = (updated: Task) => {
     setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
     setEditingTask(null);
-    toast.success("Service updated");
+    showToast.success("Service updated");
   };
 
   const removeTask = (id: string) => {
@@ -450,24 +450,24 @@ const EditWorkOrderPage = () => {
 
   const handleSaveExecSignature = () => {
     if (execSignatureRef.current?.isEmpty()) {
-      toast.error("Please provide a signature before saving");
+      showToast.error("Please provide a signature before saving");
       return;
     }
     const signatureData = execSignatureRef.current?.toDataURL();
     setExecutiveSignatureImage(signatureData || null);
     setShowSignatureModal(false);
-    toast.success("Sales Executive signature saved!");
+    showToast.success("Sales Executive signature saved!");
   };
 
   const handleSaveCustomerSignature = () => {
     if (customerSignatureRef.current?.isEmpty()) {
-      toast.error("Please provide a signature before saving");
+      showToast.error("Please provide a signature before saving");
       return;
     }
     const signatureData = customerSignatureRef.current?.toDataURL();
     setCustomerSignatureImage(signatureData || null);
     setShowCustomerSignatureModal(false);
-    toast.success("Customer signature saved!");
+    showToast.success("Customer signature saved!");
   };
 
   const onSubmit = async (data: WorkOrderFormData) => {
@@ -535,10 +535,10 @@ const EditWorkOrderPage = () => {
         });
       });
 
-      toast.success("Work Order updated successfully!");
+      showToast.success("Work Order updated successfully!");
       navigate("/projects");
     } catch {
-      toast.error("Failed to update work order");
+      showToast.error("Failed to update work order");
     } finally {
       setIsSubmitting(false);
     }

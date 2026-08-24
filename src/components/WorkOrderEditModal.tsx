@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { toast } from "sonner";
+import { showToast } from "@/lib/toast";
 import { useProjectsStore, type WorkOrder } from "@/store/projectsStore";
 import { useProductsStore } from "@/store/productsStore";
 import { useEmployeesStore } from "@/store/employeesStore";
@@ -171,7 +171,7 @@ export function WorkOrderEditModal({ workOrder, isOpen, onClose, onSave }: WorkO
   const updateTaskData = (updated: Task) => {
     setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
     setEditingTask(null);
-    toast.success("Service updated");
+    showToast.success("Service updated");
   };
 
   const { register, handleSubmit, formState: { errors }, setValue } = useForm<WorkOrderFormData>({
@@ -217,11 +217,11 @@ export function WorkOrderEditModal({ workOrder, isOpen, onClose, onSave }: WorkO
         assignedTech: data.assignedTech || "Unassigned",
         notes: data.notes || "",
       });
-      toast.success("Work Order updated successfully!");
+      showToast.success("Work Order updated successfully!");
       onSave();
       onClose();
     } catch {
-      toast.error("Failed to update work order");
+      showToast.error("Failed to update work order");
     }
   };
 

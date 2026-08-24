@@ -1,7 +1,6 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, AlertCircle, Package, Briefcase, CheckCircle, XCircle, Edit2, DollarSign, Plus, X } from "lucide-react";
 import { useState } from "react";
-import { toast } from "sonner";
 import { useEmployeesStore } from "@/store/employeesStore";
 import { useProjectsStore } from "@/store/projectsStore";
 import { useInventoryStore } from "@/store/inventoryStore";
@@ -9,6 +8,7 @@ import { useTasksStore } from "@/store/tasksStore";
 import { useSettingsStore } from "@/store/settingsStore";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EmployeeFormModal } from "@/components/EmployeeFormModal";
+import { showToast } from "@/lib/toast";
 
 export const EmployeeDetailPage = () => {
   const { id } = useParams();
@@ -108,7 +108,7 @@ export const EmployeeDetailPage = () => {
       }
     }
     updateEmployee(employee.id, { isActive: !isActive });
-    toast.success(`${employee.name} marked as ${isActive ? "Inactive" : "Active"}`);
+    showToast.success(`${employee.name} marked as ${isActive ? "Inactive" : "Active"}`);
   };
 
   if (!employee) {
@@ -637,12 +637,12 @@ export const EmployeeDetailPage = () => {
                   type="button"
                   onClick={() => {
                     if (!collectEmployee.trim()) {
-                      toast.error("Please select an employee");
+                      showToast.error("Please select an employee");
                       return;
                     }
                     const amt = parseFloat(collectAmount);
                     if (!collectAmount || isNaN(amt) || amt <= 0) {
-                      toast.error("Enter a valid amount");
+                      showToast.error("Enter a valid amount");
                       return;
                     }
                     
@@ -669,7 +669,7 @@ export const EmployeeDetailPage = () => {
                       });
                       
                       setEditingCollectionId(null);
-                      toast.success("Collection updated");
+                      showToast.success("Collection updated");
                     } else {
                       // New collection mode
                       const newCollection = {
@@ -687,7 +687,7 @@ export const EmployeeDetailPage = () => {
                         cashCollections: [...existing, newCollection],
                         cashBalance: `₹ ${newBalance.toLocaleString()}`,
                       });
-                      toast.success(`₹ ${amt.toLocaleString()} collected by ${collectEmployee}`);
+                      showToast.success(`₹ ${amt.toLocaleString()} collected by ${collectEmployee}`);
                     }
                     
                     setCollectAmount("");
@@ -767,7 +767,7 @@ export const EmployeeDetailPage = () => {
                                 cashCollections: updated,
                                 cashBalance: `₹ ${newBalance.toLocaleString()}`,
                               });
-                              toast.success("Collection deleted");
+                              showToast.success("Collection deleted");
                             }}
                             className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
                             title="Delete collection"

@@ -4,10 +4,10 @@ import { ProductDetailsModal } from "@/components/ProductDetailsModal";
 import { useProductsStore, type Product, type ProductCategory } from "@/store/productsStore";
 import { Plus, Search, Edit2, Trash2, Package, Eye } from "lucide-react";
 import { useState } from "react";
-import { toast } from "sonner";
+import { showToast } from "@/lib/toast";
 import { PaginationControls } from "@/components/PaginationControls";
 import { usePagination } from "@/hooks/usePagination";
-import { DataTable } from "@/components/table/Datatable";
+import { DataTable } from "@/components/table/DataTable";
 
 const CATEGORIES: ProductCategory[] = ["Chemicals", "Equipment", "Supplies", "Services", "Other"];
 
@@ -49,7 +49,7 @@ const ProductsPage = () => {
   const handleDelete = (id: string, name: string) => {
     if (confirm(`Are you sure you want to delete ${name}?`)) {
       deleteProduct(id);
-      toast.success(`Product deleted: ${name}`);
+      showToast.success(`Product deleted: ${name}`);
     }
   };
 

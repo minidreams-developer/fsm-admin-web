@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Plus, Search, Eye, EyeOff, X, Clock, CheckCircle2, Edit2, Users, TrendingUp, CheckCircle, XCircle, Bell, ArrowRightLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { toast } from "sonner";
+import { showToast } from "@/lib/toast";
 import { useLeadsStore, type LeadStatus, type Lead, type UrgencyLevel } from "@/store/leadsStore";
 import { LeadDetailsModal } from "@/components/LeadDetailsModal";
 import { ConvertLeadModal } from "@/components/ConvertLeadModal";
@@ -121,7 +121,7 @@ const LeadsPage = () => {
   
   const saveReminder = (leadId: number) => {
     if (!reminderDate || !reminderText.trim()) {
-      toast.error("Please select a date and enter reminder text");
+      showToast.error("Please select a date and enter reminder text");
       return;
     }
     const lead = leads.find((l) => l.id === leadId);
@@ -132,7 +132,7 @@ const LeadsPage = () => {
     setReminderTime("");
     setReminderText("");
     setReminderLeadId(null);
-    toast.success("Reminder saved");
+    showToast.success("Reminder saved");
   };
   
   const leadColumns: DataTableColumn<Lead>[] = [
@@ -244,7 +244,7 @@ const LeadsPage = () => {
     const nextViewedAt = nextViewed ? new Date().toISOString() : null;
     updateLead(leadId, { quoteIsViewed: nextViewed, quoteViewedAt: nextViewedAt });
     setSelectedLead((prev) => (prev && prev.id === leadId ? { ...prev, quoteIsViewed: nextViewed, quoteViewedAt: nextViewedAt } : prev));
-    toast.success(nextViewed ? "Marked as viewed" : "Marked as not viewed");
+    showToast.success(nextViewed ? "Marked as viewed" : "Marked as not viewed");
   };
   
   const handleSendQuote = () => {
@@ -257,12 +257,12 @@ const LeadsPage = () => {
         quoteIsViewed: false,
         quoteViewedAt: null,
       });
-      toast.success("Quote sent successfully!");
+      showToast.success("Quote sent successfully!");
       setShowQuoteForm(false);
       setSelectedLeadForQuote(null);
       setQuoteFormData({ amount: "", contract: "", notes: "" });
     } else {
-      toast.error("Please fill in all required fields");
+      showToast.error("Please fill in all required fields");
     }
   };
 
@@ -313,7 +313,7 @@ const LeadsPage = () => {
 
   const handleSaveLead = () => {
     if (!formData.name.trim() || !formData.phone.trim() || !formData.address.trim() || formData.services.length === 0) {
-      toast.error("Please fill in all required fields and add at least one service");
+      showToast.error("Please fill in all required fields and add at least one service");
       return;
     }
 
@@ -335,7 +335,7 @@ const LeadsPage = () => {
       quoteViewedAt: null
     });
 
-    toast.success("Leads created successfully!");
+    showToast.success("Leads created successfully!");
     setFormData({
       name: "",
       phone: "",
@@ -355,11 +355,11 @@ const LeadsPage = () => {
 
   const handleBulkTransfer = () => {
     if (!transferTo.trim()) {
-      toast.error("Please select a sales executive to transfer to");
+      showToast.error("Please select a sales executive to transfer to");
       return;
     }
     selectedLeadIds.forEach(id => updateLead(id, { assignedOwner: transferTo }));
-    toast.success(`${selectedLeadIds.size} enquir${selectedLeadIds.size === 1 ? "y" : "ies"} transferred to ${transferTo}`);
+    showToast.success(`${selectedLeadIds.size} enquir${selectedLeadIds.size === 1 ? "y" : "ies"} transferred to ${transferTo}`);
     setSelectedLeadIds(new Set());
     setShowBulkTransfer(false);
     setTransferTo("");
@@ -1062,7 +1062,7 @@ const LeadsPage = () => {
                       </button>
                       <button
                         onClick={() => {
-                          toast.info("Reminder sent to customer");
+                          showToast.info("Reminder sent to customer");
                         }}
                         className="flex-1 h-10 text-warning border border-warning/20 rounded-lg hover:bg-warning/5 transition-all font-semibold text-sm"
                       >

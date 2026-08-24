@@ -9,7 +9,7 @@ import { useBranchesStore } from "@/store/branchesStore";
 import { PaginationControls } from "@/components/PaginationControls";
 import { usePagination } from "@/hooks/usePagination";
 import { toast } from "sonner";
-import { DataTable } from "@/components/table/Datatable";
+import { DataTable } from "@/components/table/DataTable";
 
 const statusMap = {
   "Authorization Pending": "warning",

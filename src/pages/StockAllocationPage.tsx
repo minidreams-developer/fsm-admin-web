@@ -4,9 +4,9 @@ import { useNavigate } from "react-router-dom";
 import { useInventoryStore } from "@/store/inventoryStore";
 import { useEmployeesStore } from "@/store/employeesStore";
 import { useBranchesStore } from "@/store/branchesStore";
-import { toast } from "sonner";
+import { showToast } from "@/lib/toast";
 import { StatusBadge } from "@/components/StatusBadge";
-import { DataTable } from "@/components/table/Datatable";
+import { DataTable } from "@/components/table/DataTable";
 
 const StockAllocationPage = () => {
   const navigate = useNavigate();
@@ -51,19 +51,19 @@ const StockAllocationPage = () => {
 
   const handleAllocate = () => {
     if (!selectedEmployee) {
-      toast.error("Please select an employee");
+      showToast.error("Please select an employee");
       return;
     }
 
     if (!selectedAllocatingUser) {
-      toast.error("Please select who is allocating the stock");
+      showToast.error("Please select who is allocating the stock");
       return;
     }
 
     const allocationEntries = Object.entries(allocations).filter(([_, qty]) => qty > 0);
     
     if (allocationEntries.length === 0) {
-      toast.error("Please enter allocation quantities");
+      showToast.error("Please enter allocation quantities");
       return;
     }
 
@@ -71,7 +71,7 @@ const StockAllocationPage = () => {
     allocationEntries.forEach(([itemId, quantity]) => {
       const item = inventory.find(i => i.id === Number(itemId));
       if (item && quantity > item.stock) {
-        toast.error(`Insufficient stock for ${item.name}`);
+        showToast.error(`Insufficient stock for ${item.name}`);
         hasError = true;
       }
     });
@@ -108,7 +108,7 @@ const StockAllocationPage = () => {
       }
     });
 
-    toast.success(`${allocationEntries.length} item(s) allocated to ${selectedEmp?.name} by ${selectedAllocatingUser}`);
+    showToast.success(`${allocationEntries.length} item(s) allocated to ${selectedEmp?.name} by ${selectedAllocatingUser}`);
     setAllocations({});
     setSelectedEmployee("");
   };
@@ -133,7 +133,7 @@ const StockAllocationPage = () => {
     const newStock = item.stock - quantityDifference;
 
     if (newStock < 0) {
-      toast.error(`Insufficient stock. Available: ${item.stock} ${item.unit}`);
+      showToast.error(`Insufficient stock. Available: ${item.stock} ${item.unit}`);
       return;
     }
 
@@ -159,7 +159,7 @@ const StockAllocationPage = () => {
 
     updateItem(itemId, { allocations: updatedAllocations });
 
-    toast.success(`Allocation updated: ${editingQuantity} ${item.unit} for ${employees.find(e => e.id === employeeId)?.name}`);
+    showToast.success(`Allocation updated: ${editingQuantity} ${item.unit} for ${employees.find(e => e.id === employeeId)?.name}`);
     setEditingAllocationId(null);
     setEditingQuantity(0);
   };
@@ -186,7 +186,7 @@ const StockAllocationPage = () => {
       allocations: updatedAllocations
     });
 
-    toast.success(`Allocation removed for ${employees.find(e => e.id === employeeId)?.name}`);
+    showToast.success(`Allocation removed for ${employees.find(e => e.id === employeeId)?.name}`);
   };
 
   const inventoryTableData = filteredInventory.map((item, index) => ({
@@ -311,7 +311,7 @@ const inventoryColumns = [
         <button
           onClick={() => {
             deleteItem(item.id);
-            toast.success("Inventory item deleted");
+            showToast.success("Inventory item deleted");
           }}
           className="p-1 hover:bg-secondary rounded-lg transition-colors text-muted-foreground hover:text-destructive"
           title="Delete"

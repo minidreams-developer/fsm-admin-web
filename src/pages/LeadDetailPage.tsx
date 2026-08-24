@@ -2,7 +2,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Plus, X, Edit2, FolderKanban, Bell, ChevronDown, FileText, CheckCircle } from "lucide-react";
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { toast } from "sonner";
+import { showToast } from "@/lib/toast";
 import { useLeadsStore } from "@/store/leadsStore";
 import { StatusBadge } from "@/components/StatusBadge";
 import { LeadDetailsModal } from "@/components/LeadDetailsModal";
@@ -35,7 +35,7 @@ export const LeadDetailPage = () => {
   const handleAcknowledge = () => {
     if (lead) {
       updateLead(lead.id, { isViewed: true });
-      toast.success("Lead acknowledged");
+      showToast.success("Lead acknowledged");
     }
   };
 
@@ -54,7 +54,7 @@ export const LeadDetailPage = () => {
 
 const saveReminder = () => {
   if (!reminderDate || !reminderText.trim()) {
-    toast.error("Please select a date and enter reminder text");
+    showToast.error("Please select a date and enter reminder text");
     return;
   }
 
@@ -75,18 +75,18 @@ const saveReminder = () => {
   setReminderText("");
   setShowReminders(false);
 
-  toast.success("Reminder added successfully");
+  showToast.success("Reminder added successfully");
 };
 
   const saveComment = () => {
     if (!commentText.trim()) {
-      toast.error("Please enter a comment");
+      showToast.error("Please enter a comment");
       return;
     }
     const newComment = { id: `CMT-${Date.now()}`, text: commentText.trim(), createdAt: new Date().toISOString() };
     updateLead(lead.id, { comments: [...(lead.comments ?? []), newComment] });
     setCommentText("");
-    toast.success("Comment saved");
+    showToast.success("Comment saved");
   };
 
   const deleteReminder = (remId: string) => {

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { toast } from "sonner";
+import { showToast } from "@/lib/toast";
 import type { WorkOrder, PaymentRecord } from "@/store/projectsStore";
 import { useProjectsStore } from "@/store/projectsStore";
 import { useEmployeesStore } from "@/store/employeesStore";
@@ -66,7 +66,7 @@ export function PaymentUpdateModal({ open, workOrder, onClose }: Props) {
 
       // Limit file size to 10MB
       if (file.size > 10 * 1024 * 1024) {
-        toast.error(`${file.name}: File size must be less than 10MB`);
+        showToast.error(`${file.name}: File size must be less than 10MB`);
         continue;
       }
 
@@ -78,11 +78,11 @@ export function PaymentUpdateModal({ open, workOrder, onClose }: Props) {
           
           await saveFile(fileId, file.name, arrayBuffer, file.type);
           setAttachmentFiles(prev => [...prev, { name: file.name, id: fileId }]);
-          toast.success(`${file.name} attached successfully`);
+          showToast.success(`${file.name} attached successfully`);
         };
         reader.readAsArrayBuffer(file);
       } catch (error) {
-        toast.error(`Failed to attach ${file.name}`);
+        showToast.error(`Failed to attach ${file.name}`);
       }
     }
   };
@@ -122,12 +122,12 @@ export function PaymentUpdateModal({ open, workOrder, onClose }: Props) {
         paymentHistory: updatedPaymentHistory,
       });
 
-      toast.success("Payment updated!");
+      showToast.success("Payment updated!");
       reset();
       setAttachmentFiles([]);
       onClose();
     } catch (error) {
-      toast.error("Failed to update payment");
+      showToast.error("Failed to update payment");
     } finally {
       setIsSubmitting(false);
     }

@@ -2,12 +2,12 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { Plus, Search, X, Calendar, Clock, MapPin, User, CheckCircle2, Eye, Check, Pencil, AlertCircle, ChevronDown } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
-import { toast } from "sonner";
 import { useServicesStore } from "@/store/servicesStore";
 import { useProjectsStore } from "@/store/projectsStore";
 import type { ServiceAppointment, Task, Attachment, AttachmentKind } from "@/store/servicesStore";
 import type { WorkOrder } from "@/store/projectsStore";
 import { TimePickerUnified } from "@/components/TimePickerUnified";
+import { showToast } from "@/lib/toast";
 
 const employees = [
   { id: 1, name: "Safeeq", phone: "9876543220", availability: "Available" },
@@ -253,18 +253,18 @@ const ServicesPage = () => {
 
   const handleAssignService = () => {
     if (!formData.workOrderId) {
-      toast.error("Please select a work order");
+      showToast.error("Please select a work order");
       return;
     }
     if (!formData.employee) {
-      toast.error("Please select a technician");
+      showToast.error("Please select a technician");
       return;
     }
 
     const hasDate = Boolean(formData.appointmentDate);
     const hasTime = Boolean(formData.appointmentTime);
     if (hasDate !== hasTime) {
-      toast.error("Select both date and time, or leave both empty for unscheduled work.");
+      showToast.error("Select both date and time, or leave both empty for unscheduled work.");
       return;
     }
 
@@ -283,7 +283,7 @@ const ServicesPage = () => {
       technicians,
       instructions: formData.instructions,
       tasks: formData.tasks,
-      status: (hasDate && hasTime ? "Scheduled" : "Unscheduled") as const,
+      status: hasDate && hasTime ? ("Scheduled" as const) : ("Unscheduled" as const),
       completedAt: undefined,
       completionNotes: undefined,
       cancelledAt: undefined,
@@ -293,7 +293,7 @@ const ServicesPage = () => {
     if (editingAppointmentId) {
       updateAppointment(editingAppointmentId, nextData);
       setSuccessMessage(`Service updated for ${formData.customer}`);
-      toast.success("Service appointment updated successfully!");
+      showToast.success("Service appointment updated successfully!");
     } else {
       const newAppointment = {
         id: getNextAppointmentId(),
@@ -301,7 +301,7 @@ const ServicesPage = () => {
       };
       addAppointment(newAppointment);
       setSuccessMessage(`Service assigned to ${formData.employee} for ${formData.customer}`);
-      toast.success("Service appointment created successfully!");
+      showToast.success("Service appointment created successfully!");
     }
     setShowSuccessMessage(true);
     setShowAssignForm(false);
@@ -331,7 +331,7 @@ const ServicesPage = () => {
   const confirmCancel = () => {
     if (!cancelTarget) return;
     if (!cancelReason.trim()) {
-      toast.error("Add a cancellation reason.");
+      showToast.error("Add a cancellation reason.");
       return;
     }
     const cancelledAt = new Date().toISOString();
@@ -345,7 +345,7 @@ const ServicesPage = () => {
         ? { ...prev, status: "Cancelled", cancelledAt, cancellationReason: cancelReason.trim() }
         : prev
     );
-    toast.success("Appointment cancelled");
+    showToast.success("Appointment cancelled");
     closeCancel();
   };
 

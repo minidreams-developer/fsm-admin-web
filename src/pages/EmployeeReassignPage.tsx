@@ -1,10 +1,10 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, ExternalLink } from "lucide-react";
 import { useState } from "react";
-import { toast } from "sonner";
 import { useEmployeesStore } from "@/store/employeesStore";
 import { useProjectsStore } from "@/store/projectsStore";
 import { useTasksStore } from "@/store/tasksStore";
+import { showToast } from "@/lib/toast";
 
 export const EmployeeReassignPage = () => {
   const { id } = useParams();
@@ -44,12 +44,12 @@ export const EmployeeReassignPage = () => {
   const handleConfirm = () => {
     const allWoAssigned = assignedProjects.every(wo => woReassign[wo.id]);
     if (!allWoAssigned) {
-      toast.error("Please reassign all work orders before inactivating.");
+      showToast.error("Please reassign all work orders before inactivating.");
       return;
     }
     assignedProjects.forEach(wo => updateWorkOrder(wo.id, { assignedTech: woReassign[wo.id] }));
     updateEmployee(employee.id, { isActive: false });
-    toast.success(`${employee.name} has been marked Inactive and all assignments reassigned.`);
+    showToast.success(`${employee.name} has been marked Inactive and all assignments reassigned.`);
     navigate(`/employees/${employee.id}`);
   };
 
